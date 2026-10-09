@@ -1,0 +1,9 @@
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+neo4j>=5.26.0
+httpx>=0.28.0
+python-dotenv>=1.0.0
+pydantic>=2.0.0
+pydantic-settings>=2.0.0
+# 说明：用户账号/报告历史使用 Python 标准库 sqlite3 与 hashlib，
+# 不引入任何新的第三方依赖，保证 RK3588 板端可离线安装。

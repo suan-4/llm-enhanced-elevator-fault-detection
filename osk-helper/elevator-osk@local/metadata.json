@@ -1,0 +1,7 @@
+{
+  "uuid": "elevator-osk@local",
+  "name": "Elevator OSK Bridge",
+  "description": "为电梯安全评估系统提供屏幕键盘的显式开关。X11 会话下 GNOME 不会为外部应用自动弹出软键盘（panel-state 是 Wayland text-input 协议才有的通路），而底部上滑手势的 EdgeDragAction 只认真实触摸点、无法由程序触发。这里通过 D-Bus 让应用在输入框获得焦点时主动弹出、失焦时收起。",
+  "shell-version": ["42"],
+  "version": 1
+}

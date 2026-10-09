@@ -1,0 +1,7 @@
+system_id,system_name,description
+SYS_BRAKE,制动系统,用于电梯减速停止和保持静止
+SYS_DOOR,门系统,用于轿门层门开闭和门锁保护
+SYS_SAFETY,安全保护系统,用于超速终端越程和非预期移动等风险保护
+SYS_CONTROL,电气控制系统,用于运行控制安全回路信号检测和故障保护
+SYS_TRACTION,曳引系统,用于提供曳引驱动力并维持轿厢与对重运动
+SYS_BUFFER,缓冲器与底坑系统,用于终端越程缓冲和底坑安全保护

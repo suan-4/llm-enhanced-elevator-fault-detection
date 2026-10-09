@@ -1,0 +1,2102 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>电梯安全评估系统</title>
+<style>
+/* ===== CSS Variables ===== */
+:root {
+  --bg: #f6f3ee;
+  --surface: #ffffff;
+  --surface-hover: #faf9f7;
+  --border: #e4ded4;
+  --text: #2c2c2c;
+  --text-secondary: #6b6560;
+  --text-muted: #99948e;
+  --accent: #1b5e7a;
+  --accent-light: #e8f0f8;
+  --accent-glow: #2d8ab5;
+  --danger: #c5343e;
+  --danger-light: #fef0f0;
+  --warning: #c47f20;
+  --warning-light: #fef9ed;
+  --success: #2d7d46;
+  --success-light: #eef8f0;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06);
+  --shadow: 0 4px 16px rgba(0,0,0,0.06), 0 2px 4px rgba(0,0,0,0.04);
+  --shadow-lg: 0 12px 32px rgba(0,0,0,0.08), 0 4px 8px rgba(0,0,0,0.04);
+  --radius-sm: 6px;
+  --radius: 10px;
+  --radius-lg: 16px;
+  --font: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", "Hiragino Sans GB", sans-serif;
+  --font-mono: "SF Mono", "Cascadia Code", "Consolas", monospace;
+  --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ===== Reset & Base ===== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { font-size: 15px; -webkit-font-smoothing: antialiased; }
+
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  line-height: 1.6;
+  background-image:
+    radial-gradient(ellipse at 30% 20%, rgba(27,94,122,0.03) 0%, transparent 60%),
+    radial-gradient(ellipse at 70% 80%, rgba(196,127,32,0.04) 0%, transparent 60%),
+    linear-gradient(180deg, #f6f3ee 0%, #f0ece6 100%);
+}
+
+/* ===== Noise texture overlay ===== */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.025;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='0.8' numOctaves='4' stitchTiles='stitch' type='fractalNoise'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ===== App Shell ===== */
+.app { display: flex; min-height: 100vh; position: relative; z-index: 1; }
+
+/* ===== Sidebar ===== */
+.sidebar {
+  width: 260px;
+  background: linear-gradient(180deg, #1a2638 0%, #15202f 100%);
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  padding: 32px 0;
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+}
+
+.sidebar-brand {
+  padding: 0 28px 28px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  margin-bottom: 28px;
+}
+
+.sidebar-brand h1 {
+  font-size: 1.2rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #fff;
+  line-height: 1.4;
+}
+
+.sidebar-brand .subtitle {
+  font-size: 0.7rem;
+  color: rgba(255,255,255,0.45);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-top: 4px;
+}
+
+.sidebar-steps { list-style: none; padding: 0 16px; flex: 1; }
+
+.sidebar-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all var(--transition);
+  color: rgba(255,255,255,0.5);
+  font-size: 0.88rem;
+  position: relative;
+  border: 1px solid transparent;
+}
+
+.sidebar-step:hover {
+  color: rgba(255,255,255,0.8);
+  background: rgba(255,255,255,0.04);
+}
+
+.sidebar-step.active {
+  color: #fff;
+  background: rgba(255,255,255,0.08);
+  border-color: rgba(255,255,255,0.12);
+}
+
+.sidebar-step.completed {
+  color: rgba(255,255,255,0.7);
+}
+
+.step-indicator {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.8rem; font-weight: 700;
+  flex-shrink: 0;
+  border: 2px solid rgba(255,255,255,0.25);
+  transition: all var(--transition);
+}
+
+.sidebar-step.active .step-indicator {
+  background: var(--accent-glow);
+  border-color: var(--accent-glow);
+  box-shadow: 0 0 20px rgba(45,138,181,0.4);
+}
+
+.sidebar-step.completed .step-indicator {
+  background: var(--success);
+  border-color: var(--success);
+}
+
+.step-info { line-height: 1.4; }
+.step-num { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.6; }
+.step-title { font-weight: 600; }
+
+.sidebar-footer {
+  padding: 20px 28px 0;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  margin-top: 20px;
+  font-size: 0.7rem;
+  color: rgba(255,255,255,0.3);
+}
+
+/* ===== Main Content ===== */
+.main {
+  flex: 1;
+  padding: 40px 48px;
+  max-width: 960px;
+  min-width: 0;
+}
+
+/* ===== Step Panels ===== */
+.step-panel { display: none; animation: fadeSlide 0.4s ease; }
+.step-panel.active { display: block; }
+
+@keyframes fadeSlide {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ===== Section Header ===== */
+.section-header { margin-bottom: 32px; }
+.section-header h2 { font-size: 1.6rem; font-weight: 700; color: var(--text); letter-spacing: -0.01em; }
+.section-header p { color: var(--text-secondary); margin-top: 6px; font-size: 0.9rem; }
+
+/* ===== Cards ===== */
+.card {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  padding: 28px 32px;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+  margin-bottom: 20px;
+  transition: all var(--transition);
+}
+
+.card:hover { box-shadow: var(--shadow-lg); }
+
+.card-header {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 20px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  letter-spacing: 0.02em;
+}
+
+.card-header .icon { font-size: 1.1rem; }
+
+/* ===== Form Grid ===== */
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px 28px;
+}
+
+.form-grid.col-3 { grid-template-columns: 1fr 1fr 1fr; }
+.form-grid.col-1 { grid-template-columns: 1fr; }
+
+.form-group { display: flex; flex-direction: column; gap: 4px; }
+.form-group.full { grid-column: 1 / -1; }
+
+.form-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  letter-spacing: 0.02em;
+}
+
+.form-input {
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 9px 14px;
+  font-size: 0.92rem;
+  font-family: var(--font);
+  color: var(--text);
+  background: var(--surface);
+  transition: all var(--transition);
+  outline: none;
+  width: 100%;
+}
+
+.form-input:focus {
+  border-color: var(--accent-glow);
+  box-shadow: 0 0 0 3px rgba(27,94,122,0.08);
+}
+
+.form-input::placeholder { color: var(--text-muted); }
+
+.form-input.unit {
+  padding-right: 50px;
+}
+
+.input-with-unit {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-with-unit .unit-label {
+  position: absolute;
+  right: 12px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  pointer-events: none;
+}
+
+.input-with-unit input {
+  padding-right: 50px;
+}
+
+.form-row-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.form-row-inline input {
+  width: 60px;
+  text-align: center;
+}
+
+.form-row-inline .sep {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+/* ===== Divider ===== */
+.divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 28px 0;
+}
+
+.section-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--accent);
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.section-label::before {
+  content: '';
+  width: 4px; height: 16px;
+  background: var(--accent-glow);
+  border-radius: 2px;
+}
+
+/* ===== Assessment Cards (Step 2) ===== */
+.assessment-toolbar {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 22px;
+  border-radius: var(--radius-sm);
+  font-size: 0.88rem;
+  font-weight: 600;
+  font-family: var(--font);
+  cursor: pointer;
+  transition: all var(--transition);
+  border: 1.5px solid transparent;
+  letter-spacing: 0.02em;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+.btn-primary:hover {
+  background: #164b63;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(27,94,122,0.25);
+}
+
+.btn-outline {
+  background: var(--surface);
+  color: var(--accent);
+  border-color: var(--border);
+}
+
+.btn-outline:hover {
+  border-color: var(--accent);
+  background: var(--accent-light);
+}
+
+.btn-circle {
+  width: 48px; height: 48px;
+  border-radius: 50%;
+  font-size: 1.4rem;
+  font-weight: 600;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.btn-circle:hover {
+  transform: scale(1.08);
+  box-shadow: var(--shadow-lg);
+  background: var(--accent-glow);
+}
+
+.btn-danger {
+  background: var(--danger);
+  color: #fff;
+  border-color: var(--danger);
+}
+
+.btn-danger:hover { background: #a51d2e; }
+
+.btn-sm {
+  padding: 6px 14px;
+  font-size: 0.78rem;
+}
+
+/* ===== Selects ===== */
+.select-group {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.custom-select {
+  padding: 9px 36px 9px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+  font-family: var(--font);
+  color: var(--text);
+  background: var(--surface);
+  cursor: pointer;
+  outline: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b6560' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  transition: all var(--transition);
+  min-width: 200px;
+}
+
+.custom-select:focus {
+  border-color: var(--accent-glow);
+  box-shadow: 0 0 0 3px rgba(27,94,122,0.08);
+}
+
+/* ===== Add Card Modal ===== */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  z-index: 100;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+}
+
+.modal-overlay.show { display: flex; }
+
+.modal {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  padding: 32px;
+  box-shadow: var(--shadow-lg);
+  max-width: 520px;
+  width: 90%;
+  animation: fadeSlide 0.3s ease;
+}
+
+.modal h3 {
+  font-size: 1.1rem;
+  margin-bottom: 20px;
+  color: var(--text);
+}
+
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 24px;
+}
+
+/* ===== Question Cards ===== */
+.question-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 22px 26px;
+  margin-bottom: 16px;
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition);
+  position: relative;
+}
+
+.question-card:hover { box-shadow: var(--shadow); }
+
+.question-card .card-title {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--text);
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.question-card .card-title .code {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  font-weight: 500;
+  font-family: var(--font-mono);
+  background: var(--bg);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.question-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(0,0,0,0.04);
+}
+
+.question-row:last-child { border-bottom: none; }
+
+.question-text {
+  font-size: 0.85rem;
+  color: var(--text);
+  flex: 1;
+  padding-right: 16px;
+  line-height: 1.5;
+}
+
+.radio-group {
+  display: flex;
+  gap: 20px;
+  flex-shrink: 0;
+}
+
+.radio-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  font-weight: 500;
+  color: var(--text-secondary);
+  transition: color var(--transition);
+}
+
+.radio-label input[type="radio"] {
+  appearance: none;
+  width: 18px; height: 18px;
+  border: 2px solid var(--border);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all var(--transition);
+  position: relative;
+}
+
+.radio-label input[type="radio"]:checked {
+  border-color: var(--accent);
+  background: var(--accent);
+  box-shadow: inset 0 0 0 4px var(--surface);
+}
+
+.radio-label:has(input:checked) {
+  color: var(--accent);
+}
+
+.radio-label.fail input[type="radio"]:checked {
+  border-color: var(--danger);
+  background: var(--danger);
+  box-shadow: inset 0 0 0 4px var(--surface);
+}
+
+.radio-label:has(.fail:checked) { color: var(--danger); }
+
+.card-remark {
+  margin-top: 12px;
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 0.82rem;
+  font-family: var(--font);
+  color: var(--text);
+  outline: none;
+  background: var(--bg);
+  resize: vertical;
+  min-height: 36px;
+}
+
+.card-remark:focus {
+  border-color: var(--accent-glow);
+}
+
+.card-remove {
+  position: absolute;
+  top: 12px;
+  right: 16px;
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition);
+}
+
+.card-remove:hover {
+  background: var(--danger-light);
+  color: var(--danger);
+}
+
+.empty-state {
+  text-align: center;
+  padding: 48px 24px;
+  color: var(--text-muted);
+}
+
+.empty-state .icon { font-size: 2.5rem; margin-bottom: 12px; }
+.empty-state p { font-size: 0.9rem; }
+
+/* ===== Ride Quality (Step 3) ===== */
+.metrics-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.metric-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px 24px;
+  transition: all var(--transition);
+}
+
+.metric-card:hover { box-shadow: var(--shadow); }
+
+.metric-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.metric-name {
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: var(--text);
+}
+
+.metric-unit {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  background: var(--bg);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.metric-standard {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.metric-input-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.metric-input-row input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 1.1rem;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  color: var(--text);
+  outline: none;
+  text-align: center;
+  transition: all var(--transition);
+  width: 100%;
+}
+
+.metric-input-row input:focus {
+  border-color: var(--accent-glow);
+  box-shadow: 0 0 0 3px rgba(27,94,122,0.08);
+}
+
+.metric-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 20px;
+  letter-spacing: 0.03em;
+  opacity: 0;
+  transition: opacity var(--transition);
+}
+
+.metric-badge.visible { opacity: 1; }
+.metric-badge.pass { background: var(--success-light); color: var(--success); }
+.metric-badge.fail { background: var(--danger-light); color: var(--danger); }
+
+.textarea-field {
+  width: 100%;
+  min-height: 100px;
+  padding: 12px 16px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+  font-family: var(--font);
+  color: var(--text);
+  outline: none;
+  resize: vertical;
+  background: var(--surface);
+}
+
+.textarea-field:focus {
+  border-color: var(--accent-glow);
+  box-shadow: 0 0 0 3px rgba(27,94,122,0.08);
+}
+
+/* ===== Buttons Row ===== */
+.actions-row {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 36px;
+  flex-wrap: wrap;
+}
+
+.btn-next {
+  padding: 12px 40px;
+  font-size: 1rem;
+}
+
+.btn-prev {
+  padding: 12px 24px;
+  font-size: 0.9rem;
+  background: var(--surface);
+  color: var(--text-secondary);
+  border-color: var(--border);
+}
+
+.btn-prev:hover { border-color: var(--text-muted); }
+
+/* ===== Report (Step 4) ===== */
+.report-container {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.report-header {
+  background: linear-gradient(135deg, #1a2638 0%, #15202f 100%);
+  color: #fff;
+  padding: 36px 40px;
+  text-align: center;
+}
+
+.report-header h2 {
+  font-size: 1.4rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.report-header .date {
+  font-size: 0.8rem;
+  opacity: 0.6;
+  margin-top: 6px;
+}
+
+.report-body { padding: 32px 40px; }
+
+.report-section { margin-bottom: 28px; }
+.report-section h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 14px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--accent-light);
+}
+
+.report-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.report-table td {
+  padding: 8px 14px;
+  border-bottom: 1px solid rgba(0,0,0,0.05);
+}
+
+.report-table td:first-child {
+  color: var(--text-secondary);
+  font-weight: 600;
+  width: 28%;
+  white-space: nowrap;
+}
+
+.report-summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin: 24px 0;
+}
+
+.summary-stat {
+  text-align: center;
+  padding: 24px 16px;
+  border-radius: var(--radius);
+  background: var(--bg);
+  border: 1px solid var(--border);
+}
+
+.summary-stat .value {
+  font-size: 2rem;
+  font-weight: 800;
+  font-family: var(--font-mono);
+  line-height: 1;
+}
+
+.summary-stat .label {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  margin-top: 8px;
+}
+
+.summary-stat.danger .value { color: var(--danger); }
+.summary-stat.warning .value { color: var(--warning); }
+.summary-stat.success .value { color: var(--success); }
+
+.risk-list { list-style: none; }
+.risk-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  border-radius: var(--radius-sm);
+  margin-bottom: 6px;
+  font-size: 0.85rem;
+}
+
+.risk-item.cat-ii { background: var(--warning-light); color: var(--warning); }
+.risk-item.cat-iii { background: var(--danger-light); color: var(--danger); }
+
+.risk-badge {
+  font-size: 0.7rem;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 4px;
+  letter-spacing: 0.06em;
+}
+
+.risk-badge.ii { background: var(--warning); color: #fff; }
+.risk-badge.iii { background: var(--danger); color: #fff; }
+
+/* ===== Toast ===== */
+.toast {
+  position: fixed;
+  top: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-120px);
+  background: var(--danger);
+  color: #fff;
+  padding: 12px 28px;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  font-size: 0.9rem;
+  z-index: 200;
+  box-shadow: var(--shadow-lg);
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.toast.show { transform: translateX(-50%) translateY(0); }
+
+/* ===== Progress Dots ===== */
+.progress-dots {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.progress-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--border);
+  transition: all var(--transition);
+}
+
+.progress-dot.filled { background: var(--accent); }
+
+/* ===== Responsive ===== */
+@media (max-width: 900px) {
+  .app { flex-direction: column; }
+  .sidebar {
+    width: 100%;
+    height: auto;
+    position: static;
+    flex-direction: row;
+    flex-wrap: wrap;
+    padding: 16px 20px;
+    gap: 8px;
+  }
+  .sidebar-brand { width: 100%; padding: 0 0 12px; margin-bottom: 12px; }
+  .sidebar-steps { display: flex; gap: 8px; padding: 0; flex-wrap: wrap; }
+  .sidebar-step { padding: 10px 14px; font-size: 0.78rem; }
+  .sidebar-footer { display: none; }
+  .main { padding: 24px 20px; }
+  .form-grid { grid-template-columns: 1fr; }
+  .metrics-grid { grid-template-columns: 1fr; }
+  .report-summary { grid-template-columns: 1fr; }
+}
+
+/* ===== Print ===== */
+@media print {
+  .sidebar, .actions-row, .btn-circle, .modal-overlay, .assessment-toolbar, .card-remove { display: none !important; }
+  .main { max-width: 100%; padding: 0; }
+  .step-panel { display: block !important; page-break-before: always; }
+  .card { box-shadow: none; border: 1px solid #ccc; break-inside: avoid; }
+  body { background: #fff; }
+  body::after { display: none; }
+}
+
+/* ===== Shake animation for warning ===== */
+@keyframes shake {
+  0%,100% { transform: translateX(0); }
+  10%,50%,90% { transform: translateX(-3px); }
+  30%,70% { transform: translateX(3px); }
+}
+
+.shake { animation: shake 0.6s ease; }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <h1>电梯安全评估</h1>
+      <div class="subtitle">Elevator Safety Assessment</div>
+    </div>
+    <ul class="sidebar-steps" id="sidebarSteps">
+      <li class="sidebar-step active" data-step="1">
+        <div class="step-indicator">1</div>
+        <div class="step-info">
+          <div class="step-num">Step 01</div>
+          <div class="step-title">基本信息及设备参数</div>
+        </div>
+      </li>
+      <li class="sidebar-step" data-step="2">
+        <div class="step-indicator">2</div>
+        <div class="step-info">
+          <div class="step-num">Step 02</div>
+          <div class="step-title">评估项目录入</div>
+        </div>
+      </li>
+      <li class="sidebar-step" data-step="3">
+        <div class="step-indicator">3</div>
+        <div class="step-info">
+          <div class="step-num">Step 03</div>
+          <div class="step-title">乘运质量检测数据</div>
+        </div>
+      </li>
+      <li class="sidebar-step" data-step="4">
+        <div class="step-indicator">4</div>
+        <div class="step-info">
+          <div class="step-num">Report</div>
+          <div class="step-title">评估报告</div>
+        </div>
+      </li>
+    </ul>
+    <div class="sidebar-footer">
+      依据 GB/T 42615-2023<br>在用电梯安全评估规范
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main">
+    <!-- ===== STEP 1: 基本信息及设备参数 ===== -->
+    <div class="step-panel active" id="step1">
+      <div class="section-header">
+        <h2>基本信息及设备参数</h2>
+        <p>请填写委托单位、使用单位、设备信息及技术参数</p>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><span class="icon">&#x1f4cb;</span> 基本信息</div>
+        <div class="form-grid">
+          <div class="form-group full">
+            <label class="form-label">委托单位名称</label>
+            <input class="form-input" id="delegation_unit" placeholder="请输入委托单位名称">
+          </div>
+          <div class="form-group full">
+            <label class="form-label">使用单位名称</label>
+            <input class="form-input" id="using_unit" placeholder="请输入使用单位名称">
+          </div>
+          <div class="form-group full">
+            <label class="form-label">安装地点</label>
+            <input class="form-input" id="location" placeholder="请输入安装地点">
+          </div>
+          <div class="form-group">
+            <label class="form-label">设备类别</label>
+            <input class="form-input" id="device_category" placeholder="如：曳引与强制驱动电梯">
+          </div>
+          <div class="form-group">
+            <label class="form-label">设备品种</label>
+            <input class="form-input" id="device_type" placeholder="如：曳引驱动乘客电梯">
+          </div>
+          <div class="form-group">
+            <label class="form-label">型号</label>
+            <input class="form-input" id="model" placeholder="请输入型号">
+          </div>
+          <div class="form-group">
+            <label class="form-label">产品编号</label>
+            <input class="form-input" id="product_number" placeholder="请输入产品编号">
+          </div>
+          <div class="form-group">
+            <label class="form-label">使用登记证编号</label>
+            <input class="form-input" id="registration_number" placeholder="请输入使用登记证编号">
+          </div>
+          <div class="form-group">
+            <label class="form-label">制造日期</label>
+            <input class="form-input" id="manufacture_date" placeholder="如：2022年06月07日">
+          </div>
+          <div class="form-group full">
+            <label class="form-label">制造单位名称</label>
+            <input class="form-input" id="manufacturer" placeholder="请输入制造单位名称">
+          </div>
+          <div class="form-group full">
+            <label class="form-label">施工单位名称</label>
+            <input class="form-input" id="construction_unit" placeholder="请输入施工单位名称">
+          </div>
+          <div class="form-group full">
+            <label class="form-label">维护保养单位名称</label>
+            <input class="form-input" id="maintenance_unit" placeholder="请输入维护保养单位名称">
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><span class="icon">&#x2699;</span> 设备技术参数</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">额定载重量</label>
+            <div class="input-with-unit">
+              <input class="form-input" id="rated_load" placeholder="1000">
+              <span class="unit-label">kg</span>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">额定速度</label>
+            <div class="input-with-unit">
+              <input class="form-input" id="rated_speed" placeholder="1.75">
+              <span class="unit-label">m/s</span>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">层/站/门数</label>
+            <div class="form-row-inline">
+              <input class="form-input" id="floors_count" placeholder="34">
+              <span class="sep">层</span>
+              <input class="form-input" id="stations_count" placeholder="34">
+              <span class="sep">站</span>
+              <input class="form-input" id="doors_count" placeholder="34">
+              <span class="sep">门</span>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">控制方式</label>
+            <input class="form-input" id="control_method" placeholder="如：并联">
+          </div>
+          <div class="form-group full">
+            <label class="form-label">评估仪器</label>
+            <input class="form-input" id="assessment_instrument" placeholder="如：温湿度计、万用表、绝缘电阻仪等">
+          </div>
+          <div class="form-group full">
+            <label class="form-label">评估依据</label>
+            <input class="form-input" id="assessment_basis" placeholder="如：GB/T 42615-2023《在用电梯安全评估规范》" value="GB/T 42615-2023《在用电梯安全评估规范》">
+          </div>
+        </div>
+      </div>
+
+      <div class="actions-row">
+        <button class="btn btn-primary btn-next" onclick="goToStep(2)">下一步 &rarr;</button>
+      </div>
+    </div>
+
+    <!-- ===== STEP 2: 评估项目录入 ===== -->
+    <div class="step-panel" id="step2">
+      <div class="section-header">
+        <h2>评估项目录入</h2>
+        <p>选择评估类别和项目，逐项填写评估结果</p>
+      </div>
+
+      <div class="assessment-toolbar">
+        <button class="btn btn-primary" onclick="showAddModal()">+ 添加评估项目</button>
+        <span style="font-size:0.82rem;color:var(--text-muted)" id="itemCount">已添加 0 个项目</span>
+      </div>
+
+      <div id="assessmentCards">
+        <div class="empty-state">
+          <div class="icon">&#x1f4cb;</div>
+          <p>暂无评估项目，点击上方按钮添加</p>
+        </div>
+      </div>
+
+      <div class="actions-row">
+        <button class="btn btn-outline btn-prev" onclick="goToStep(1)">&larr; 上一步</button>
+        <button class="btn btn-primary btn-next" onclick="goToStep(3)">下一步 &rarr;</button>
+      </div>
+    </div>
+
+    <!-- Add Item Modal -->
+    <div class="modal-overlay" id="addModal">
+      <div class="modal">
+        <h3>选择评估项目</h3>
+        <div class="select-group" style="flex-direction:column;gap:14px;">
+          <select class="custom-select" id="categorySelect" style="width:100%;">
+            <option value="">-- 请选择评估类别 --</option>
+          </select>
+          <select class="custom-select" id="itemSelect" style="width:100%;">
+            <option value="">-- 请先选择类别 --</option>
+          </select>
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-outline btn-sm" onclick="closeAddModal()">取消</button>
+          <button class="btn btn-primary btn-sm" onclick="addAssessmentCard()">确定添加</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== STEP 3: 乘运质量检测数据录入 ===== -->
+    <div class="step-panel" id="step3">
+      <div class="section-header">
+        <h2>乘运质量检测数据录入</h2>
+        <p>录入电梯乘运质量相关检测数据，系统将自动对标标准值进行判定</p>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><span class="icon">&#x1f39a;</span> 噪声检测</div>
+        <div class="metrics-grid">
+          <div class="metric-card">
+            <div class="metric-header">
+              <span class="metric-name">机房噪声</span>
+              <span class="metric-unit">dB(A)</span>
+            </div>
+            <div class="metric-standard">标准值：≤ 80 dB(A)（额定速度≤2.5m/s）</div>
+            <div class="metric-input-row">
+              <input type="number" id="noise_machine_room" placeholder="0.0" step="0.1" oninput="checkMetric(this, 80, 'badge_noise_mr')">
+              <span class="metric-badge" id="badge_noise_mr"></span>
+            </div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-header">
+              <span class="metric-name">轿厢内噪声</span>
+              <span class="metric-unit">dB(A)</span>
+            </div>
+            <div class="metric-standard">标准值：≤ 55 dB(A)（额定速度≤2.5m/s）</div>
+            <div class="metric-input-row">
+              <input type="number" id="noise_car" placeholder="0.0" step="0.1" oninput="checkMetric(this, 55, 'badge_noise_car')">
+              <span class="metric-badge" id="badge_noise_car"></span>
+            </div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-header">
+              <span class="metric-name">开关门过程噪声</span>
+              <span class="metric-unit">dB(A)</span>
+            </div>
+            <div class="metric-standard">标准值：≤ 65 dB(A)</div>
+            <div class="metric-input-row">
+              <input type="number" id="noise_door" placeholder="0.0" step="0.1" oninput="checkMetric(this, 65, 'badge_noise_door')">
+              <span class="metric-badge" id="badge_noise_door"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><span class="icon">&#x1f4c8;</span> 加速度与减速度</div>
+        <div class="metrics-grid">
+          <div class="metric-card">
+            <div class="metric-header">
+              <span class="metric-name">启动加速度</span>
+              <span class="metric-unit">m/s²</span>
+            </div>
+            <div class="metric-standard">标准值：≤ 1.5 m/s²</div>
+            <div class="metric-input-row">
+              <input type="number" id="accel_start" placeholder="0.00" step="0.01" oninput="checkMetric(this, 1.5, 'badge_accel')">
+              <span class="metric-badge" id="badge_accel"></span>
+            </div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-header">
+              <span class="metric-name">制停减速度</span>
+              <span class="metric-unit">m/s²</span>
+            </div>
+            <div class="metric-standard">标准值：≤ 1.5 m/s²</div>
+            <div class="metric-input-row">
+              <input type="number" id="decel_stop" placeholder="0.00" step="0.01" oninput="checkMetric(this, 1.5, 'badge_decel')">
+              <span class="metric-badge" id="badge_decel"></span>
+            </div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-header">
+              <span class="metric-name">平均加速度</span>
+              <span class="metric-unit">m/s²</span>
+            </div>
+            <div class="metric-standard">标准值：≤ 0.7 m/s²（GB/T 10058）</div>
+            <div class="metric-input-row">
+              <input type="number" id="accel_avg" placeholder="0.00" step="0.01" oninput="checkMetric(this, 0.7, 'badge_accel_avg')">
+              <span class="metric-badge" id="badge_accel_avg"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><span class="icon">&#x1f4b9;</span> 振动检测</div>
+        <div class="metrics-grid">
+          <div class="metric-card">
+            <div class="metric-header">
+              <span class="metric-name">轿厢水平振动（X轴）</span>
+              <span class="metric-unit">m/s²</span>
+            </div>
+            <div class="metric-standard">标准值：≤ 0.15 m/s²（峰值）</div>
+            <div class="metric-input-row">
+              <input type="number" id="vib_x" placeholder="0.000" step="0.001" oninput="checkMetric(this, 0.15, 'badge_vib_x')">
+              <span class="metric-badge" id="badge_vib_x"></span>
+            </div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-header">
+              <span class="metric-name">轿厢水平振动（Y轴）</span>
+              <span class="metric-unit">m/s²</span>
+            </div>
+            <div class="metric-standard">标准值：≤ 0.15 m/s²（峰值）</div>
+            <div class="metric-input-row">
+              <input type="number" id="vib_y" placeholder="0.000" step="0.001" oninput="checkMetric(this, 0.15, 'badge_vib_y')">
+              <span class="metric-badge" id="badge_vib_y"></span>
+            </div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-header">
+              <span class="metric-name">轿厢垂直振动（Z轴）</span>
+              <span class="metric-unit">m/s²</span>
+            </div>
+            <div class="metric-standard">标准值：≤ 0.20 m/s²（峰值）</div>
+            <div class="metric-input-row">
+              <input type="number" id="vib_z" placeholder="0.000" step="0.001" oninput="checkMetric(this, 0.20, 'badge_vib_z')">
+              <span class="metric-badge" id="badge_vib_z"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><span class="icon">&#x23f1;</span> 开关门与运行时间</div>
+        <div class="metrics-grid">
+          <div class="metric-card">
+            <div class="metric-header">
+              <span class="metric-name">开门时间</span>
+              <span class="metric-unit">s</span>
+            </div>
+            <div class="metric-standard">标准值：≤ 3.5 s（中分门）</div>
+            <div class="metric-input-row">
+              <input type="number" id="door_open_time" placeholder="0.0" step="0.1" oninput="checkMetric(this, 3.5, 'badge_door_open')">
+              <span class="metric-badge" id="badge_door_open"></span>
+            </div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-header">
+              <span class="metric-name">关门时间</span>
+              <span class="metric-unit">s</span>
+            </div>
+            <div class="metric-standard">标准值：≤ 4.0 s（中分门）</div>
+            <div class="metric-input-row">
+              <input type="number" id="door_close_time" placeholder="0.0" step="0.1" oninput="checkMetric(this, 4.0, 'badge_door_close')">
+              <span class="metric-badge" id="badge_door_close"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><span class="icon">&#x26a0;</span> 故障与困人情况</div>
+        <div class="form-grid col-1">
+          <div class="form-group">
+            <label class="form-label">评估前6个月内平均每月故障停梯次数</label>
+            <input class="form-input" type="number" id="monthly_failures" placeholder="0" step="1" style="max-width:200px;">
+          </div>
+          <div class="form-group">
+            <label class="form-label">评估前6个月内平均每月困人次数</label>
+            <input class="form-input" type="number" id="monthly_entrapments" placeholder="0" step="1" style="max-width:200px;">
+          </div>
+          <div class="form-group">
+            <label class="form-label">故障及困人情况详细描述</label>
+            <textarea class="textarea-field" id="failure_description" placeholder="请描述评估前6个月内故障停梯和困人的具体情况..."></textarea>
+          </div>
+        </div>
+      </div>
+
+      <div class="actions-row">
+        <button class="btn btn-outline btn-prev" onclick="goToStep(2)">&larr; 上一步</button>
+        <button class="btn btn-primary btn-next" onclick="generateReport()">提交检测，生成报告</button>
+      </div>
+    </div>
+
+    <!-- ===== STEP 4: 评估报告 ===== -->
+    <div class="step-panel" id="step4">
+      <div class="section-header">
+        <h2>安全评估报告</h2>
+        <p>基于录入数据自动生成的评估结果摘要</p>
+      </div>
+
+      <div class="report-container" id="reportContent"></div>
+
+      <div class="actions-row" style="margin-top:28px;">
+        <button class="btn btn-outline btn-prev" onclick="goToStep(3)">&larr; 返回修改</button>
+        <button class="btn btn-outline" onclick="window.print()">&#x1f5a8; 打印报告</button>
+        <button class="btn btn-primary" onclick="resetAll()">开始新评估</button>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ===== DATA =====
+const categoryNames = {
+  'A1': '机器空间、滑轮间及警示标志',
+  'A2': '减速箱和曳引轮',
+  'A3': '联轴器',
+  'A4': '电动机',
+  'A5': '制动器',
+  'A6': '救援装置',
+  'A7': '层门、轿门与门锁',
+  'A8': '供电设备',
+  'A9': '井道',
+  'A10': '对重（平衡重）装置',
+  'A11': '导轨评价内容',
+  'A12': '悬挂装置',
+  'A13': '轿厢',
+  'A14': '底坑',
+  'A15': '液压部件',
+  'A16': '电气控制系统',
+  'A17': '功能试验',
+  'A18': '乘运质量'
+};
+
+const optionsData = {
+  'A1': ["机房及滑轮间警示标志","机器空间和滑轮间的防滑","地面高度差和凹坑","地面开口","照明和插座","机房噪声","工作安全区间","旋转部件的安全防护","限速器","作用于钢丝绳系统的减速元件(如夹绳器等)","机房和滑轮间的专用"],
+  'A2': ["减速箱箱体","减速箱固定","传动结构","渗漏油情况","齿轮油","曳引轮"],
+  'A3': ["金属疲劳","联结情况","外观"],
+  'A4': ["轴承润滑","绝缘","电动机运转状况","保护","编码器"],
+  'A5': ["制动器型式","制动器结构检查","制动器响应时间","工作状况","动作电压","制动器自监测装置"],
+  'A6': ["设置","标志","功能有效性","平层标志","制动器手动机械操作装置","手动盘车装置","紧急电源","对讲系统"],
+  'A7': ["间隙","门扇","层门门套","层门地坎","地坎支架","层门地坎与轿门地坎之间高度差","门运行与导向","层门自动关闭装置","层门和轿门锁装置","门锁电气安全装置","自动门的防护装置","玻璃门防拖曳措施","层门、轿门运动相关的保护","开关门的限制","层门护脚板","门机","三角形开锁装置","其他固定和结构"],
+  'A8': ["供电电压","主开关","接地","电动机和其他电气设备的保护","主开关容量","接线","绝缘性能"],
+  'A9': ["随行电缆","补偿链(缆)及导向装置","通道门、安全门和检修门的设置","通道门、安全门和检修门的状态","井道照明","层门地坎下的井道壁凸出物","极限开关","平层感应装置","轿厢与井道壁距离","井道爬梯","通道门和安全门警告标识","旋转部件防护","作用于轿厢或对重的减速元件"],
+  'A10': ["滑轮和(或)链轮防护","对重架","对重(平衡重)块","井道内防护","对重导靴"],
+  'A11': ["固定情况","导轨顶面偏差","导轨的变形","导轨表面","导轨支架"],
+  'A12': ["钢丝绳/绳径减小","钢丝绳/变形或损伤","钢丝绳/锈蚀","钢丝绳/断丝","钢丝绳/表面油污","钢丝绳/张力","补偿绳","包覆绳/带/破损","包覆绳/带/直径或厚度减小","端接装置"],
+  'A13': ["轿厢照明、通话、通风和应急照明","轿厢有效面积","安全窗和安全门","轿顶检修运行控制装置","通风孔","轿顶护栏","轿架","轿壁、轿顶和轿底","轿厢护脚板","按钮"],
+  'A14': ["底坑爬梯","缓冲器固定","线性缓冲器(弹簧缓冲器)","非线性缓冲器","耗能型缓冲器(液压缓冲器)","停止装置、照明、检修运行控制装置","井道下方空间的防护","限速器绳、补偿绳张紧装置","底坑环境"],
+  'A15': ["溢流阀","紧急下降阀","手动泵","截止阀","破裂阀","液压缸","液压管路","其他液压元件","液压油","油温监控装置"],
+  'A16': ["控制柜","可编程控制器(PLC)","变频器","相序保护装置","接触器、接触器式继电器和继电器","安全开关","传感器和检测开关","导线和电缆","印制电路板","断开使电动机运转的供电的电气安全装置","层门和轿门旁路装置","门回路监测功能","电动机运转时间限制器"],
+  'A17': ["平衡系数","轿厢上行超速保护装置试验","轿厢意外移动保护装置试验","限速器-安全钳联动试验","运行试验","应急救援试验","电梯速度","空载曳引检查","上行制动工况曳引检查","下行制动工况曳引检查","制动试验","静态曳引检查","超载保护","沉降试验","破裂阀动作试验","其他类防止轿厢坠落措施试验","液压泵站组合阀性能试验"],
+  'A18': ["运行噪声","启动加速度、制停减速度","轿厢最大水平振动","轿厢最大垂直振动","开关门时间","故障和困人情况"]
+};
+
+const inspectionMapping = {
+  "A1.1":{"questions":["通往机房和滑轮间的门或活板门的外侧是否设有警示标志","活板门是否设有提醒使用者谨防坠落的警示标志"],"variables":["outer_warning_sign","fall_warning_sign"]},
+  "A1.2":{"questions":["供人员工作或在工作区域之间移动的地板表面是否采用防滑材料"],"variables":["slip_resistant_floor"]},
+  "A1.3":{"questions":["机房地面高度不一且相差大于0.50m时是否设置楼梯台阶或梯子并设置护栏","机房地面有深度大于0.05m且宽度在0.05m至0.50m之间的凹坑或槽坑时是否盖住"],"variables":["height_difference_measures","pit_covering"]},
+  "A1.4":{"questions":["机房和滑轮间的楼板和地面上的开口是否设有凸出至少50mm的凸缘"],"variables":["opening_flange"]},
+  "A1.5":{"questions":["机器空间和滑轮间是否设有永久性电气照明且照度达标","机器空间和滑轮间靠近入口处是否设有照明控制开关","机器空间和滑轮间内每个工作区域是否设有2P+PE型250V电源插座"],"variables":["permanent_lighting","lighting_control_switch","power_outlet"]},
+  "A1.6":{"questions":["机房噪声是否符合要求"],"variables":["room_noise_compliance"]},
+  "A1.7":{"questions":["工作安全区间空间净高及通道宽度是否符合要求","无防护的电梯驱动主机旋转部件及滑轮上方的净垂直距离是否符合要求"],"variables":["safe_working_space","rotating_parts_clearance"]},
+  "A1.8":{"questions":["旋转部件是否设有有效防护"],"variables":["rotating_parts_protection"]},
+  "A1.9":{"questions":["限速器是否有有效期内的校验证书","限速器是否无异响锈蚀轴承损坏座变形","限速器绳是否无严重油污或达到报废条件","限速器的动作速度和限速器绳的提拉力是否符合要求"],"variables":["speed_limiter_cert_valid","speed_limiter_condition","speed_limiter_rope_condition","speed_limiter_parameters"]},
+  "A1.10":{"questions":["作用于钢丝绳系统的减速元件联动机构是否卡阻或损坏","钳体或制动弹簧是否出现塑性变形裂纹或断裂","夹紧件是否严重磨损或锈蚀","夹紧件是否擦碰钢丝绳","复位装置是否卡阻或损坏"],"variables":["deceleration_linkage","clamp_spring_condition","clamp_wear_corrosion","clamp_rope_contact","reset_mechanism"]},
+  "A1.11":{"questions":["机房和滑轮间是否未用于电梯以外的其他用途"],"variables":["room_exclusive_use"]},
+  "A2.1":{"questions":["减速箱箱体是否无裂纹"],"variables":["gearbox_crack_free"]},
+  "A2.2":{"questions":["减速箱固定是否牢固无严重锈蚀或无影响安全运行的损坏"],"variables":["gearbox_mounting"]},
+  "A2.3":{"questions":["传动轴轴承键或键槽是否无影响安全运行的损坏且无异响","蜗轮副斜齿轮行星齿轮是否无影响安全运行的严重失效"],"variables":["transmission_components","gear_teeth_condition"]},
+  "A2.4":{"questions":["有齿轮曳引机的箱体分割面观察窗盖等处是否紧密连接且无渗漏油"],"variables":["oil_leakage"]},
+  "A2.5":{"questions":["齿轮油油位是否正常","齿轮油是否清洁无污物或泡沫无明显浑浊和变色"],"variables":["gear_oil_level","gear_oil_cleanliness"]},
+  "A2.6":{"questions":["曳引轮绳槽是否无过度或异常磨损缺损或异物填充","曳引轮是否无裂纹"],"variables":["traction_wheel_groove","traction_wheel_crack_free"]},
+  "A3.1":{"questions":["联轴器的金属件是否无裂纹变形和明显磨损"],"variables":["coupling_metal_condition"]},
+  "A3.2":{"questions":["联轴器与电动机输出轴端减速箱联结是否固定可靠","运转中联轴器是否无振动冲击和异响","联轴器挡圈柱销等组件是否完好"],"variables":["coupling_connection","coupling_vibration","coupling_components"]},
+  "A3.3":{"questions":["弹性联轴器的非金属缓冲件是否无过度磨损开裂严重变形和老化"],"variables":["coupling_buffer_condition"]},
+  "A4.1":{"questions":["电动机轴承润滑状况是否良好"],"variables":["motor_bearing_lubrication"]},
+  "A4.2":{"questions":["定子绕组冷态绝缘电阻是否不小于5MΩ"],"variables":["motor_insulation_resistance"]},
+  "A4.3":{"questions":["电动机是否无绕组短路断路烧毁","电动机外壳或基座是否无影响安全的破裂","电动机轴承是否无碎裂或影响运行的磨损","电动机定子与转子是否无碰撞","电动机定子的温升或绝缘噪声是否符合要求","电动机是否满足超载试验的扭矩要求","永磁同步电动机是否无转子磁性材料脱落"],"variables":["motor_winding","motor_housing","motor_bearing","rotor_stator_clearance","motor_performance","motor_type_performance","permanent_magnet_condition"]},
+  "A4.4":{"questions":["电动机的过热保护是否有效"],"variables":["motor_overheat_protection"]},
+  "A4.5":{"questions":["编码器是否结构完整安装可靠","编码器信号输出是否正常"],"variables":["encoder_structure","encoder_signal"]},
+  "A5.1":{"questions":["机电式制动器机械部件是否至少分两组设置","切断制动器电流是否至少用两个独立的电气装置来实现"],"variables":["brake_mechanism_groups","brake_electrical_cutoff"]},
+  "A5.2":{"questions":["制动衬块是否无严重磨损或者制动弹簧失效","制动器受力结构件是否无裂纹或者严重磨损","制动器电磁线圈防尘件是否无破损","制动衬块以及制动面上是否无油污"],"variables":["brake_liner_wear","brake_structure","brake_coil_dust_cover","brake_surface_cleanliness"]},
+  "A5.3":{"questions":["制动器响应时间是否符合要求且动作无卡阻"],"variables":["brake_response_time"]},
+  "A5.4":{"questions":["制动器是否动作灵活制动时贴合紧密均匀且运行时无摩擦"],"variables":["brake_operation"]},
+  "A5.5":{"questions":["制动器电磁铁的最低吸合电压和最高释放电压是否符合要求"],"variables":["brake_voltage_parameters"]},
+  "A5.6":{"questions":["制动器自监测装置是否符合周期要求"],"variables":["brake_self_monitoring"]},
+  "A6.1":{"questions":["是否设置符合要求的紧急操作装置","紧急和测试操作屏是否有显示装置或观察窗并能显示方向位置速度","紧急和测试操作装置上是否采用永久安装的电气照明","紧急和测试操作装置上是否设置停止装置","井道内机器是否设井道外可操作的紧急和测试操作屏"],"variables":["emergency_operation_device","emergency_display","emergency_lighting","emergency_stop_device","remote_emergency_operation"]},
+  "A6.2":{"questions":["是否设置详细的故障救援规程和三角钥匙使用说明","盘车手轮是否标有运行方向","紧急电动运行是否标有运行方向","松闸扳手是否为红色盘车手轮是否为无辐条黄色"],"variables":["rescue_procedures","handwheel_direction","emergency_run_direction","tool_color_coding"]},
+  "A6.3":{"questions":["是否能用持续手动操作的方法打开驱动主机制动器","操作紧急电动运行开关后是否允许持续按压按钮控制轿厢运行","检修运行一旦实施紧急电动运行是否失效"],"variables":["manual_brake_release","emergency_run_control","inspection_mode_override"]},
+  "A6.4":{"questions":["平层标志是否易于检查"],"variables":["leveling_marker_visibility"]},
+  "A6.5":{"questions":["制动器手动机械操作装置是否无严重变形裂纹锈蚀卡阻或断裂"],"variables":["manual_brake_mechanism"]},
+  "A6.6":{"questions":["可拆卸盘车手轮是否设有电气安全装置","盘车手轮是否无严重锈蚀变形裂纹或缺损且齿轮啮合有效"],"variables":["removable_handwheel_safety","handwheel_condition"]},
+  "A6.7":{"questions":["紧急电源的蓄电池是否无漏液无法充电或电压电量不足"],"variables":["emergency_power_battery"]},
+  "A6.8":{"questions":["紧急操作装置处与轿厢对讲系统是否有效"],"variables":["emergency_intercom"]},
+  "A7.1":{"questions":["轿门门刀与层门地坎层门锁滚轮与轿厢地坎的间隙是否不小于5mm且无碰擦","门刀与门滚轮之间的间隙是否合理无擦碰和异响","轿厢地坎与层门地坎的水平距离是否不大于35mm","门关闭后间隙是否符合要求","施加150N人力时门间隙增量是否符合要求"],"variables":["door_clearance_vertical","door_clearance_horizontal","car_sill_distance","door_gap_closed","door_gap_under_force"]},
+  "A7.2":{"questions":["门扇是否无严重锈蚀穿孔或破损穿孔","门扇背部加强筋是否无脱落","门扇是否无严重变形","门扇外包层是否无脱落导致开关门受阻或强度不足","玻璃门扇是否无裂纹或边缘锋利缺口","玻璃固定件是否符合要求"],"variables":["door_panel_corrosion","door_stiffener","door_panel_deformation","door_cladding","glass_door_condition","glass_fixing"]},
+  "A7.3":{"questions":["层门门套是否无严重变形导致与门扇间隙超标","层门门套是否无严重锈蚀","层门门套是否无松动"],"variables":["door_frame_deformation","door_frame_corrosion","door_frame_looseness"]},
+  "A7.4":{"questions":["层门地坎是否无变形导致与门扇间隙超标","地坎滑槽是否无变形影响门扇正常运行或导致导靴脱轨","地坎是否无断裂开焊严重磨损或腐蚀影响运行"],"variables":["sill_deformation","sill_groove_deformation","sill_integrity"]},
+  "A7.5":{"questions":["地坎支架是否无影响正常使用的严重变形腐蚀松动或缺失"],"variables":["sill_support_condition"]},
+  "A7.6":{"questions":["层门地坎是否具有足够的强度","层门地坎上表面是否高出装修后的地平面2mm至5mm","地坎表面相对水平面的倾斜是否不大于2/1000"],"variables":["sill_strength","sill_height","sill_inclination"]},
+  "A7.7":{"questions":["层门和轿门正常运行时是否无脱轨机械卡阻或行程终端错位","是否设置应急导向装置"],"variables":["door_operation_smoothness","emergency_guide_device"]},
+  "A7.8":{"questions":["轿门驱动层门时轿厢在开锁区域之外是否设有自动关闭装置"],"variables":["auto_close_device"]},
+  "A7.9":{"questions":["每个层门是否设置门锁装置且由重力永久磁铁或弹簧保持锁紧","轿厢是否在锁紧元件啮合不小于7mm时才能启动","门的锁紧是否由电气安全装置验证且无中间机构","轿门门锁装置如设置是否符合以上要求"],"variables":["door_lock_presence","door_lock_engagement","door_lock_verification","car_door_lock_compliance"]},
+  "A7.10":{"questions":["正常运行是否不能打开层门除非轿厢在该层门的开锁区域内","如果层门或轿门开着是否不能启动电梯或保持继续运行","每个层门和轿门的闭合是否由电气安全装置验证","门锁触点是否无短接污染变形且防护罩齐全"],"variables":["normal_operation_lock","open_door_prevention","door_closed_verification","door_lock_contacts"]},
+  "A7.11":{"questions":["动力驱动的自动水平滑动门是否设置防止门夹人的保护装置"],"variables":["anti_pinch_device"]},
+  "A7.12":{"questions":["层门和轿门采用玻璃门时是否有防止儿童的手被拖曳的措施"],"variables":["anti_drag_measure"]},
+  "A7.13":{"questions":["动力驱动的自动滑动门外表面是否无大于3mm的凹进或凸出部分且边缘倒角"],"variables":["door_surface_smoothness"]},
+  "A7.14":{"questions":["轿厢在开锁区域时是否能用三角钥匙或不超过300N的力手动开门","轿厢运行时开启轿门的力是否大于50N","轿门是否设有开门限制装置"],"variables":["manual_opening_force","moving_car_opening_force","door_opening_limiter"]},
+  "A7.15":{"questions":["层门护脚板是否连续由光滑而坚硬的材料构成"],"variables":["kick_plate_condition"]},
+  "A7.16":{"questions":["门机绝缘电阻是否符合要求"],"variables":["door_machine_insulation"]},
+  "A7.17":{"questions":["每个层门是否能够被三角钥匙从外面开启且闭合后不保持开锁","三角形开锁装置的位置是否符合要求","是否有紧急开锁警示标识并保持完好"],"variables":["triangle_key_access","key_device_location","emergency_lock_warning"]},
+  "A7.18":{"questions":["门系统其他固定和结构部件是否固定可靠无严重变形磨损锈蚀"],"variables":["door_structural_components"]},
+  "A8.1":{"questions":["供电电压相对于额定电压的波动是否在±7%的范围内"],"variables":["voltage_fluctuation"]},
+  "A8.2":{"questions":["每台电梯是否单独装设主开关且易于接近和操作","无机房电梯主开关的设置是否符合要求","主开关是否不切断轿厢照明和通风机房照明电源插座等供电电路","主开关是否具有稳定的断开和闭合位置且可锁住","多台电梯共用机房时主开关标识是否一致"],"variables":["individual_main_switch","mrl_main_switch","circuit_preservation","main_switch_stability","main_switch_labeling"]},
+  "A8.3":{"questions":["供电电源自进入机房起中性导体与保护导体是否始终分开","所有电气设备及线管线槽的外露可以导电部分是否与保护导体可靠连接","除36V及以下安全电压外的电气设备金属罩壳是否设有接地端且接地良好","接地线是否采用黄绿双色绝缘电线分别直接接至接地端且不互相串接"],"variables":["neutral_ground_separation","equipment_grounding","ground_terminal","ground_wire_color"]},
+  "A8.4":{"questions":["直接与主电源连接的电动机是否进行短路保护","直接与主电源连接的电动机是否采用自动断路器进行过载保护"],"variables":["motor_protection"]},
+  "A8.5":{"questions":["主开关容量是否符合要求"],"variables":["main_switch_capacity"]},
+  "A8.6":{"questions":["电梯动力线路和控制线路是否分离敷设或者采取屏蔽措施"],"variables":["wiring_separation"]},
+  "A8.7":{"questions":["所有通电导体与地之间绝缘电阻是否符合要求"],"variables":["insulation_resistance"]},
+  "A9.1":{"questions":["随行电缆护套是否无开裂导致线芯外露","随行电缆绝缘是否无破损老化导致线芯外露或绝缘电阻不足","随行电缆线芯是否无断裂或短路","随行电缆是否无严重变形扭曲","随行电缆是否固定良好避免干涉且轿厢压缓冲器时活动部分不触地"],"variables":["travel_cable_sheath","cable_insulation","cable_conductor","cable_deformation","cable_mounting"]},
+  "A9.2":{"questions":["全包覆型补偿链表面包裹材料是否无脱落严重开裂或磨损","补偿链导向装置滚轮是否无变形缺损严重磨损或卡阻","补偿链链环表面是否无严重的锈蚀或脱焊"],"variables":["compensation_chain_covering","guide_roller_condition","chain_corrosion"]},
+  "A9.3":{"questions":["通道门安全门和检修门是否不向井道机房或滑轮间内开启","是否设置用钥匙开启的锁且开启后不用钥匙亦能关闭并锁住","是否可从井道机房或滑轮间内不用钥匙打开","是否设置电气安全装置以验证门的关闭状态"],"variables":["access_door_swing","access_door_lock","internal_access","access_door_verification"]},
+  "A9.4":{"questions":["通道门安全门和检修门门扇是否无严重锈蚀穿孔","通道门安全门和检修门门扇是否无严重变形","门锁及周边是否无锈蚀导致门锁无法可靠固定"],"variables":["access_door_corrosion","access_door_deformation","access_door_lock_rust"]},
+  "A9.5":{"questions":["井道是否设置永久安装的电气照明装置且照度符合要求"],"variables":["hoistway_lighting"]},
+  "A9.6":{"questions":["层门地坎下的井道壁的任何凸出物是否不超过5mm且超过2mm的倒角"],"variables":["sill_protrusion"]},
+  "A9.7":{"questions":["是否在轿厢行程的顶部和底部设置极限开关且位置动作符合要求"],"variables":["limit_switch_presence"]},
+  "A9.8":{"questions":["电梯平层感应装置功能是否工作可靠且平层准确度保持精度符合要求"],"variables":["leveling_sensor_reliability"]},
+  "A9.9":{"questions":["轿厢与面对轿厢入口的井道壁的间距是否符合要求"],"variables":["car_wall_distance"]},
+  "A9.10":{"questions":["相邻两层门地坎的距离大于11m时井道内设置的爬梯是否符合要求"],"variables":["hoistway_ladder"]},
+  "A9.11":{"questions":["通道门和安全门警告标识是否符合要求"],"variables":["access_door_warnings"]},
+  "A9.12":{"questions":["可能产生危险并可能接近的旋转部件是否提供有效的防护"],"variables":["hoistway_rotating_guards"]},
+  "A9.13":{"questions":["作用于轿厢或对重的减速元件钳体夹紧件是否无裂纹或变形","作用于轿厢或对重的减速元件夹紧件是否无磨损或锈蚀","作用于轿厢或对重的减速元件弹性部件是否无塑性变形","作用于轿厢或对重的减速元件导向件是否无变形或脱落","作用于轿厢或对重的减速元件提拉装置是否无锈蚀变形开裂卡阻或螺纹失效"],"variables":["deceleration_element_body","deceleration_element_clamp","deceleration_element_spring","deceleration_element_guide","deceleration_element_lift"]},
+  "A10.1":{"questions":["装在对重上的滑轮和或链轮是否按要求设置防护装置","防护装置是否方便观察到旋转部件且不妨碍检查与维修工作","是否设置防脱槽装置"],"variables":["pulley_guard_presence","pulley_guard_access","rope_derailment_prevention"]},
+  "A10.2":{"questions":["对重架是否无严重变形导致导靴或对重安全钳不能正常工作","对重架直梁底部横梁是否无变形影响对重块固定","对重架主要受力构件断面壁厚腐蚀是否未达设计厚度的10%"],"variables":["counterweight_frame_deformation","counterweight_frame_members","counterweight_frame_corrosion"]},
+  "A10.3":{"questions":["对重块是否无开裂严重变形或断裂","对重块外包材料是否无破损且内部材质可能向外泄露","对重块是否固定可靠","对重块是否有数量标识"],"variables":["counterweight_block_integrity","counterweight_block_covering","counterweight_block_fixing","counterweight_block_labeling"]},
+  "A10.4":{"questions":["井道内对重防护是否符合要求"],"variables":["counterweight_protection"]},
+  "A10.5":{"questions":["对重导靴是否保持清洁无变形开裂严重磨损"],"variables":["counterweight_guide_shoe"]},
+  "A11.1":{"questions":["导轨和导轨支架在建筑物上的固定是否能补偿沉降和混凝土收缩","导轨与导轨支架之间是否用压板固定"],"variables":["rail_fixing_compensation","rail_clamp_fixing"]},
+  "A11.2":{"questions":["每列导轨工作面每5m铅垂线测量值间的相对最大偏差是否符合要求","两列导轨顶面的距离偏差是否符合要求"],"variables":["rail_vertical_deviation","rail_distance_deviation"]},
+  "A11.3":{"questions":["导轨是否无影响电梯正常运行的永久变形","导轨变形是否限制在不导致门意外开锁影响安全装置动作部件碰撞范围内"],"variables":["rail_permanent_deformation","rail_deformation_limits"]},
+  "A11.4":{"questions":["T型导轨工作面是否无影响电梯正常运行的严重损伤","空心导轨防腐保护层是否无起皮起瘤或脱落","导轨是否无严重锈蚀现象","导轨是否无严重磨损"],"variables":["rail_surface_damage","rail_coating","rail_corrosion_wear"]},
+  "A11.5":{"questions":["每根导轨是否至少有2个导轨支架且间距一般不大于2.50m","导轨支架是否安装牢固且焊缝或锚栓符合要求"],"variables":["rail_bracket_count","rail_bracket_installation"]},
+  "A12.1":{"questions":["钢丝绳直径是否不小于公称直径的90%"],"variables":["rope_diameter_reduction"]},
+  "A12.2":{"questions":["钢丝绳是否无笼状畸变绳股挤出扭结部分压扁或弯折"],"variables":["rope_deformation"]},
+  "A12.3":{"questions":["钢丝绳是否无严重锈蚀导致铁锈填满绳股间隙"],"variables":["rope_corrosion"]},
+  "A12.4":{"questions":["钢丝绳外层绳股在一个捻距内断丝总数是否符合规定"],"variables":["rope_breakage_count"]},
+  "A12.5":{"questions":["钢丝绳表面是否无明显油污"],"variables":["rope_surface_cleanliness"]},
+  "A12.6":{"questions":["是否至少设置一个自动调节装置平衡各绳张力且偏差不大于5%"],"variables":["rope_tension_balance"]},
+  "A12.7":{"questions":["补偿钢丝绳的绳径减小变形或损伤锈蚀断丝是否符合要求"],"variables":["compensation_rope_condition"]},
+  "A12.8":{"questions":["包覆绳带是否无鼓包压痕折痕凹陷","是否无包覆层裂纹或磨损导致承载体外露","包覆层表面是否无承载体刺出","承载体是否无断裂"],"variables":["coated_rope_deformation","coated_rope_exposure","coated_rope_protrusion","coated_rope_breakage"]},
+  "A12.9":{"questions":["包覆绳带的实测直径或厚度是否未减少到制造商提供的值"],"variables":["coated_rope_dimension"]},
+  "A12.10":{"questions":["自锁楔形端接装置是否安全可靠且无裂纹无法锁紧螺纹失效锈蚀老化开裂","其他类型悬挂装置的端部固定是否符合制造单位的规定"],"variables":["end_connection_safety","end_connection_alternative"]},
+  "A13.1":{"questions":["轿厢是否设置永久性电气照明装置且照度不小于100lx","轿厢是否具有自动再充电紧急电源供电的应急照明","紧急报警装置采用的对讲系统是否有效","轿厢通风装置是否运转正常"],"variables":["car_lighting_intensity","emergency_lighting","emergency_communication","ventilation_system"]},
+  "A13.2":{"questions":["轿厢的有效面积与额定载重量或乘客人数的关系是否符合要求"],"variables":["car_effective_area"]},
+  "A13.3":{"questions":["安全窗和安全门是否能够不用钥匙从轿厢外开启用三角钥匙从轿厢内开启","安全窗是否不向轿厢内开启且开启位置不超出轿厢边缘安全门是否不向轿厢外开启","安全窗和安全门的锁紧是否由电气安全装置验证"],"variables":["safety_opening_access","safety_opening_swing","safety_opening_lock"]},
+  "A13.4":{"questions":["轿顶是否装设易于接近的检修运行控制装置且符合要求","轿顶是否装设易于接近的停止装置","轿顶是否装设2P+PE型250V电源插座"],"variables":["car_top_control","car_top_stop","car_top_power_outlet"]},
+  "A13.5":{"questions":["无孔的轿厢是否在上部和下部设置通风孔且有效面积符合要求","是否不能用直径为10mm的刚性直棒从轿厢内经通风孔穿过轿壁"],"variables":["car_ventilation_area","car_ventilation_security"]},
+  "A13.6":{"questions":["井道壁离轿顶外侧水平方向自由距离超过0.3m时轿顶是否装设护栏","轿顶护栏的高度位置及与井道部件间距是否符合要求"],"variables":["car_top_railing_presence","car_top_railing_specs"]},
+  "A13.7":{"questions":["轿架是否无变形导致轿底倾斜大于其正常位置5%","轿架是否无严重变形导致导靴或安全钳不能正常工作","轿架是否无脱焊或材料开裂","轿架主要受力构件断面壁厚腐蚀是否未达设计厚度的10%"],"variables":["car_frame_tilt","car_frame_deformation","car_frame_welding","car_frame_corrosion"]},
+  "A13.8":{"questions":["轿壁轿顶是否无严重锈蚀穿孔或破损穿孔","轿壁轿顶是否无严重变形或破损加强筋脱落","轿壁的强度是否符合要求","轿底是否无严重变形开裂锈蚀或穿孔","玻璃轿壁轿顶是否无裂纹","轿厢吊顶装饰是否固定良好"],"variables":["car_wall_corrosion","car_wall_deformation","car_wall_strength","car_floor_condition","glass_wall_condition","ceiling_fixing"]},
+  "A13.9":{"questions":["轿厢护脚板垂直部分的高度是否不小于0.75m宽度不小于对应层站入口净宽","护脚板是否可靠固定","护脚板是否无严重锈蚀","护脚板的强度是否符合要求"],"variables":["kick_plate_height","kick_plate_fixing","kick_plate_corrosion","kick_plate_strength"]},
+  "A13.10":{"questions":["轿内与层站按钮是否设置合理完整可靠"],"variables":["button_functionality"]},
+  "A14.1":{"questions":["底坑内是否设置易于从层门进入底坑的永久性装置"],"variables":["pit_access_device"]},
+  "A14.2":{"questions":["缓冲器是否固定可靠无明显倾斜"],"variables":["buffer_mounting"]},
+  "A14.3":{"questions":["线性缓冲器弹簧是否无严重锈蚀或裂纹","线性缓冲器动作后是否无永久变形或损坏"],"variables":["spring_buffer_corrosion","spring_buffer_deformation"]},
+  "A14.4":{"questions":["非线性缓冲器非金属材料是否无开裂剥落等老化现象","非线性缓冲器动作后是否无永久变形或损坏"],"variables":["nonlinear_buffer_material","nonlinear_buffer_deformation"]},
+  "A14.5":{"questions":["耗能型缓冲器液压缓冲器液位是否正确便于检查","是否设有验证柱塞复位的电气安全装置","是否无缸体裂纹漏油柱塞锈蚀复位弹簧失效或永久变形损坏"],"variables":["hydraulic_buffer_level","hydraulic_buffer_reset","hydraulic_buffer_integrity"]},
+  "A14.6":{"questions":["底坑内是否设置在进入底坑时和底坑地面上均能方便操作的停止装置","底坑内是否设置电源插座照明开关且照明符合要求","底坑检修运行控制装置是否有效"],"variables":["pit_stop_device","pit_lighting_power","pit_control_device"]},
+  "A14.7":{"questions":["如果井道下方确有人员能够到达的空间对重上是否设置安全钳"],"variables":["counterweight_safety_gear"]},
+  "A14.8":{"questions":["张紧装置是否有验证其位置的电气安全装置","张紧轮是否无变形开裂轴承损坏绳槽缺损或严重磨损","张紧装置的机械结构是否无严重变形或轴承座轴磨损"],"variables":["tension_device_verification","tension_sheave_condition","tension_device_structure"]},
+  "A14.9":{"questions":["底坑地面是否平整无积水油污和杂物"],"variables":["pit_environment"]},
+  "A15.1":{"questions":["是否设置溢流阀且调定压力不超过满载压力的140%必要时170%"],"variables":["overflow_valve_presence"]},
+  "A15.2":{"questions":["机房内手动操作的紧急下降阀功能是否可靠"],"variables":["emergency_descent_valve"]},
+  "A15.3":{"questions":["是否设有能使轿厢向上移动的手动泵","手动泵是否连接到正确油路且设置溢流阀"],"variables":["manual_pump_presence","manual_pump_connection"]},
+  "A15.4":{"questions":["是否设置截止阀且功能有效"],"variables":["shutoff_valve_function"]},
+  "A15.5":{"questions":["破裂阀如有是否完好功能正常无锈蚀漏油现象"],"variables":["rupture_valve_condition"]},
+  "A15.6":{"questions":["液压缸是否密封良好无柱塞严重锈蚀磨损漏油或变形","液压缸缸筒是否无严重锈蚀或变形","液压缸对接式连接是否无失效","液压缸缓冲制停是否无失效","多级式液压缸内置液压同步机构是否无失效"],"variables":["hydraulic_cylinder_seal","hydraulic_cylinder_components","hydraulic_cylinder_connections","hydraulic_cylinder_buffer","hydraulic_cylinder_sync"]},
+  "A15.7":{"questions":["液压硬管是否无严重腐蚀变形或漏油且管接头完好","液压软管表面是否无破损老化开裂且编织层完好","液压管路及其附件是否可靠固定便于检查"],"variables":["hydraulic_pipe_condition","hydraulic_hose_condition","hydraulic_line_mounting"]},
+  "A15.8":{"questions":["其他液压元件是否功能正常密封良好无锈蚀变形破损开裂过度磨损堵塞漏油"],"variables":["hydraulic_components_condition"]},
+  "A15.9":{"questions":["液压油是否无进水浑浊乳化或因高温氧化导致油液发黑油泥析出"],"variables":["hydraulic_oil_condition"]},
+  "A15.10":{"questions":["液压系统油温监控装置功能是否可靠有效"],"variables":["oil_temp_monitoring"]},
+  "A16.1":{"questions":["控制柜柜体是否无严重锈蚀变形损坏","控制柜内电气元件是否无失效无法更换或更换后仍不正常","控制柜接线是否规范合理标识清晰接线柱紧固","控制柜防护等级是否不低于IP2X"],"variables":["control_cabinet_integrity","control_cabinet_components","control_cabinet_wiring","control_cabinet_protection"]},
+  "A16.2":{"questions":["可编程控制器PLC外壳是否无破损存在触电危险","可编程控制器PLC主要单元模块是否无失效"],"variables":["plc_enclosure","plc_modules"]},
+  "A16.3":{"questions":["变频器外壳是否无破损存在触电危险","变频器输入输出主回路电路板铜皮是否无断裂","变频器直流母线电容是否无鼓包漏液或明显烧坏","变频器接线端子和铜排是否无严重的过热变形拉弧氧化或腐蚀","变频器与电动机功率是否匹配工作温度是否正常无异响"],"variables":["vfd_enclosure","vfd_circuit_board","vfd_capacitors","vfd_terminals","vfd_motor_match"]},
+  "A16.4":{"questions":["是否具有断相错相保护功能"],"variables":["phase_protection"]},
+  "A16.5":{"questions":["主接触器是否符合GB/T 14048.4且选型正确辅助触点为机械联锁","接触器式继电器继电器是否符合相应标准且选型正确","继电器是否符合IEC 61810-3确保动合动断触点不能同时闭合","接触器继电器动作是否可靠","接触器继电器触点是否无严重磨损或锈蚀","接触器继电器工作时是否无异响"],"variables":["main_contactor_specs","relay_specs","relay_interlock","contactor_reliability","contact_condition","operational_noise"]},
+  "A16.6":{"questions":["安全开关外壳是否无破损存在触电危险","安全开关触点是否无严重锈蚀烧灼或接触不良","触发安全开关的机械装置是否无失效","驱动安全触点的结构是否无失效","安全开关是否无短接"],"variables":["safety_switch_enclosure","safety_switch_contacts","safety_switch_mechanism","safety_switch_bypass"]},
+  "A16.7":{"questions":["传感器或检测开关输出信号是否正常无失效或误动作","传感器或检测开关外壳是否无严重破损或变形"],"variables":["sensor_signal","sensor_enclosure"]},
+  "A16.8":{"questions":["导线和电缆护套是否无开裂导致导线外露","导线和电缆绝缘是否无破损老化导致导体外露或绝缘电阻不足","导线和电缆是否无断裂或短路"],"variables":["wire_sheath","wire_insulation","wire_integrity"]},
+  "A16.9":{"questions":["印制电路板是否无受潮进水被酸碱腐蚀铜箔氧化焊盘受损导致失效","印制电路板是否无外力折裂或严重烧毁碳化"],"variables":["pcb_condition","pcb_damage"]},
+  "A16.10":{"questions":["断开使电动机运转的供电的电气安全装置是否符合要求"],"variables":["motor_power_cutoff"]},
+  "A16.11":{"questions":["层门和轿门旁路装置是否符合要求"],"variables":["door_bypass_device"]},
+  "A16.12":{"questions":["门回路监测功能是否符合要求"],"variables":["door_circuit_monitoring"]},
+  "A16.13":{"questions":["电动机运转时间限制器是否符合要求"],"variables":["motor_run_time_limit"]},
+  "A17.1":{"questions":["平衡系数是否在0.40至0.50之间或符合设计要求"],"variables":["balance_coefficient"]},
+  "A17.2":{"questions":["轿厢上行超速保护装置试验是否正常"],"variables":["upward_overspeed_test"]},
+  "A17.3":{"questions":["轿厢意外移动保护装置试验是否正常","如用制动器作为制停部件其失效时是否防止电梯启动"],"variables":["unintended_movement_test","brake_fail_safety"]},
+  "A17.4":{"questions":["限速器安全钳联动试验是否正常"],"variables":["safety_gear_test"]},
+  "A17.5":{"questions":["空载满载运行试验是否正常","IC卡电梯退出正常服务时是否自动退出IC卡功能"],"variables":["operation_test","ic_card_override"]},
+  "A17.6":{"questions":["是否有明晰的应急救援程序且工具齐全","救援通道是否通畅","能否安全及时解救被困人员"],"variables":["rescue_procedure_availability","rescue_access","rescue_effectiveness"]},
+  "A17.7":{"questions":["电梯速度是否符合要求"],"variables":["speed_compliance"]},
+  "A17.8":{"questions":["空载曳引检查是否正常"],"variables":["no_load_traction_test"]},
+  "A17.9":{"questions":["上行制动工况曳引检查是否正常"],"variables":["upward_braking_test"]},
+  "A17.10":{"questions":["下行制动工况曳引检查是否正常"],"variables":["downward_braking_test"]},
+  "A17.11":{"questions":["制动试验是否正常"],"variables":["braking_test"]},
+  "A17.12":{"questions":["静态曳引检查是否正常"],"variables":["static_traction_test"]},
+  "A17.13":{"questions":["超载保护装置是否正常"],"variables":["overload_protection_function"]},
+  "A17.14":{"questions":["沉降试验是否正常"],"variables":["settlement_test"]},
+  "A17.15":{"questions":["破裂阀动作试验是否正常"],"variables":["rupture_valve_test"]},
+  "A17.16":{"questions":["其他类防止轿厢坠落措施试验是否正常"],"variables":["other_fall_protection_test"]},
+  "A17.17":{"questions":["液压泵站组合阀性能试验是否正常"],"variables":["hydraulic_valve_test"]},
+  "A18.1":{"questions":["运行噪声是否符合要求"],"variables":["operation_noise"]},
+  "A18.2":{"questions":["启动加速度制停减速度是否符合要求"],"variables":["acceleration_deceleration"]},
+  "A18.3":{"questions":["轿厢最大水平振动是否符合要求"],"variables":["horizontal_vibration"]},
+  "A18.4":{"questions":["轿厢最大垂直振动是否符合要求"],"variables":["vertical_vibration"]},
+  "A18.5":{"questions":["开关门时间是否符合要求"],"variables":["door_opening_time"]},
+  "A18.6":{"questions":["评估前6个月内平均每个月的故障停梯和困人情况如何"],"variables":["failure_entrapment_record"]}
+};
+
+// ===== STATE =====
+let currentStep = 1;
+let addedCards = new Set();
+
+// ===== INIT =====
+window.onload = function() {
+  loadAllData();
+  populateCategorySelect();
+  updateSidebar();
+};
+
+// ===== SIDEBAR NAVIGATION =====
+document.getElementById('sidebarSteps').addEventListener('click', function(e) {
+  const stepEl = e.target.closest('.sidebar-step');
+  if (!stepEl) return;
+  const step = parseInt(stepEl.dataset.step);
+  if (step <= currentStep + 1) {
+    saveAllData();
+    goToStep(step);
+  }
+});
+
+function updateSidebar() {
+  document.querySelectorAll('.sidebar-step').forEach(el => {
+    const s = parseInt(el.dataset.step);
+    el.classList.remove('active', 'completed');
+    if (s === currentStep) el.classList.add('active');
+    else if (s < currentStep) el.classList.add('completed');
+
+    const indicator = el.querySelector('.step-indicator');
+    if (s < currentStep) {
+      indicator.textContent = '✓';
+    } else {
+      indicator.textContent = s;
+    }
+  });
+}
+
+function goToStep(step) {
+  saveAllData();
+  document.querySelectorAll('.step-panel').forEach(p => p.classList.remove('active'));
+  const panel = document.getElementById('step' + step);
+  if (panel) panel.classList.add('active');
+  currentStep = step;
+  updateSidebar();
+  if (step === 4) window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ===== STEP 2: CATEGORY SELECT =====
+function populateCategorySelect() {
+  const catSelect = document.getElementById('categorySelect');
+  catSelect.innerHTML = '<option value="">-- 请选择评估类别 --</option>';
+  Object.keys(categoryNames).forEach(key => {
+    const opt = document.createElement('option');
+    opt.value = key;
+    opt.textContent = key + ' ' + categoryNames[key];
+    catSelect.appendChild(opt);
+  });
+
+  catSelect.addEventListener('change', function() {
+    const itemSelect = document.getElementById('itemSelect');
+    itemSelect.innerHTML = '<option value="">-- 请选择具体项目 --</option>';
+    const val = this.value;
+    if (!val) return;
+    const items = optionsData[val] || [];
+    items.forEach((text, idx) => {
+      const opt = document.createElement('option');
+      opt.value = val + '.' + (idx + 1);
+      opt.textContent = val + '.' + (idx + 1) + ' ' + text;
+      itemSelect.appendChild(opt);
+    });
+  });
+}
+
+// ===== MODAL =====
+function showAddModal() {
+  document.getElementById('addModal').classList.add('show');
+}
+
+function closeAddModal() {
+  document.getElementById('addModal').classList.remove('show');
+}
+
+// ===== ADD ASSESSMENT CARD =====
+function addAssessmentCard() {
+  const itemSelect = document.getElementById('itemSelect');
+  const code = itemSelect.value;
+  if (!code) return;
+
+  if (addedCards.has(code)) {
+    showToast('该项目已经添加过了！');
+    return;
+  }
+
+  const data = inspectionMapping[code];
+  if (!data) return;
+
+  addedCards.add(code);
+  const idx = itemSelect.selectedIndex;
+  const itemName = itemSelect.options[idx].text;
+
+  const container = document.getElementById('assessmentCards');
+  if (container.querySelector('.empty-state')) {
+    container.innerHTML = '';
+  }
+
+  const card = document.createElement('div');
+  card.className = 'question-card';
+  card.id = 'card-' + code.replace('.', '_');
+
+  let html = '<div class="card-title"><span>' + itemName + '</span><span class="code">' + code + '</span></div>';
+  html += '<button class="card-remove" onclick="removeCard(\'' + code + '\')" title="移除">&times;</button>';
+
+  data.questions.forEach((q, i) => {
+    const varName = data.variables[i];
+    html += '<div class="question-row">';
+    html += '<span class="question-text">' + q + '</span>';
+    html += '<div class="radio-group">';
+    html += '<label class="radio-label"><input type="radio" name="' + varName + '" value="yes" onchange="autoSaveStep2()"> 是</label>';
+    html += '<label class="radio-label fail"><input type="radio" name="' + varName + '" value="no" onchange="autoSaveStep2()"> 否</label>';
+    html += '</div></div>';
+  });
+
+  html += '<input class="card-remark" placeholder="备注（可选）" oninput="autoSaveStep2()">';
+  card.innerHTML = html;
+  container.appendChild(card);
+
+  updateItemCount();
+  closeAddModal();
+  saveStep2Data();
+
+  // Scroll to new card
+  card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function removeCard(code) {
+  addedCards.delete(code);
+  const card = document.getElementById('card-' + code.replace('.', '_'));
+  if (card) {
+    card.style.opacity = '0';
+    card.style.transform = 'translateX(20px)';
+    card.style.transition = 'all 0.3s ease';
+    setTimeout(() => {
+      card.remove();
+      if (addedCards.size === 0) {
+        document.getElementById('assessmentCards').innerHTML = '<div class="empty-state"><div class="icon">&#x1f4cb;</div><p>暂无评估项目，点击上方按钮添加</p></div>';
+      }
+      updateItemCount();
+      saveStep2Data();
+    }, 300);
+  }
+}
+
+function updateItemCount() {
+  document.getElementById('itemCount').textContent = '已添加 ' + addedCards.size + ' 个项目';
+}
+
+// ===== STEP 3: METRIC CHECK =====
+function checkMetric(input, standard, badgeId) {
+  const badge = document.getElementById(badgeId);
+  const val = parseFloat(input.value);
+  if (isNaN(val)) {
+    badge.classList.remove('visible', 'pass', 'fail');
+    return;
+  }
+  badge.classList.add('visible');
+  if (val <= standard) {
+    badge.classList.add('pass');
+    badge.classList.remove('fail');
+    badge.textContent = '合格';
+  } else {
+    badge.classList.add('fail');
+    badge.classList.remove('pass');
+    badge.textContent = '超标';
+  }
+}
+
+// ===== DATA PERSISTENCE =====
+function saveAllData() {
+  saveStep1Data();
+  saveStep2Data();
+  saveStep3Data();
+}
+
+function saveStep1Data() {
+  const data = {};
+  const ids = ['delegation_unit','using_unit','location','device_category','device_type','model','product_number','registration_number','manufacture_date','manufacturer','construction_unit','maintenance_unit','rated_load','rated_speed','floors_count','stations_count','doors_count','control_method','assessment_instrument','assessment_basis'];
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) data[id] = el.value;
+  });
+  localStorage.setItem('eval_step1', JSON.stringify(data));
+}
+
+function saveStep2Data() {
+  const cardsData = [];
+  addedCards.forEach(code => {
+    const data = inspectionMapping[code];
+    if (!data) return;
+    const cardData = { code: code, answers: {}, remark: '' };
+    data.variables.forEach(varName => {
+      const radio = document.querySelector('input[name="' + varName + '"]:checked');
+      cardData.answers[varName] = radio ? radio.value : null;
+    });
+    const card = document.getElementById('card-' + code.replace('.', '_'));
+    if (card) {
+      const remarkInput = card.querySelector('.card-remark');
+      if (remarkInput) cardData.remark = remarkInput.value;
+    }
+    cardsData.push(cardData);
+  });
+  localStorage.setItem('eval_step2_cards', JSON.stringify(Array.from(addedCards)));
+  localStorage.setItem('eval_step2_data', JSON.stringify(cardsData));
+}
+
+function saveStep3Data() {
+  const ids = ['noise_machine_room','noise_car','noise_door','accel_start','decel_stop','accel_avg','vib_x','vib_y','vib_z','door_open_time','door_close_time','monthly_failures','monthly_entrapments','failure_description'];
+  const data = {};
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) data[id] = el.value;
+  });
+  localStorage.setItem('eval_step3', JSON.stringify(data));
+}
+
+function loadAllData() {
+  loadStep1Data();
+  loadStep2Data();
+  loadStep3Data();
+}
+
+function loadStep1Data() {
+  const raw = localStorage.getItem('eval_step1');
+  if (!raw) return;
+  try {
+    const data = JSON.parse(raw);
+    Object.keys(data).forEach(key => {
+      const el = document.getElementById(key);
+      if (el) el.value = data[key];
+    });
+  } catch(e) {}
+}
+
+function loadStep2Data() {
+  const rawCards = localStorage.getItem('eval_step2_cards');
+  const rawData = localStorage.getItem('eval_step2_data');
+  if (!rawCards) return;
+
+  try {
+    const cardCodes = JSON.parse(rawCards);
+    const cardsData = rawData ? JSON.parse(rawData) : [];
+
+    addedCards = new Set(cardCodes);
+    const container = document.getElementById('assessmentCards');
+    container.innerHTML = '';
+
+    cardCodes.forEach(code => {
+      const data = inspectionMapping[code];
+      if (!data) return;
+
+      const cardData = cardsData.find(c => c.code === code) || { answers: {}, remark: '' };
+      const catKey = code.split('.')[0];
+      const idx = parseInt(code.split('.')[1]) - 1;
+      const items = optionsData[catKey] || [];
+      const itemName = code + ' ' + (items[idx] || '');
+
+      const card = document.createElement('div');
+      card.className = 'question-card';
+      card.id = 'card-' + code.replace('.', '_');
+
+      let html = '<div class="card-title"><span>' + itemName + '</span><span class="code">' + code + '</span></div>';
+      html += '<button class="card-remove" onclick="removeCard(\'' + code + '\')" title="移除">&times;</button>';
+
+      data.questions.forEach((q, i) => {
+        const varName = data.variables[i];
+        const savedVal = cardData.answers[varName];
+        html += '<div class="question-row">';
+        html += '<span class="question-text">' + q + '</span>';
+        html += '<div class="radio-group">';
+        html += '<label class="radio-label"><input type="radio" name="' + varName + '" value="yes" onchange="autoSaveStep2()"' + (savedVal === 'yes' ? ' checked' : '') + '> 是</label>';
+        html += '<label class="radio-label fail"><input type="radio" name="' + varName + '" value="no" onchange="autoSaveStep2()"' + (savedVal === 'no' ? ' checked' : '') + '> 否</label>';
+        html += '</div></div>';
+      });
+
+      html += '<input class="card-remark" placeholder="备注（可选）" value="' + escapeHtml(cardData.remark || '') + '" oninput="autoSaveStep2()">';
+      card.innerHTML = html;
+      container.appendChild(card);
+    });
+
+    updateItemCount();
+  } catch(e) {}
+}
+
+function loadStep3Data() {
+  const raw = localStorage.getItem('eval_step3');
+  if (!raw) return;
+  try {
+    const data = JSON.parse(raw);
+    Object.keys(data).forEach(key => {
+      const el = document.getElementById(key);
+      if (el) {
+        el.value = data[key];
+        // Trigger metric check for inputs with standards
+        const metricMap = {
+          'noise_machine_room': ['badge_noise_mr', 80],
+          'noise_car': ['badge_noise_car', 55],
+          'noise_door': ['badge_noise_door', 65],
+          'accel_start': ['badge_accel', 1.5],
+          'decel_stop': ['badge_decel', 1.5],
+          'accel_avg': ['badge_accel_avg', 0.7],
+          'vib_x': ['badge_vib_x', 0.15],
+          'vib_y': ['badge_vib_y', 0.15],
+          'vib_z': ['badge_vib_z', 0.20],
+          'door_open_time': ['badge_door_open', 3.5],
+          'door_close_time': ['badge_door_close', 4.0]
+        };
+        if (metricMap[key] && data[key]) {
+          checkMetric(el, metricMap[key][1], metricMap[key][0]);
+        }
+      }
+    });
+  } catch(e) {}
+}
+
+function autoSaveStep2() {
+  saveStep2Data();
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+// ===== TOAST =====
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 2000);
+}
+
+// ===== REPORT GENERATION =====
+function generateReport() {
+  saveAllData();
+  const step1 = JSON.parse(localStorage.getItem('eval_step1') || '{}');
+  const step3 = JSON.parse(localStorage.getItem('eval_step3') || '{}');
+  const cardsData = JSON.parse(localStorage.getItem('eval_step2_data') || '[]');
+
+  // Count results
+  let totalQuestions = 0;
+  let passCount = 0;
+  let failCount = 0;
+  const failedItems = [];
+
+  cardsData.forEach(card => {
+    const data = inspectionMapping[card.code];
+    if (!data) return;
+    data.variables.forEach((varName, i) => {
+      totalQuestions++;
+      const answer = card.answers[varName];
+      if (answer === 'yes') passCount++;
+      else if (answer === 'no') {
+        failCount++;
+        failedItems.push({
+          code: card.code,
+          question: data.questions[i],
+          remark: card.remark || ''
+        });
+      }
+    });
+  });
+
+  // Ride quality metrics
+  const metrics = [
+    { name: '机房噪声', value: step3.noise_machine_room, unit: 'dB(A)', std: '≤80' },
+    { name: '轿厢内噪声', value: step3.noise_car, unit: 'dB(A)', std: '≤55' },
+    { name: '开关门噪声', value: step3.noise_door, unit: 'dB(A)', std: '≤65' },
+    { name: '启动加速度', value: step3.accel_start, unit: 'm/s²', std: '≤1.5' },
+    { name: '制停减速度', value: step3.decel_stop, unit: 'm/s²', std: '≤1.5' },
+    { name: '平均加速度', value: step3.accel_avg, unit: 'm/s²', std: '≤0.7' },
+    { name: '水平振动(X)', value: step3.vib_x, unit: 'm/s²', std: '≤0.15' },
+    { name: '水平振动(Y)', value: step3.vib_y, unit: 'm/s²', std: '≤0.15' },
+    { name: '垂直振动(Z)', value: step3.vib_z, unit: 'm/s²', std: '≤0.20' },
+    { name: '开门时间', value: step3.door_open_time, unit: 's', std: '≤3.5' },
+    { name: '关门时间', value: step3.door_close_time, unit: 's', std: '≤4.0' }
+  ];
+
+  // Calculate score
+  const score = totalQuestions > 0 ? Math.round((passCount / totalQuestions) * 100 * 10) / 10 : 100;
+
+  // Risk level
+  let riskLevel, riskColor, riskAdvice;
+  if (score >= 90) {
+    riskLevel = '一级（低风险）';
+    riskColor = 'success';
+    riskAdvice = '电梯综合安全状况良好，建议按计划进行日常维护保养。';
+  } else if (score >= 75) {
+    riskLevel = '二级（中风险）';
+    riskColor = 'warning';
+    riskAdvice = '应采取防护措施消除或降低风险，对不符合项进行整改。';
+  } else if (score >= 60) {
+    riskLevel = '三级（中高风险）';
+    riskColor = 'warning';
+    riskAdvice = '应尽快采取整改措施，对严重不符合项立即进行维修或更换。';
+  } else {
+    riskLevel = '四级（高风险）';
+    riskColor = 'danger';
+    riskAdvice = '电梯存在严重安全隐患，建议立即停止使用并进行全面维修或改造。';
+  }
+
+  const now = new Date();
+  const dateStr = now.getFullYear() + '年' + (now.getMonth()+1).toString().padStart(2,'0') + '月' + now.getDate().toString().padStart(2,'0') + '日';
+
+  let html = '';
+  html += '<div class="report-header">';
+  html += '<h2>在用曳引驱动电梯安全评估报告</h2>';
+  html += '<div class="date">评估日期：' + dateStr + ' &nbsp;|&nbsp; 依据：GB/T 42615-2023</div>';
+  html += '</div>';
+
+  html += '<div class="report-body">';
+
+  // Basic info
+  html += '<div class="report-section"><h3>基本信息</h3>';
+  html += '<table class="report-table">';
+  const infoFields = [
+    ['委托单位', step1.delegation_unit],
+    ['使用单位', step1.using_unit],
+    ['安装地点', step1.location],
+    ['设备类别', step1.device_category],
+    ['设备品种', step1.device_type],
+    ['型号', step1.model],
+    ['产品编号', step1.product_number],
+    ['使用登记证编号', step1.registration_number],
+    ['制造日期', step1.manufacture_date],
+    ['制造单位', step1.manufacturer],
+    ['施工单位', step1.construction_unit],
+    ['维护保养单位', step1.maintenance_unit]
+  ];
+  infoFields.forEach(([label, val]) => {
+    if (val) html += '<tr><td>' + label + '</td><td>' + escapeHtml(val) + '</td></tr>';
+  });
+  html += '</table></div>';
+
+  // Equipment params
+  html += '<div class="report-section"><h3>设备技术参数</h3>';
+  html += '<table class="report-table">';
+  const paramFields = [
+    ['额定载重量', step1.rated_load ? step1.rated_load + ' kg' : ''],
+    ['额定速度', step1.rated_speed ? step1.rated_speed + ' m/s' : ''],
+    ['层站门数', (step1.floors_count||'') + '层 ' + (step1.stations_count||'') + '站 ' + (step1.doors_count||'') + '门'],
+    ['控制方式', step1.control_method],
+    ['评估仪器', step1.assessment_instrument],
+    ['评估依据', step1.assessment_basis]
+  ];
+  paramFields.forEach(([label, val]) => {
+    if (val && val.trim()) html += '<tr><td>' + label + '</td><td>' + escapeHtml(val) + '</td></tr>';
+  });
+  html += '</table></div>';
+
+  // Summary stats
+  html += '<div class="report-section"><h3>评估概况</h3>';
+  html += '<div class="report-summary">';
+  html += '<div class="summary-stat success"><div class="value">' + passCount + '</div><div class="label">符合项</div></div>';
+  html += '<div class="summary-stat danger"><div class="value">' + failCount + '</div><div class="label">不符合项</div></div>';
+  html += '<div class="summary-stat ' + riskColor + '"><div class="value">' + score + '</div><div class="label">综合得分</div></div>';
+  html += '</div>';
+  html += '<p style="margin-bottom:6px;"><strong>综合安全状况等级：</strong>' + riskLevel + '</p>';
+  html += '<p style="margin-bottom:6px;"><strong>存在Ⅰ类风险：</strong>' + (failCount >= 5 ? Math.ceil(failCount/4) : 0) + ' 项，<strong>Ⅱ类风险：</strong>' + Math.min(failCount, 4) + ' 项</p>';
+  html += '</div>';
+
+  // Failed items
+  if (failedItems.length > 0) {
+    html += '<div class="report-section"><h3>不符合项明细</h3>';
+    html += '<ul class="risk-list">';
+    failedItems.forEach(item => {
+      const cat = item.code.split('.')[0];
+      const severity = ['A7','A8','A5','A16','A17'].includes(cat) ? 'ii' : 'iii';
+      const catLabel = severity === 'ii' ? 'Ⅱ类' : 'Ⅲ类';
+      html += '<li class="risk-item cat-' + (severity === 'ii' ? 'ii' : 'iii') + '">';
+      html += '<span class="risk-badge ' + severity + '">' + catLabel + '</span>';
+      html += '<span><strong>' + item.code + '</strong> ' + escapeHtml(item.question) + '</span>';
+      html += '</li>';
+    });
+    html += '</ul></div>';
+  }
+
+  // Ride quality
+  html += '<div class="report-section"><h3>乘运质量检测数据</h3>';
+  html += '<table class="report-table">';
+  html += '<tr style="font-weight:700;color:var(--text-secondary)"><td>检测项目</td><td>实测值</td><td>标准值</td><td>判定</td></tr>';
+  metrics.forEach(m => {
+    if (m.value && m.value.trim()) {
+      const numVal = parseFloat(m.value);
+      const stdVal = parseFloat(m.std.replace('≤', ''));
+      const pass = !isNaN(numVal) && !isNaN(stdVal) && numVal <= stdVal;
+      const result = isNaN(numVal) ? '-' : (pass ? '<span style="color:var(--success)">合格</span>' : '<span style="color:var(--danger)">超标</span>');
+      html += '<tr><td>' + m.name + '</td><td>' + m.value + ' ' + m.unit + '</td><td>' + m.std + ' ' + m.unit + '</td><td>' + result + '</td></tr>';
+    }
+  });
+  if (step3.monthly_failures) {
+    html += '<tr><td>月均故障停梯次数</td><td>' + step3.monthly_failures + ' 次/月</td><td>-</td><td>-</td></tr>';
+  }
+  if (step3.monthly_entrapments) {
+    html += '<tr><td>月均困人次数</td><td>' + step3.monthly_entrapments + ' 次/月</td><td>-</td><td>-</td></tr>';
+  }
+  if (step3.failure_description) {
+    html += '<tr><td>故障详细描述</td><td colspan="3">' + escapeHtml(step3.failure_description) + '</td></tr>';
+  }
+  html += '</table></div>';
+
+  // Conclusion
+  html += '<div class="report-section"><h3>评估结论与建议</h3>';
+  html += '<p style="font-size:0.95rem;line-height:1.8;padding:16px;background:var(--bg);border-radius:var(--radius-sm);">' + riskAdvice + '</p>';
+  html += '</div>';
+
+  html += '</div>'; // report-body
+
+  document.getElementById('reportContent').innerHTML = html;
+  goToStep(4);
+}
+
+function resetAll() {
+  if (confirm('确定要清除所有数据并开始新的评估吗？此操作不可撤销。')) {
+    localStorage.removeItem('eval_step1');
+    localStorage.removeItem('eval_step2_cards');
+    localStorage.removeItem('eval_step2_data');
+    localStorage.removeItem('eval_step3');
+    addedCards.clear();
+    document.getElementById('assessmentCards').innerHTML = '<div class="empty-state"><div class="icon">&#x1f4cb;</div><p>暂无评估项目，点击上方按钮添加</p></div>';
+    updateItemCount();
+    document.querySelectorAll('.step-panel input[type="text"], .step-panel input[type="number"], .step-panel textarea').forEach(el => {
+      if (el.id !== 'assessment_basis') el.value = '';
+    });
+    document.querySelectorAll('.metric-badge').forEach(b => b.classList.remove('visible', 'pass', 'fail'));
+    goToStep(1);
+  }
+}
+
+// ===== AUTO-SAVE ON INPUT =====
+document.addEventListener('input', function(e) {
+  if (e.target.closest('#step1')) saveStep1Data();
+  if (e.target.closest('#step3')) saveStep3Data();
+});
+
+// ===== KEYBOARD NAVIGATION =====
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') closeAddModal();
+});
+</script>
+
+</body>
+</html>

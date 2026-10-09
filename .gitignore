@@ -1,0 +1,93 @@
+# ── 大文件 / 离线安装包（不进仓库，板端离线部署时另行拷贝）──
+model/
+rknn-llm/
+*.7z
+*.tar.gz
+*.zip
+
+# ── 字体 ──
+# 顶层那份是备份；web/NotoSansSymbols2.ttf 是运行时真正要用的，故意保留
+*.ttf
+!web/NotoSansSymbols2.ttf
+
+# ── Python ──
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# ── 配置 / 密钥 ──
+# .env 里有 Neo4j 口令；模板见 .env.example
+backend/.env
+**/.env
+
+# ── IDE ──
+.idea/
+
+# ── 运行时数据（SQLite 业务库、日志、导出目录）──
+backend/data/
+**/backend/data/
+*.log
+.elevator-app.log*
+导出/
+
+# ── 本机分析 / 临时产物 ──
+$out/
+.playwright-cli/
+_extracted/
+_patent_extract/
+_render/
+patent_validation/_source_audit/
+
+# ── 板端调试产物 ──
+tools/*.png
+tools/*.jpg
+*.pid
+
+# ── 编辑器 / 系统 ──
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# ══════════════════════════════════════════════════════════════
+#  未提交的专利申请材料 —— 绝不入库
+#
+#  原因：中国专利法要求新颖性，申请日之前自己的公开同样构成现有技术
+#        （专利法第24条的宽限期不含"自己发到网上"）。
+#        本仓库转为公开后，这些文件会破坏后续申请的新颖性。
+#
+#  文件保存在本地继续撰写；完整历史见同目录的备份包
+#        ../大模型故障检测-BACKUP-20261009.bundle
+# ══════════════════════════════════════════════════════════════
+patent_validation/
+三份参考专利技术特征对比与创造性初判.md
+专利事实审计与首个实施例.md
+专利撰写依据与方案校正.md
+扩展现有技术检索与创造性复核_v1.md
+故障演化路径触发动态评估算法_v0.1.md
+连续激活度模型与数据接口_v1.md
+连续激活模型仿真验证记录_v1.md
+独立权利要求1草案_v0.1.md
+权利要求书_v0.1.md
+权利要求书_v0.2.md
+说明书_v0.1.md
+说明书术语与数据结构_v0.1.md
+专家标注与模型验证模板.csv
+制动实施例检测记录模板.csv
+制动实施例阈值模板.csv
+*技术交底书*
+*发明初稿*
+*专利申请*
+docs/superpowers/plans/2026-09-22-patent-application-drafting.md
+docs/superpowers/specs/2026-09-22-patent-claims-design.md
+
+# ── 描述同一套未申请技术的项目材料 ──
+**/可行性报告*
+**/项目计划书*
+**/基于大模型知识增强*
+
+# ── 他人的已公开专利（prior art，无需入库）──
+**/大模型构建电梯故障知识图谱专利*
+**/知识图谱和神经网络电梯故障诊断专利书*

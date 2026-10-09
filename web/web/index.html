@@ -1,0 +1,1499 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>电梯安全评估系统</title>
+<style>
+:root {
+  --bg: #f6f3ee;
+  --surface: #ffffff;
+  --border: #e4ded4;
+  --text: #2c2c2c;
+  --text-secondary: #6b6560;
+  --text-muted: #99948e;
+  --accent: #1b5e7a;
+  --accent-glow: #2d8ab5;
+  --accent-light: #e8f0f8;
+  --danger: #c5343e;
+  --danger-light: #fef0f0;
+  --success: #2d7d46;
+  --success-light: #eef8f0;
+  --warning: #c47f20;
+  --shadow: 0 2px 8px rgba(0,0,0,0.06);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.08);
+  --radius: 10px;
+  --radius-sm: 6px;
+  --font: "Noto Sans SC","Source Han Sans CN","Noto Sans Symbols2",sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:15px;scroll-behavior:smooth}
+body{font-family:var(--font);background:var(--bg);color:var(--text);line-height:1.6;min-height:100vh}
+
+/* Sidebar
+   ★ .sidebar 的 width 必须与 .main 的 margin-left 用同样的时长与缓动 ★
+   原来只有 .main 有 transition，.sidebar 的 width 是瞬间跳变的，于是展开时
+   侧边栏先"啪"地铺满、内容区还在 0.3s 地往右挪 —— 中间那段时间侧边栏压住
+   正文最左一列。实测（tools/grab_burst.py 连拍，点击后约 70ms 的一帧）：
+       "基本信息及设备参数" 被盖成 "本信息及设备参数"
+       "委托单位名称"      只剩 "托单位名称"
+   两边同用 .3s ease 后就同步了。
+   overflow:hidden 同样是必需的：变窄的一瞬间不能让里面的文字溢出；
+   再配合各文字的 white-space:nowrap，文字只会被裁切/逐步露出，
+   **绝不会被挤成竖排一列**。 */
+.sidebar{width:260px;background:linear-gradient(180deg,#1a2638 0%,#15202f 100%);color:#fff;position:fixed;top:0;left:0;height:100vh;display:flex;flex-direction:column;padding:24px 0;overflow:hidden;transition:width .3s;z-index:200}
+.sidebar-brand{padding:0 22px 20px;border-bottom:1px solid rgba(255,255,255,0.08);margin-bottom:16px}
+.sidebar-brand h1{font-size:1.05rem;font-weight:700;letter-spacing:.04em;white-space:nowrap}
+.sidebar-brand .sub{font-size:.62rem;color:rgba(255,255,255,0.4);margin-top:2px;white-space:nowrap}
+.sidebar-nav{list-style:none;padding:0 12px}
+/* 过渡里**不要**带 font-size：收起态是靠 font-size:0 把文字藏起来的，
+   若让它参与过渡，收起过程中就会出现"容器已经变窄、文字还没消失"，
+   正是"被压缩成一列"的成因。让它瞬间切换，配合上面的 overflow:hidden
+   与 white-space:nowrap，收起时只剩圆点、展开时文字随宽度逐步露出。 */
+.sidebar-nav li{display:flex;align-items:center;gap:10px;padding:11px 14px;border-radius:var(--radius-sm);cursor:pointer;font-size:.8rem;font-weight:500;color:rgba(255,255,255,0.5);transition:color .2s,background-color .2s,border-color .2s;border:1px solid transparent;white-space:nowrap}
+.sidebar-nav li:hover{color:rgba(255,255,255,0.8);background:rgba(255,255,255,0.04)}
+.sidebar-nav li.active{color:#fff;background:rgba(255,255,255,0.08);border-color:rgba(255,255,255,0.12)}
+.sidebar-nav .dot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,0.25);flex-shrink:0}
+.sidebar-nav li.active .dot{background:var(--accent-glow);box-shadow:0 0 10px rgba(45,138,181,0.5)}
+.sidebar-tools{padding:8px 22px;border-top:1px solid rgba(255,255,255,0.08)}
+.sidebar-tools button{display:block;width:100%;margin-top:6px;padding:7px 0;font-size:.7rem;color:rgba(255,255,255,0.55);background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:var(--radius-sm);cursor:pointer;font-family:var(--font);transition:all .2s}
+.sidebar-tools button:hover{color:#fff;background:rgba(255,255,255,0.1)}
+.sidebar-history{flex:1;overflow-y:auto;padding:0 12px;margin-top:12px;min-height:0}
+.sidebar-history .h-title{font-size:.65rem;color:rgba(255,255,255,0.35);padding:6px 14px;text-transform:uppercase;letter-spacing:.08em}
+.sidebar-history .h-item{padding:8px 14px;font-size:.7rem;color:rgba(255,255,255,0.5);cursor:pointer;border-radius:var(--radius-sm);margin-bottom:2px;transition:all .2s;border:1px solid transparent;display:flex;align-items:center;justify-content:space-between;gap:6px;white-space:nowrap}
+.sidebar-history .h-item:hover{color:rgba(255,255,255,0.8);background:rgba(255,255,255,0.04)}
+.sidebar-history .h-item .h-del{font-size:.6rem;color:rgba(255,255,255,0.25);padding:2px 5px;border-radius:3px;flex-shrink:0}
+.sidebar-history .h-item .h-del:hover{color:#f55;background:rgba(255,50,50,0.15)}
+.sidebar-footer{padding:10px 22px 0;border-top:1px solid rgba(255,255,255,0.08);font-size:.62rem;color:rgba(255,255,255,0.3);white-space:nowrap}
+
+/* Main */
+.main{margin-left:260px;padding:32px 40px 80px;max-width:1400px;transition:margin-left .3s}
+.main.expanded{margin-left:50px;max-width:1700px}
+
+/* Sidebar toggle */
+.sidebar-toggle{position:absolute;top:8px;right:8px;width:28px;height:28px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:6px;color:rgba(255,255,255,0.5);cursor:pointer;font-size:.8rem;display:flex;align-items:center;justify-content:center;transition:all .2s}
+.sidebar-toggle:hover{background:rgba(255,255,255,0.12);color:#fff}
+.sidebar.collapsed{width:50px;padding:12px 0}
+.sidebar.collapsed .sidebar-brand h1,.sidebar.collapsed .sub,.sidebar.collapsed .step-num,.sidebar.collapsed .step-title,.sidebar.collapsed .h-title,.sidebar.collapsed .sidebar-history,.sidebar.collapsed .user-bar,.sidebar.collapsed .sidebar-footer{display:none}
+.sidebar.collapsed .sidebar-nav li{justify-content:center;padding:10px 0;font-size:0}
+.sidebar.collapsed .sidebar-nav .dot{width:10px;height:10px}
+.sidebar.collapsed .sidebar-brand{padding:0;margin-bottom:12px;border:none;text-align:center}
+.sidebar.collapsed .sidebar-nav{padding:0 8px}
+.sidebar.collapsed .sidebar-toggle{position:static;margin:0 auto;display:flex}
+.section{margin-bottom:40px}
+.section-title{font-size:1.3rem;font-weight:700;color:var(--text);margin-bottom:6px;letter-spacing:-.01em}
+.section-sub{font-size:.82rem;color:var(--text-secondary);margin-bottom:20px}
+
+/* Card */
+.card{background:var(--surface);border-radius:var(--radius);padding:24px 28px;box-shadow:var(--shadow);border:1px solid var(--border);margin-bottom:16px}
+.card-header{font-size:.92rem;font-weight:700;color:var(--accent);margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px}
+
+/* Form */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px 20px}
+.form-group{display:flex;flex-direction:column;gap:4px}
+.form-group.full{grid-column:1/-1}
+.form-group.required .form-label::after{content:' *';color:var(--danger);font-weight:700}
+.form-label{font-size:.76rem;font-weight:600;color:var(--text-secondary)}
+.form-input{border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:8px 12px;font-size:.86rem;font-family:var(--font);color:var(--text);outline:none;width:100%}
+.form-input:focus{border-color:var(--accent-glow);box-shadow:0 0 0 3px rgba(27,94,122,0.06)}
+.form-input.error{border-color:var(--danger);background:var(--danger-light)}
+.input-with-unit{position:relative}
+.input-with-unit input{padding-right:44px}
+.input-with-unit .unit{position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:.73rem;color:var(--text-muted);font-weight:600}
+.row-inline{display:flex;align-items:center;gap:6px}
+.row-inline input{width:56px;text-align:center}
+.row-inline .sep{color:var(--text-muted);font-size:.8rem}
+
+/* Btn row */
+.btn-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+
+/* Summary Bar */
+.summary-bar{position:sticky;top:0;z-index:50;display:flex;flex-wrap:wrap;align-items:center;gap:14px;padding:12px 20px;background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow-lg);border:1px solid var(--border);margin:24px 0}
+/* 操作按钮独占第二行：flex-basis:100% 在可换行的 flex 容器里就等于强制换行 */
+.summary-actions{flex:1 0 100%;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.summary-bar .cnt{font-size:1.5rem;font-weight:700}
+.summary-bar .cnt.fail{color:var(--danger)}
+.summary-bar .cnt.pass{color:var(--success)}
+
+.btn{display:inline-flex;align-items:center;gap:6px;padding:9px 22px;border-radius:var(--radius-sm);font-size:.82rem;font-weight:600;font-family:var(--font);cursor:pointer;border:1.5px solid transparent;transition:all .2s}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:#164b63}
+.btn-primary:disabled{opacity:.45;cursor:not-allowed}
+.btn-sm{padding:5px 14px;font-size:.73rem}
+.btn-outline{background:var(--surface);color:var(--accent);border-color:var(--border)}
+.btn-outline:hover{border-color:var(--accent);background:var(--accent-light)}
+.btn-danger{background:transparent;color:var(--danger);border-color:var(--danger)}
+.btn-danger:hover{background:var(--danger-light)}
+
+/* System */
+.sys-header{display:flex;align-items:center;gap:10px;padding:12px 16px;cursor:pointer;user-select:none;font-size:.9rem;font-weight:700;color:var(--accent);border-bottom:1px solid var(--border);margin-bottom:12px}
+.sys-header .arrow{transition:transform .3s;font-size:.7rem;color:var(--text-muted);margin-left:auto}
+.sys-header.open .arrow{transform:rotate(180deg)}
+.sys-header .sys-cnt{font-size:.73rem;color:var(--text-muted);font-weight:400}
+.sys-body{display:none}
+.sys-body.show{display:block}
+
+/* Item Card */
+.item-card{background:var(--surface);border-radius:var(--radius-sm);padding:12px 16px;margin-bottom:6px;border:1px solid var(--border);transition:all .2s}
+.item-card.failed{border-left:3px solid var(--danger);background:var(--danger-light)}
+.item-main{display:flex;align-items:flex-start;gap:12px}
+.item-info{flex:1;min-width:0}
+.item-name{font-size:.8rem;font-weight:600}
+.item-desc{font-size:.7rem;color:var(--text-muted);margin-top:2px}
+.item-states{font-size:.68rem;color:var(--text-secondary);margin-top:2px}
+.toggle-group{display:flex;gap:6px;flex-shrink:0}
+.toggle-btn{padding:5px 12px;border:1.5px solid var(--border);border-radius:16px;font-size:.71rem;font-weight:500;cursor:pointer;background:var(--surface);color:var(--text-secondary);transition:all .2s;font-family:var(--font)}
+.toggle-btn.pass-btn.active{background:var(--success-light);border-color:var(--success);color:var(--success)}
+.toggle-btn.fail-btn.active{background:var(--danger-light);border-color:var(--danger);color:var(--danger)}
+
+.state-panel{display:none;margin-top:10px;padding:10px 14px;background:#fff8f8;border-radius:var(--radius-sm);border:1px dashed #e8cccc}
+.state-panel.show{display:block}
+.state-panel .hint{font-size:.68rem;color:var(--text-muted);margin-bottom:6px}
+.state-list{display:flex;flex-wrap:wrap;gap:6px}
+.state-chip{display:flex;align-items:center;gap:4px;padding:5px 12px;border-radius:14px;font-size:.71rem;cursor:pointer;border:1.5px solid var(--border);background:#fafafa;color:var(--text-secondary);transition:all .2s;user-select:none}
+.state-chip:hover{border-color:#ccc;background:#f0f0f0}
+.state-chip.on{border-color:var(--danger);background:#ffeaea;color:var(--danger);font-weight:600;box-shadow:0 0 0 1px rgba(197,52,62,0.15);transform:scale(1.03)}
+.state-chip .chk{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;border:1.5px solid #ccc;font-size:.6rem;flex-shrink:0;transition:all .2s}
+.state-chip.on .chk{background:var(--danger);border-color:var(--danger);color:#fff}
+
+/* Report */
+.report-box{background:var(--surface);border-radius:var(--radius);padding:24px 28px;box-shadow:var(--shadow);border:1px solid var(--border)}
+.report-box h2{font-size:1.1rem;color:var(--accent);margin-bottom:16px;padding-bottom:10px;border-bottom:2px solid var(--accent-light)}
+.report-box h3{font-size:.88rem;margin:16px 0 8px}
+.table{width:100%;border-collapse:collapse;font-size:.8rem}
+.table th,.table td{padding:7px 10px;border:1px solid var(--border);text-align:left}
+.table th{background:var(--accent-light);color:var(--accent);font-weight:600}
+.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:.68rem;font-weight:600}
+.badge-r{background:var(--danger-light);color:var(--danger)}
+.badge-w{background:#fef9ed;color:var(--warning)}
+.raw-text{background:#f8f8f6;border-radius:var(--radius-sm);padding:14px;font-size:.78rem;line-height:1.7;white-space:pre-wrap;max-height:500px;overflow-y:auto}
+.raw-text p{margin:0 0 .5em}
+.raw-text h2,.raw-text h3,.raw-text h4{margin:.8em 0 .3em}
+.raw-text ul,.raw-text ol{margin:.3em 0;padding-left:1.5em}
+.raw-text table{margin:.5em 0;border-collapse:collapse;width:100%}
+.raw-text table td,.raw-text table th{border:1px solid #ccc;padding:4px 8px}
+.raw-text table th{background:var(--accent-light);font-weight:600}
+
+/* History Panel */
+.history-card{padding:10px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:6px;cursor:pointer;transition:all .2s;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.history-card:hover{background:var(--accent-light);border-color:var(--accent-glow)}
+.history-card .h-date{font-size:.75rem;color:var(--text-secondary);white-space:nowrap}
+.history-card .h-summary{font-size:.78rem;color:var(--text);flex:1;min-width:0}
+.history-card .h-del{font-size:.7rem;color:var(--text-muted);cursor:pointer;padding:2px 6px;border-radius:4px;flex-shrink:0}
+.history-card .h-del:hover{color:var(--danger);background:var(--danger-light)}
+
+.loader{display:inline-block;width:15px;height:15px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty{text-align:center;padding:30px;color:var(--text-muted);font-size:.82rem}
+.toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:#2c2c2c;color:#fff;padding:10px 24px;border-radius:24px;font-size:.78rem;z-index:999;opacity:0;transition:opacity .3s}
+.toast.show{opacity:1}
+
+/* ── 双 logo 联合署名（splash 与登录页共用）──────────────
+   两枚原始图：fslogo.png   (GDSEI 横版 lockup) 620x90  宽高比 6.8889
+               fosulogo.png (佛山大学校徽圆章)   132x136 宽高比 0.9706
+   不写死 height，而是把"原始宽高比"当作 flex-grow、flex-basis 取 0：
+   宽度按宽高比分配 → 两边算出来的高度必然相等；height:auto → 永远跟随宽高比。
+   ⚠ 换 logo 图必须同步改下面两个 flex-grow —— 它们不是"视觉权重"，就是宽高比本身。
+     图换了形状而 grow 没跟着改，两条高度就不再相等：宽度按旧比例分、高度按新比例
+     算，比例差多少就错多少。（换成圆章后如果还用旧值 3.074，圆章会被撑成
+     139 逻辑像素高，而 GDSEI 只有 44。）
+   反面教材：最早一版是"定高 + width:auto"，容器一窄 flex 只压宽度不压高度，
+   图会被横向压扁；而且定高还得手算一个"总宽刚好塞得下"的魔法数字。 */
+.logo-lockup{display:flex;align-items:center;justify-content:center;gap:18px;width:100%}
+/* min-width:0 必须有：img 的 min-width:auto 会解析成固有宽度，那样 flex 根本压不下去 */
+.logo-lockup img{display:block;flex:0 1 0;min-width:0;height:auto}
+.logo-lockup .lg-fs{flex-grow:6.8889}
+.logo-lockup .lg-fosu{flex-grow:0.9706}
+/* 分割线 align-self:stretch —— 高度自动等于这一行里 logo 的高度，
+   不用跟着 logo 尺寸再写一个魔法数字 */
+.logo-lockup .sep{flex:0 0 auto;align-self:stretch;width:1px;background:#d9dee5}
+
+/* ── Splash（启动页）────────────── */
+#splash{position:fixed;top:0;left:0;right:0;bottom:0;z-index:2000;background:linear-gradient(160deg,#10365f 0%,#1b5e7a 55%,#0d2b47 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;transition:opacity .45s ease,visibility .45s}
+#splash.hide{opacity:0;visibility:hidden;pointer-events:none}
+/* 白卡片定"宽"而不是定高：519 = 44(padding) + 36(两个 gap) + 1(分割线) + 438(两个 logo)。
+   438 = 7.8595(两个宽高比之和) x 55.7 —— 55.7 就是这套卡片宽度下算出来的 logo 高度
+   (逻辑像素)。高度不写在这里，由 .logo-lockup 的 flex 分配反推。 */
+.splash-logo{background:#fff;border-radius:14px;padding:18px 22px;box-shadow:0 12px 36px rgba(0,0,0,0.3);
+  width:min(calc(100vw - 32px),519px)}
+.splash-title{color:#fff;font-size:1.16rem;font-weight:700;letter-spacing:.14em}
+.splash-sub{color:rgba(255,255,255,0.55);font-size:.66rem;letter-spacing:.12em;margin-top:-8px}
+.splash-spin{width:26px;height:26px;border:2.5px solid rgba(255,255,255,0.22);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite;margin-top:6px}
+.splash-ver{position:absolute;bottom:22px;color:rgba(255,255,255,0.32);font-size:.66rem}
+
+/* ── Login（登录页）────────────── */
+body:not(.authed) .sidebar,body:not(.authed) .main{display:none}
+#loginView{display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:900;background:linear-gradient(160deg,#10365f 0%,#1b5e7a 55%,#0d2b47 100%);align-items:center;justify-content:center;padding:20px;overflow:auto}
+#loginView.show{display:flex}
+/* 440px 不是随手定的：卡片顶部是"GDSEI ｜ 佛山大学校徽"联合署名，
+   logo 高度 = (卡宽 - 60 padding - 36 gap - 1 分割线) / 7.8595(两个宽高比之和)。
+   440 代入得 logo 高 43.6 逻辑像素 —— 此时 GDSEI 渲染成 601 物理像素、原生 620，
+   几乎 1:1（最清晰），圆章 84.7 物理像素。 */
+.login-card{position:relative;width:100%;max-width:440px;background:var(--surface);border-radius:16px;box-shadow:0 18px 50px rgba(0,0,0,0.32);padding:30px}
+/* 尺寸/排布全部交给 .logo-lockup（display:flex + width:100%），这里只管外边距。
+   上外边距 16px 不是装饰：登录卡片右上角浮着一个 32x32 的"×"(退出系统)
+   (.login-x top:10px -> 底部在卡片顶下方 42px)，logo 行原本从 padding 30px 开始，
+   两者重叠 12.5x8.5 逻辑像素 —— 而 × 是可点的触控目标，
+   点佛大 logo 右上角会直接退出系统。32+padding 让出这段高度即可。 */
+.login-logo{margin:16px auto 20px}
+.login-h{font-size:1.02rem;font-weight:700;text-align:center}
+.login-sub{font-size:.7rem;color:var(--text-muted);text-align:center;margin:4px 0 20px}
+.login-card .form-group{margin-bottom:14px}
+.login-btn{width:100%;justify-content:center;padding:11px;font-size:.85rem;margin-top:8px}
+.login-err{display:none;background:var(--danger-light);color:var(--danger);border:1px solid #f3c9cc;border-radius:var(--radius-sm);padding:9px 12px;font-size:.74rem;margin-bottom:14px}
+.login-err.show{display:block}
+.login-foot{margin-top:16px;text-align:center;font-size:.64rem;color:var(--text-muted)}
+/* 登录卡片右上角的退出（×）：既醒目又不会误触主流程 */
+.login-x{position:absolute;top:10px;right:12px;width:32px;height:32px;line-height:1;
+  display:flex;align-items:center;justify-content:center;
+  background:none;border:0;border-radius:50%;
+  color:var(--text-muted);font-size:22px;font-family:var(--font);
+  cursor:pointer;transition:all .18s}
+.login-x:hover{background:var(--danger-light);color:var(--danger)}
+
+/* ── 用户栏 ─────────────────────── */
+.user-bar{padding:10px 16px;border-top:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:.7rem}
+.user-bar .u-name{color:rgba(255,255,255,0.85);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.user-bar .u-role{font-size:.6rem;color:rgba(255,255,255,0.4)}
+.user-bar{flex-wrap:wrap}
+/* 注意：这里**不能**用 flex-shrink:0。
+   那会让这个容器宽度锁死在内容最大宽度、永远不收缩，
+   于是内部的 flex-wrap 也就永远没有机会换行 ——
+   竖屏 186px 侧边栏里 4 个按钮约需 210px，直接溢出被裁掉（实测）。 */
+.user-bar .u-act{display:flex;gap:6px;flex-shrink:1;min-width:0;flex-wrap:wrap}
+.user-bar button{background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.14);color:rgba(255,255,255,0.8);font-size:.62rem;padding:4px 9px;border-radius:5px;cursor:pointer;font-family:var(--font);transition:all .2s}
+.user-bar button:hover{background:rgba(255,255,255,0.18);color:#fff}
+.user-bar button.danger{color:#ffb4b4;border-color:rgba(255,120,120,0.35)}
+.user-bar button.danger:hover{background:rgba(220,80,80,0.28);color:#fff}
+
+/* ── Modal（弹窗）───────────────── */
+.modal-mask{display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:1200;background:rgba(18,24,34,0.5);align-items:center;justify-content:center;padding:20px}
+.modal-mask.show{display:flex}
+.modal-box{background:var(--surface);border-radius:14px;box-shadow:0 18px 50px rgba(0,0,0,0.3);width:100%;max-width:700px;max-height:88vh;display:flex;flex-direction:column}
+.modal-box.narrow{max-width:400px}
+.modal-hd{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.modal-hd h3{font-size:.92rem;font-weight:700;color:var(--accent)}
+.modal-x{background:none;border:0;font-size:1.05rem;color:var(--text-muted);cursor:pointer;line-height:1;padding:2px 6px}
+.modal-x:hover{color:var(--text)}
+.modal-bd{padding:18px 20px;overflow:auto}
+/* ── 页面内自绘对话框 ─────────────────────────────
+   原来用浏览器原生 confirm()/alert()/prompt()，在 WebKit 里会渲染成
+   「http://127.0.0.1:8081 显示」+ 英文 OK / Cancel 的系统弹窗，
+   中文一体机上非常突兀，也无法统一风格。全部改为自绘。 */
+/* 中/英输入法切换按钮（固定在右上角，避开登录卡片的 × ）*/
+.ime-toggle{position:fixed;top:8px;right:10px;z-index:1300;
+  min-width:44px;height:32px;padding:0 12px;border-radius:16px;
+  border:1px solid var(--border);background:rgba(255,255,255,0.94);
+  color:var(--accent);font-family:var(--font);font-size:.8rem;font-weight:700;
+  cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,0.12);transition:all .2s}
+.ime-toggle.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+.ime-toggle:disabled{opacity:.5}
+.report-tools{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 10px}
+.report-tools-btns{display:flex;gap:8px;margin-left:auto;flex-shrink:0}
+.ui-dlg-msg{font-size:.86rem;color:var(--text);line-height:1.75;white-space:pre-wrap;word-break:break-word}
+.ui-dlg-ft{padding:14px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px}
+.modal-ft{padding:14px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px}
+.utable{width:100%;border-collapse:collapse;font-size:.74rem}
+.utable th{text-align:left;color:var(--text-muted);font-weight:600;padding:8px;border-bottom:1px solid var(--border);font-size:.68rem;white-space:nowrap}
+.utable td{padding:9px 8px;border-bottom:1px solid var(--border);vertical-align:middle}
+.utable tr:last-child td{border-bottom:0}
+.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:.62rem;font-weight:600}
+.badge.admin{background:var(--accent-light);color:var(--accent)}
+.badge.inspector{background:#eef1f4;color:#5b6672}
+.badge.off{background:var(--danger-light);color:var(--danger)}
+.mini-btn{background:var(--surface);border:1px solid var(--border);border-radius:5px;font-size:.63rem;padding:4px 9px;cursor:pointer;font-family:var(--font);color:var(--text-secondary);transition:all .2s}
+.mini-btn:hover{border-color:var(--accent);color:var(--accent)}
+.mini-btn.danger:hover{border-color:var(--danger);color:var(--danger)}
+.form-grid.cols2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+
+/* ── 竖屏自适应 ──────────────────────────────────────────────
+   本机是 1200x1920 的竖屏面板，默认旋转成横屏 1920x1200 使用
+   （逻辑视口 960x600）。屏幕物理旋转后逻辑视口变成 600x960，
+   此时侧边栏 260px + 两列表单会把正文挤成 340px，必须收窄。
+   注意 .sidebar.collapsed / .main.expanded 是两类的选择器，
+   特异性比这里的一条高，所以用户手动折叠仍然优先。            */
+@media (orientation: portrait), (max-width: 820px){
+  .sidebar{width:186px;padding:16px 0}
+  .sidebar-brand{padding:0 14px 14px}
+  .sidebar-brand h1{font-size:.9rem}
+  .sidebar-nav{padding:0 8px}
+  .sidebar-nav li{padding:10px 10px;font-size:.74rem;gap:8px}
+  .sidebar-tools{padding:8px 14px}
+  .sidebar-history .h-item{padding:7px 10px}
+  .sidebar-footer{padding:8px 14px 0}
+  /* 用户栏（改密/用户/注销/退出系统）在窄侧边栏里必须排成两行。
+     ⚠ 不要用 display:grid 做这件事。实测踩过：grid + 默认 align-self:stretch
+     的项 + 按钮上的 overflow:hidden（会改变 min-height:auto 的解析），
+     三者叠加会让 auto 行高与拉伸项互相推导，得到
+     grid-template-rows = "450.5px 450.5px"（网格盒才 70px 高），
+     按钮被拉成 451px、文字被挤出屏幕，还盖到页脚上。
+     用 flex + 显式 basis 反而完全确定：每行恰好两个。 */
+  .user-bar{flex-direction:column;align-items:stretch;gap:8px;padding:10px 14px}
+  .user-bar .u-act{display:flex;flex-wrap:wrap;gap:6px;flex-shrink:1;min-width:0}
+  .user-bar button{flex:1 1 calc(50% - 3px);min-width:0;padding:6px 4px;
+                   font-size:.66rem;white-space:nowrap}
+  .main{margin-left:186px;padding:20px 18px 64px;max-width:none}
+  .main.expanded{margin-left:50px}
+  .form-grid,.form-grid.cols2{grid-template-columns:1fr}
+  .card{padding:18px 16px}
+  .section{margin-bottom:28px}
+  /* 这里原本有一条 .login-card{max-width:340px}，已删除。
+     板端竖屏逻辑宽 600，卡片塞得下；而卡片越窄，顶部那两个 logo 就越小 ——
+     340px 时佛山大学圆章只有 27 逻辑像素(54 物理)，圆里的字完全糊掉。
+     真正的窄屏由 .login-card 自带的 width:100% 兜底，不需要这条上限。 */
+  .modal-box{max-width:92vw}
+}
+/* ── 让「主内容区」自己滚动，而不是整个文档滚动 ──────────────
+   原因（详见 kiosk/README.md）：
+   WebKit 向 fcitx5 上报光标框时用的是**文档坐标**（视口位置 + 页面滚动量），
+   而 fcitx5 按**屏幕坐标**解释它。于是页面每往下滚一点，中文候选窗就跟着
+   往下偏一点，滚动量大到一定程度就沉到软键盘底下 —— 表现就是"候选窗很靠下
+   甚至被键盘挡住"，而且和输入框的实际位置对不上。
+   把滚动约束在 .main 内部之后，window.scrollY 恒为 0，两个坐标系重合。
+   （.sidebar 是 position:fixed 不受影响；.summary-bar 是 sticky，
+     改为相对最近的滚动祖先 .main 吸顶，观感不变。） */
+html,body{height:100%;overflow:hidden}
+.main{height:100vh;overflow-y:auto;overflow-x:hidden}
+</style>
+</head>
+<body>
+
+<!-- ── 启动页 ───────────────────── -->
+<div id="splash">
+  <div class="splash-logo logo-lockup">
+    <img class="lg-fs" src="fslogo.png" alt="广东省特种设备检测研究院佛山检测院">
+    <span class="sep"></span>
+    <img class="lg-fosu" src="fosulogo.png" alt="佛山大学">
+  </div>
+  <div class="splash-title">电梯安全评估系统</div>
+  <div class="splash-sub">ELEVATOR SAFETY ASSESSMENT SYSTEM</div>
+  <div class="splash-spin"></div>
+  <div class="splash-ver">依据 GB/T 42615-2023《在用电梯安全评估规范》</div>
+</div>
+
+<!-- ── 登录页 ───────────────────── -->
+<div id="loginView">
+  <div class="login-card">
+    <button id="exitKioskBtnLogin" class="login-x" style="display:none" onclick="doExitKiosk()"
+            title="退出系统并返回桌面" aria-label="退出系统">×</button>
+    <div class="login-logo logo-lockup">
+      <img class="lg-fs" src="fslogo.png" alt="广东省特种设备检测研究院佛山检测院">
+      <span class="sep"></span>
+      <img class="lg-fosu" src="fosulogo.png" alt="佛山大学">
+    </div>
+    <div class="login-h">电梯安全评估系统</div>
+    <div class="login-sub">请使用您的账号登录</div>
+    <div class="login-err" id="loginErr"></div>
+    <div class="form-group">
+      <label class="form-label">用户名</label>
+      <input class="form-input" id="loginUser" autocomplete="username" placeholder="请输入用户名">
+    </div>
+    <div class="form-group">
+      <label class="form-label">口令</label>
+      <input class="form-input" id="loginPass" type="password" autocomplete="current-password" placeholder="请输入口令">
+    </div>
+    <button class="btn btn-primary login-btn" id="loginBtn" onclick="doLogin()">登 录</button>
+    <div class="login-foot">广东省特种设备检测研究院佛山检测院 · 佛山大学</div>
+  </div>
+</div>
+
+<aside class="sidebar" id="sidebar">
+  <button class="sidebar-toggle" onclick="toggleSidebar()" title="收起/展开">◀</button>
+  <div class="sidebar-brand">
+    <h1>电梯安全评估</h1>
+    <div class="sub">Elevator Safety Assessment</div>
+  </div>
+  <ul class="sidebar-nav" id="sidebarNav">
+    <li data-target="sec-info" class="active"><span class="dot"></span> 基本信息及设备参数</li>
+    <li data-target="sec-inspection"><span class="dot"></span> 评估项目</li>
+    <li data-target="sec-report"><span class="dot"></span> 评估报告</li>
+  </ul>
+  <div class="sidebar-history" id="sidebarHistory">
+    <div class="h-title">历史报告</div>
+    <div id="historyList" style="font-size:.65rem;color:rgba(255,255,255,0.3);padding:6px 14px">暂无记录</div>
+  </div>
+  <div class="user-bar">
+    <span style="min-width:0">
+      <span class="u-name" id="curUserName">—</span><br>
+      <span class="u-role" id="curUserRole"></span>
+    </span>
+    <span class="u-act">
+      <button id="pwdBtn" onclick="openPwdModal()">改密</button>
+      <button id="adminBtn" style="display:none" onclick="openUserAdmin()">用户</button>
+      <button onclick="doLogout()">注销</button>
+      <button id="exitKioskBtn" class="danger" style="display:none" onclick="doExitKiosk()" title="关闭本系统并返回桌面">退出系统</button>
+    </span>
+  </div>
+  <div class="sidebar-footer">依据 GB/T 42615-2023<br>在用电梯安全评估规范</div>
+</aside>
+
+<main class="main">
+  <!-- Section 1: Info -->
+  <section class="section" id="sec-info">
+    <div class="section-title" style="display:flex;align-items:center;justify-content:space-between">
+      <span>基本信息及设备参数</span>
+      <div style="display:flex;align-items:center;gap:8px">
+        <select id="restoreSelect" style="font-size:.73rem;padding:5px 10px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-family:var(--font);color:var(--text-secondary);max-width:180px;display:none" onchange="restoreFromSelect(this.value)">
+          <option value="">-- 从历史记录恢复 --</option>
+        </select>
+      </div>
+    </div>
+    <div class="section-sub">请填写委托单位、使用单位、设备信息及技术参数（带 <span style="color:var(--danger)">*</span> 为必填）</div>
+
+    <div class="card">
+      <div class="card-header">基本信息</div>
+      <div class="form-grid">
+        <div class="form-group full required"><label class="form-label">委托单位名称</label><input class="form-input" id="delegation_unit" placeholder="请输入"></div>
+        <div class="form-group full required"><label class="form-label">使用单位名称</label><input class="form-input" id="using_unit" placeholder="请输入"></div>
+        <div class="form-group full required"><label class="form-label">安装地点</label><input class="form-input" id="location" placeholder="请输入"></div>
+        <div class="form-group"><label class="form-label">设备类别</label><input class="form-input" id="device_category" placeholder="如：曳引与强制驱动电梯"></div>
+        <div class="form-group required"><label class="form-label">设备品种</label><input class="form-input" id="device_type" placeholder="如：曳引驱动乘客电梯"></div>
+        <div class="form-group"><label class="form-label">型号</label><input class="form-input" id="model" placeholder="请输入"></div>
+        <div class="form-group"><label class="form-label">产品编号</label><input class="form-input" id="product_number" placeholder="请输入"></div>
+        <div class="form-group required"><label class="form-label">使用登记证编号</label><input class="form-input" id="registration_number" placeholder="请输入"></div>
+        <div class="form-group"><label class="form-label">制造日期</label><input class="form-input" id="manufacture_date" placeholder="如：2022-06-07"></div>
+        <div class="form-group full"><label class="form-label">制造单位名称</label><input class="form-input" id="manufacturer" placeholder="请输入"></div>
+        <div class="form-group"><label class="form-label">改造单位名称</label><input class="form-input" id="renovation_unit" placeholder="请输入"></div>
+        <div class="form-group"><label class="form-label">改造日期</label><input class="form-input" id="renovation_date" placeholder="如：2023-08-08"></div>
+        <div class="form-group full required"><label class="form-label">维护保养单位名称</label><input class="form-input" id="maintenance_unit" placeholder="请输入"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">设备技术参数</div>
+      <div class="form-grid">
+        <div class="form-group required"><label class="form-label">额定载重量</label><div class="input-with-unit"><input class="form-input" id="rated_load" placeholder="1000"><span class="unit">kg</span></div></div>
+        <div class="form-group required"><label class="form-label">额定速度</label><div class="input-with-unit"><input class="form-input" id="rated_speed" placeholder="1.75"><span class="unit">m/s</span></div></div>
+        <div class="form-group required"><label class="form-label">层/站/门数</label><div class="row-inline"><input class="form-input" id="floors_count" placeholder="34"><span class="sep">层</span><input class="form-input" id="stations_count" placeholder="34"><span class="sep">站</span><input class="form-input" id="doors_count" placeholder="34"><span class="sep">门</span></div></div>
+        <div class="form-group"><label class="form-label">控制方式</label><input class="form-input" id="control_method" placeholder="如：并联"></div>
+        <div class="form-group full"><label class="form-label">评估仪器</label><input class="form-input" id="assessment_instrument" placeholder="如：温湿度计、万用表等"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Section 2: Inspection -->
+  <section class="section" id="sec-inspection">
+    <div class="section-title">评估项目</div>
+    <div class="section-sub">逐项核验，标记不合格项并勾选具体异常状态</div>
+
+    <div class="summary-bar" id="summaryBar">
+      <span style="font-weight:600;color:var(--text-secondary);font-size:.82rem">检测统计</span>
+      <span class="cnt" id="totalCnt" style="color:var(--text)">0</span><span style="font-size:.73rem;color:var(--text-muted)">项</span>
+      <span class="cnt pass" id="passCnt">0</span><span style="font-size:.73rem;color:var(--text-muted)">合格</span>
+      <span class="cnt fail" id="failCnt">0</span><span style="font-size:.73rem;color:var(--text-muted)">异常</span>
+      <!-- 两个按钮固定另起一行：.summary-actions 用 flex-basis:100% 强制换行，
+           统计数字在第一行、操作按钮在第二行，竖屏下也不会被挤散。 -->
+      <div class="summary-actions">
+        <button class="btn btn-primary" id="genBtn" disabled onclick="generateReport()">生成 AI 报告</button>
+        <button class="btn btn-outline btn-sm" onclick="resetItems()"
+                title="清除所有合格/不合格标记，回到初始状态（不影响已填写的基本信息）">恢复默认</button>
+        <span id="loaderSp" style="display:none"><span class="loader"></span></span>
+      </div>
+    </div>
+
+    <div id="systemsWrap"><div class="empty">正在从知识图谱加载...</div></div>
+  </section>
+
+  <!-- Section 3: Report -->
+  <section class="section" id="sec-report">
+    <div class="section-title">评估报告</div>
+    <div class="report-tools">
+      <div class="section-sub" id="reportMeta" style="display:none;margin:0"></div>
+      <div class="report-tools-btns">
+        <button class="btn btn-outline btn-sm" id="exportPdfBtn" onclick="exportReport('pdf')">导出 PDF</button>
+        <button class="btn btn-outline btn-sm" id="exportWordBtn" onclick="exportReport('docx')">导出 Word</button>
+      </div>
+    </div>
+    <div id="reportArea"></div>
+  </section>
+</main>
+
+<!-- ── 用户管理（仅管理员）────────── -->
+<div class="modal-mask" id="userModal">
+  <div class="modal-box">
+    <div class="modal-hd">
+      <h3>用户管理</h3>
+      <button class="modal-x" onclick="closeUserAdmin()" title="关闭">✕</button>
+    </div>
+    <div class="modal-bd">
+      <div id="userListWrap"><div class="empty">加载中...</div></div>
+      <div style="margin-top:22px;padding-top:18px;border-top:1px solid var(--border)">
+        <div style="font-size:.8rem;font-weight:700;color:var(--accent);margin-bottom:12px">新增用户</div>
+        <div class="form-grid cols2">
+          <div class="form-group"><label class="form-label">用户名</label><input class="form-input" id="nu_username" placeholder="登录用户名"></div>
+          <div class="form-group"><label class="form-label">姓名</label><input class="form-input" id="nu_display" placeholder="显示姓名"></div>
+          <div class="form-group"><label class="form-label">初始口令</label><input class="form-input" id="nu_password" type="password" placeholder="至少 4 位"></div>
+          <div class="form-group"><label class="form-label">角色</label>
+            <select class="form-input" id="nu_role">
+              <option value="inspector">检验员</option>
+              <option value="admin">管理员</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="mini-btn" onclick="closeUserAdmin()">关闭</button>
+      <button class="btn btn-primary btn-sm" onclick="createUser()">新增用户</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── 修改口令 ─────────────────── -->
+<div class="modal-mask" id="pwdModal">
+  <div class="modal-box narrow">
+    <div class="modal-hd">
+      <h3>修改口令</h3>
+      <button class="modal-x" onclick="closePwdModal()" title="关闭">✕</button>
+    </div>
+    <div class="modal-bd">
+      <div class="form-group" style="margin-bottom:14px">
+        <label class="form-label">原口令</label>
+        <input class="form-input" id="cp_old" type="password" autocomplete="current-password">
+      </div>
+      <div class="form-group">
+        <label class="form-label">新口令</label>
+        <input class="form-input" id="cp_new" type="password" autocomplete="new-password" placeholder="至少 4 位">
+      </div>
+      <div style="font-size:.66rem;color:var(--text-muted);margin-top:10px">修改成功后需要重新登录。</div>
+    </div>
+    <div class="modal-ft">
+      <button class="mini-btn" onclick="closePwdModal()">取消</button>
+      <button class="btn btn-primary btn-sm" onclick="changeMyPassword()">确定修改</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- 中/英输入法切换。
+     板端 fcitx5 拼音本来就有，但默认是英文态，而 GNOME 软键盘按不出
+     Ctrl+Space 触发键，所以给一个可见的切换按钮。
+     ★ onmousedown 里 preventDefault 是必须的 ★
+       否则点按钮会让当前输入框失焦，fcitx5 随即失去输入上下文，
+       切换请求会落空（实测）。 -->
+<button class="ime-toggle" id="imeToggle"
+        onmousedown="event.preventDefault()" onclick="toggleIME()"
+        title="切换中/英文输入">英</button>
+
+<!-- 自绘对话框：替代 confirm/alert/prompt，按钮为中文 -->
+<div class="modal-mask" id="uiDlg">
+  <div class="modal-box narrow">
+    <div class="modal-hd"><h3 id="uiDlgTitle">提示</h3></div>
+    <div class="modal-bd">
+      <div class="ui-dlg-msg" id="uiDlgMsg"></div>
+      <input class="form-input" id="uiDlgInput" style="display:none;margin-top:12px" autocomplete="off">
+    </div>
+    <div class="ui-dlg-ft">
+      <button class="btn btn-outline btn-sm" id="uiDlgCancel">取消</button>
+      <button class="btn btn-primary btn-sm" id="uiDlgOk">确定</button>
+    </div>
+  </div>
+</div>
+
+<script src="marked.min.js"></script>
+<script>
+const API = window.location.origin;
+const TOKEN_KEY = 'elevator_token';
+
+let systems = [];
+let failedItems = {}; // { itemId: { item, selected: Set } }
+let currentUser = null;      // 当前登录用户
+let historyCache = [];       // 报告历史（来自数据库）
+let suppressDraft = false;   // 回填数据时抑制自动保存
+
+// ── Helpers ─────────────────────
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2000)}
+function esc(s){const d=document.createElement('div');d.textContent=(s||'');return d.innerHTML}
+function nowStr(){const d=new Date();return d.getFullYear()+'-'+(d.getMonth()+1).toString().padStart(2,'0')+'-'+d.getDate().toString().padStart(2,'0')+' '+d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0')}
+
+// ── 表单字段 ────────────────────
+const FORM_IDS = ['delegation_unit','using_unit','location','device_category','device_type','model','product_number','registration_number','manufacture_date','manufacturer','renovation_unit','renovation_date','maintenance_unit','rated_load','rated_speed','floors_count','stations_count','doors_count','control_method','assessment_instrument'];
+let assessmentBasis='';
+
+function collectFormData(){
+  const data={};
+  FORM_IDS.forEach(id=>{const el=document.getElementById(id);if(el)data[id]=el.value});
+  return data;
+}
+function applyFormData(data){
+  if(!data)return;
+  Object.keys(data).forEach(k=>{const el=document.getElementById(k);if(el)el.value=data[k]||''});
+}
+
+// ── 填写记录：保存在数据库（/api/draft），输入时防抖回写 ──
+let draftTimer=null,draftSaving=false,draftDirty=false;
+function saveDraft(){
+  if(!currentUser||suppressDraft)return;
+  draftDirty=true;
+  if(draftTimer)clearTimeout(draftTimer);
+  draftTimer=setTimeout(flushDraft,700);
+}
+function saveFormData(){saveDraft()}
+function saveFailedItems(){saveDraft()}
+async function flushDraft(){
+  if(!currentUser||!draftDirty)return;
+  if(draftSaving){draftTimer=setTimeout(flushDraft,400);return}
+  draftSaving=true;draftDirty=false;
+  try{
+    // ★ 只保存基本信息，**不保存检测项勾选** ★
+    // 合格/不合格判定必须针对"当前这台电梯"逐项核验。以前把 items_data 也
+    // 存进草稿并跨重启恢复，结果上一次电梯的勾选会被带到下一次评估上，
+    // 极容易被误当成本次的结果（实际也造成过一次误判）。
+    // 现在从源头就不保存，重启后检测项必然回到默认。
+    await api('/api/draft',{method:'PUT',body:JSON.stringify({form_data:collectFormData()})});
+  }catch(e){draftDirty=true}
+  finally{draftSaving=false}
+}
+
+// ── 恢复默认：清除全部合格/不合格标记 ──────────────
+// 与上面的策略配套：既可以在页面加载时自动清空（见 loadDraftFromServer），
+// 也允许用户随时手动清空重来。只清检测项，已填写的基本信息保留。
+async function resetItems(){
+  const n=Object.keys(failedItems).length;
+  if(n>0){
+    const ok=await uiConfirm('确定把所有检测项恢复为默认？\n\n将清除 '+n+' 项异常标记，已填写的基本信息不受影响。','恢复默认');
+    if(!ok)return;
+  }
+  applyItemsData(null);   // 传 null 即清空全部选择，并重绘卡片与统计
+  saveDraft();
+  toast(n>0?('已恢复默认（清除 '+n+' 项异常标记）'):'检测项已是默认状态');
+}
+function collectItemsData(){
+  const obj={};
+  for(const id in failedItems)obj[id]={selected:Array.from(failedItems[id].selected)};
+  return obj;
+}
+function applyItemsData(obj){
+  // 先清空当前所有选择
+  failedItems={};
+  document.querySelectorAll('.item-card').forEach(card=>{
+    card.classList.remove('failed');
+    const pb=card.querySelector('.pass-btn'),fb=card.querySelector('.fail-btn');
+    if(pb)pb.classList.add('active');
+    if(fb)fb.classList.remove('active');
+  });
+  document.querySelectorAll('.state-panel').forEach(p=>p.classList.remove('show'));
+  document.querySelectorAll('.state-chip').forEach(c=>{c.classList.remove('on');const k=c.querySelector('.chk');if(k)k.textContent=''});
+  // ★ 注意：这里不能在 obj 为空时直接 return ★
+  //   「恢复默认」正是用 applyItemsData(null) 实现的；若在此提前返回，
+  //   卡片会被清空、但下面的 updateSummary() 永远走不到 ——
+  //   表现就是"恢复默认后检测统计数字不变"（实测踩过）。
+  if(!obj){updateSummary();return;}
+  Object.keys(obj).forEach(id=>{
+    const card=document.getElementById('card-'+id);
+    if(!card||!card._itemData)return;
+    onFail(id);
+    const sel=new Set((obj[id]&&obj[id].selected)||[]);
+    failedItems[id]={item:card._itemData,selected:sel};
+    const panel=document.getElementById('panel-'+id);
+    if(panel){panel.classList.add('show');panel.querySelectorAll('.state-chip').forEach(c=>{
+      const sid=c.getAttribute('data-sid');
+      if(sel.has(sid)){c.classList.add('on');const chk=c.querySelector('.chk');if(chk)chk.textContent='✓'}
+    })}
+  });
+  updateSummary();
+}
+
+// ── 报告历史：保存在数据库（/api/history），按用户隔离 ──
+function loadHistory(){return historyCache}
+async function refreshHistory(){
+  try{historyCache=(await api('/api/history')).history||[]}
+  catch(e){historyCache=[]}
+  renderHistorySidebar();
+  refreshRestoreSelect();
+}
+async function saveHistory(entry){
+  try{
+    const d=await api('/api/history',{method:'POST',body:JSON.stringify(entry)});
+    await refreshHistory();
+    return d.id;
+  }catch(e){toast('历史保存失败: '+e.message);return null}
+}
+async function confirmDelete(idx){
+  const entry=historyCache[idx];if(!entry)return;
+  if(await uiConfirm('确定删除历史报告：'+esc(entry.reg||'未知')+' ('+esc(entry.time_label||'')+')？','删除确认'))deleteHistory(idx);
+}
+async function deleteHistory(idx){
+  const entry=historyCache[idx];if(!entry)return;
+  try{await api('/api/history/'+entry.id,{method:'DELETE'});await refreshHistory()}
+  catch(e){toast('删除失败: '+e.message)}
+}
+
+// ── Auto-save on input ──────────
+document.addEventListener('input',function(e){
+  if(e.target.closest('#sec-info')){saveFormData();}
+  if(e.target.closest('#sec-inspection')){saveFailedItems();}
+});
+
+// ── Restore from history ──────────
+function refreshRestoreSelect(){
+  const sel=document.getElementById('restoreSelect');
+  sel.style.display=historyCache.length?'inline-block':'none';
+  sel.innerHTML='<option value="">-- 从历史记录恢复 --</option>';
+  historyCache.forEach((entry,i)=>{
+    const opt=document.createElement('option');opt.value=i;
+    opt.textContent=(entry.reg||'未知')+' · '+esc(entry.time_label||'').substring(0,16);
+    sel.appendChild(opt);
+  });
+  sel.value='';
+}
+function restoreFromSelect(val){
+  if(val==='')return;
+  restoreHistory(parseInt(val));
+}
+async function restoreHistory(idx){
+  const entry=historyCache[idx];if(!entry)return;
+  try{
+    const d=await api('/api/history/'+entry.id);
+    const full=d.entry||{};
+    suppressDraft=true;
+    // ★ 只恢复「基本信息及设备参数」★
+    // 不恢复 items_data —— 历史记录里的合格/不合格判定是当时那台电梯的检测
+    // 结果，套到当前这次评估上会造成误判，必须由检验员重新逐项确认。
+    applyFormData(full.form_data);
+    suppressDraft=false;
+    saveDraft();
+    toast('已恢复: '+esc(full.reg||'')+' ('+esc(full.time_label||'')+')');
+    document.getElementById('restoreSelect').value='';
+    document.getElementById('sec-info').scrollIntoView({behavior:'smooth'});
+  }catch(e){suppressDraft=false;toast('恢复失败: '+e.message)}
+}
+
+// ── Validation ───────────────────
+const REQUIRED_FIELDS = ['delegation_unit','using_unit','location','device_type','registration_number','maintenance_unit','rated_load','rated_speed','floors_count','stations_count','doors_count'];
+function validateForm(){
+  let ok=true;
+  REQUIRED_FIELDS.forEach(id=>{
+    const el=document.getElementById(id);
+    if(!el)return;
+    const val=el.value.trim();
+    if(!val){el.classList.add('error');ok=false}
+    else{el.classList.remove('error')}
+  });
+  return ok;
+}
+// Clear error on input
+document.addEventListener('input',function(e){
+  if(e.target.classList.contains('error'))e.target.classList.remove('error');
+});
+
+// ── Load items ──────────────────
+// 开机时 Neo4j 由 systemd 拉起后还需 20~30 秒才真正开放 Bolt 端口，
+// 期间图谱接口会失败。这里自动重试，而不是把错误直接甩给用户。
+const ITEM_RETRY_MAX = 10;
+const ITEM_RETRY_DELAY = 4000;
+
+async function loadItems(attempt){
+  attempt = attempt || 0;
+  const wrap = document.getElementById('systemsWrap');
+  try{
+    const d=await api('/api/report/inspection-items');
+    if(!d.success)throw new Error(d.message||'API error');
+    systems=d.systems;
+    renderSystems();
+    loadAssessmentBasis();
+    return true;
+  }catch(e){
+    if(attempt < ITEM_RETRY_MAX){
+      const secs=Math.round((ITEM_RETRY_MAX-attempt)*ITEM_RETRY_DELAY/1000);
+      wrap.innerHTML='<div class="empty"><span class="loader"></span> 正在连接知识图谱…'
+        +'<br><small>第 '+(attempt+1)+' 次重试，最多再等约 '+secs+' 秒（开机后 Neo4j 需要一点时间就绪）</small></div>';
+      await new Promise(function(r){setTimeout(r,ITEM_RETRY_DELAY)});
+      return loadItems(attempt+1);
+    }
+    wrap.innerHTML='<div class="empty">加载失败: '+esc(e.message)
+      +'<br><small>请确认后端已启动且 Neo4j 已连接</small>'
+      +'<br><br><button class="btn btn-outline btn-sm" onclick="loadItems(0)">重试</button></div>';
+    return false;
+  }
+}
+
+async function loadAssessmentBasis(){
+  try{
+    const d=await api('/api/report/assessment-basis');
+    if(d.success&&d.basis)assessmentBasis=d.basis;
+  }catch(e){}
+}
+
+// ── Render ───────────────────────
+function renderSystems(){
+  const wrap=document.getElementById('systemsWrap');
+  if(!systems.length){wrap.innerHTML='<div class="empty">暂无数据</div>';return}
+  wrap.innerHTML='';
+  systems.forEach(sys=>{
+    const div=document.createElement('div');div.style.marginBottom='12px';
+    const hdr=document.createElement('div');
+    hdr.className='sys-header open';
+    hdr.innerHTML=sys.system_name+' <span class="sys-cnt">'+sys.items.length+' 项</span><span class="arrow">&#9660;</span>';
+    const bodyEl=document.createElement('div');bodyEl.className='sys-body show';bodyEl.style.padding='0 4px';
+    hdr.onclick=()=>{hdr.classList.toggle('open');bodyEl.classList.toggle('show')};
+    sys.items.forEach(item=>{
+      const card=document.createElement('div');card.className='item-card';card.id='card-'+item.id;card._itemData=item;
+      const states=item.states||[];
+      let h='<div class="item-main"><div class="item-info"><div class="item-name">'+esc(item.name)+'</div>'+
+        (item.description?'<div class="item-desc">'+esc(item.description)+'</div>':'')+
+        '<div class="item-states">关联状态: '+esc(states.map(s=>s.state_name).join(', '))+'</div></div>'+
+        '<div class="toggle-group"><button class="toggle-btn pass-btn active" onclick="onPass(\''+item.id+'\',this)">合格</button>'+
+        '<button class="toggle-btn fail-btn" onclick="onFail(\''+item.id+'\',this)">不合格</button></div></div>';
+      if(states.length){
+        h+='<div class="state-panel" id="panel-'+item.id+'"><div class="hint">勾选实际检出的异常状态：</div><div class="state-list">';
+        states.forEach(st=>{h+='<label class="state-chip" data-sid="'+st.state_id+'" onclick="onStateChip(\''+item.id+'\',\''+st.state_id+'\',this)"><span class="chk"></span>'+esc(st.state_name)+'</label>'});
+        h+='</div></div>';
+      }
+      card.innerHTML=h;bodyEl.appendChild(card);
+    });
+    div.appendChild(hdr);div.appendChild(bodyEl);wrap.appendChild(div);
+  });
+  updateSummary();
+}
+
+// ── Pass / Fail ──────────────────
+function onPass(itemId){
+  const card=document.getElementById('card-'+itemId);if(!card)return;
+  card.classList.remove('failed');
+  card.querySelector('.pass-btn').classList.add('active');
+  card.querySelector('.fail-btn').classList.remove('active');
+  const panel=document.getElementById('panel-'+itemId);
+  if(panel){panel.classList.remove('show');panel.querySelectorAll('.state-chip').forEach(c=>{c.classList.remove('on');const chk=c.querySelector('.chk');if(chk)chk.textContent=''})}
+  delete failedItems[itemId];
+  updateSummary();saveFailedItems();
+}
+function onFail(itemId){
+  const card=document.getElementById('card-'+itemId);if(!card)return;
+  card.classList.add('failed');
+  card.querySelector('.pass-btn').classList.remove('active');
+  card.querySelector('.fail-btn').classList.add('active');
+  const panel=document.getElementById('panel-'+itemId);if(panel)panel.classList.add('show');
+  if(!failedItems[itemId])failedItems[itemId]={item:card._itemData,selected:new Set()};
+  updateSummary();saveFailedItems();
+}
+function onStateChip(itemId,stateId,chip){
+  chip.classList.toggle('on');const on=chip.classList.contains('on');
+  const chk=chip.querySelector('.chk');if(chk)chk.textContent=on?'✓':'';
+  if(!failedItems[itemId])onFail(itemId);
+  if(on)failedItems[itemId].selected.add(stateId);else failedItems[itemId].selected.delete(stateId);
+  updateSummary();saveFailedItems();
+}
+function updateSummary(){
+  const total=systems.reduce((s,sys)=>s+sys.items.length,0);
+  let failCnt=0;for(const id in failedItems){if(failedItems[id].selected.size>0)failCnt++}
+  document.getElementById('totalCnt').textContent=total;
+  document.getElementById('passCnt').textContent=total-failCnt;
+  document.getElementById('failCnt').textContent=failCnt;
+  const btn=document.getElementById('genBtn');btn.disabled=failCnt===0;
+  btn.textContent=failCnt>0?'生成 AI 报告 ('+failCnt+' 项异常)':'生成 AI 报告';
+}
+
+// ── Generate ─────────────────────
+async function generateReport(){
+  if(!validateForm()){toast('请填写所有必填字段（标 *）');document.getElementById('sec-info').scrollIntoView({behavior:'smooth'});return}
+  saveFormData();
+  // Check for failed items with no states selected
+  const emptyItems=[];
+  for(const id in failedItems){if(failedItems[id].selected.size===0)emptyItems.push(id)}
+  if(emptyItems.length>0){
+    const names=emptyItems.map(id=>{const card=document.getElementById('card-'+id);return card&&card._itemData?card._itemData.name:id}).join('、');
+    toast('以下不合格项未勾选异常状态：'+names);
+    // Scroll to first offending item
+    const firstCard=document.getElementById('card-'+emptyItems[0]);
+    if(firstCard)firstCard.scrollIntoView({behavior:'smooth',block:'center'});
+    return;
+  }
+
+  const itemIds=[],stateIds=[];
+  for(const id in failedItems){const e=failedItems[id];itemIds.push(id);e.selected.forEach(s=>stateIds.push(s))}
+  if(!itemIds.length)return;
+
+  const body={inspection_item_ids:itemIds,abnormal_states:stateIds,elevator_info:{registration_id:document.getElementById('registration_number')?.value||'',location:document.getElementById('location')?.value||'',elevator_type:document.getElementById('device_type')?.value||''}};
+  const genBtn=document.getElementById('genBtn');const loader=document.getElementById('loaderSp');
+  genBtn.disabled=true;loader.style.display='inline-block';
+
+  let newHistId=null;
+  // Phase 1: 先获取图谱数据并展示
+  try{
+    const body1={...body,generate_with_llm:false};
+    const d1=await api('/api/report/generate',{method:'POST',body:JSON.stringify(body1)});
+    if(!d1.fault_chain){toast('图谱查询无结果');genBtn.disabled=false;loader.style.display='none';genBtn.textContent='生成 AI 报告 ('+itemIds.length+' 项异常)';return}
+    renderReport(d1,itemIds.length,stateIds.length);
+    // 保存图谱结果到历史
+    newHistId=await saveHistory({time_label:nowStr(),reg:body.elevator_info.registration_id,location:body.elevator_info.location,items_count:itemIds.length,states_count:stateIds.length,report_text:(d1.report&&d1.report.raw_text)||'',fault_chain:d1.fault_chain,form_data:collectFormData(),items_data:collectItemsData()});
+    const gt=document.getElementById('gradeCell');if(gt)gt.textContent='正在评估中...';
+    document.getElementById('sec-report').scrollIntoView({behavior:'smooth'});
+  }catch(e){toast('图谱查询失败: '+e.message);genBtn.disabled=false;loader.style.display='none';genBtn.textContent='生成 AI 报告 ('+itemIds.length+' 项异常)';return}
+
+  // Phase 2: 流式调用大模型（带超时）
+  const aiDetail=document.getElementById('aiDetail');
+  if(aiDetail)aiDetail.innerHTML='<h3>详细分析报告</h3><div class="raw-text" id="aiPlaceholder" style="color:var(--text-muted)">正在连接模型...</div>';
+  genBtn.textContent='AI 生成中...';
+  const ph=document.getElementById('aiPlaceholder');let fullText='',lastRender=0;
+  try{
+    const ctrl=new AbortController();
+    const timeout=setTimeout(()=>ctrl.abort(),600000);
+    const r2=await fetch(API+'/api/report/generate-stream',{method:'POST',headers:Object.assign({'Content-Type':'application/json'},authHeaders()),body:JSON.stringify(body),signal:ctrl.signal});
+    clearTimeout(timeout);
+    if(!r2.ok){appendAIFail();genBtn.disabled=false;genBtn.textContent='生成 AI 报告 ('+itemIds.length+' 项异常)';loader.style.display='none';return}
+    const reader=r2.body.getReader();const decoder=new TextDecoder();
+    let lastUpdate=Date.now();
+    while(true){
+      const{value,done}=await Promise.race([reader.read(),new Promise((_,r)=>setTimeout(()=>r(new Error('timeout')),120000))]);
+      if(done)break;
+      const text=decoder.decode(value,{stream:true});lastUpdate=Date.now();
+      for(const line of text.split('\n')){
+        if(line.startsWith('data: ')){try{const t=JSON.parse(line.slice(6)).t;if(t==='[DONE]')continue;fullText+=t}catch(e){};
+          // 渲染节流：150ms（约 6~7 帧/秒）。
+          // 调小会让报告出字更跟手，但每次都要把全文 md2html 重解析一遍，
+          // 板端 CPU 弱，别再往下调。
+          const now=Date.now();if(now-lastRender>150&&ph){ph.style.color='';ph.innerHTML=md2html(fullText);lastRender=now}}
+      }
+    }
+    if(!fullText){appendAIFail();genBtn.disabled=false;genBtn.textContent='生成 AI 报告 ('+itemIds.length+' 项异常)';loader.style.display='none';return}
+    const m=fullText.match(/综合安全状况等级[：:]\s*[^\n\r]+/);
+    if(m){const gt=document.getElementById('gradeCell');if(gt)gt.textContent=m[0].replace(/[：:]\s*/,'：').replace(/[.。，,].*/,'').trim()}
+    // AI 正文流式生成完毕，回填到刚才那条历史记录
+    if(newHistId){try{await api('/api/history/'+newHistId,{method:'PATCH',body:JSON.stringify({report_text:fullText})});await refreshHistory()}catch(e){}}
+    if(ph){ph.innerHTML=md2html(fullText);ph.id=''}
+  }catch(e){if(ph&&!fullText)appendAIFail()}
+  finally{genBtn.disabled=false;genBtn.textContent='生成 AI 报告 ('+itemIds.length+' 项异常)';loader.style.display='none'}
+}
+
+// ── Append AI report to existing page ──
+function appendAIReport(data){
+  const rpt=data.report;
+  if(!rpt||!rpt.raw_text)return;
+  // Update 评估结论
+  let gradeText='暂无安全评估等级';
+  const m=rpt.raw_text.match(/综合安全状况等级[：:]\s*[^\n\r]+/);
+  if(m)gradeText=m[0].replace(/[：:]\s*/,'：').replace(/[.。，,].*/,'').trim();
+  const gradeTd=document.getElementById('gradeCell');
+  if(gradeTd)gradeTd.textContent=gradeText;
+  // Replace placeholder with real content
+  const ph=document.getElementById('aiPlaceholder');
+  if(ph){ph.style.color='';ph.innerHTML=md2html(rpt.raw_text);ph.id=''}
+}
+function appendAIFail(){
+  const ph=document.getElementById('aiPlaceholder');
+  if(ph){ph.style.color='var(--text-muted)';ph.textContent='AI模型调用失败，以下为知识图谱查询结果';ph.id=''}
+}
+
+// ── Render report ────────────────
+function renderReport(data,nItems,nStates,formData,showDetail){
+  document.getElementById('reportMeta').style.display='block';
+  document.getElementById('reportMeta').textContent='不合格检测项 '+nItems+' 项 · 异常状态 '+nStates+' 个';
+  const fc=data.fault_chain,rpt=data.report;
+  let h='<div class="report-box"><h2>安全评估报告</h2>';
+
+  // Report table matching Word document format
+  const getVal=id=>{if(formData&&formData[id]!==undefined)return formData[id]||'';const el=document.getElementById(id);return el?el.value:''};
+  const tdL='<td style="font-weight:600;color:var(--text-secondary)">';
+  const tdV='<td>';
+  const tdL2='<td style="font-weight:600;color:var(--text-secondary)">';
+  const tdV2='<td>';
+  const fullRow=(lb,v)=>v?'<tr>'+tdL+esc(lb)+'</td><td colspan="3">'+esc(v)+'</td></tr>':'';
+  const halfRow=(lb1,v1,lb2,v2)=>(v1||v2)?'<tr>'+tdL+esc(lb1)+'</td>'+tdV+esc(v1||'')+'</td>'+tdL2+esc(lb2)+'</td>'+tdV2+esc(v2||'')+'</td></tr>':'';
+
+  h+='<table class="table" style="table-layout:fixed;margin-bottom:16px"><colgroup><col style="width:12%"><col style="width:38%"><col style="width:12%"><col style="width:38%"></colgroup><tbody>';
+  h+=fullRow('委托单位名称',getVal('delegation_unit'));
+  h+=fullRow('使用单位名称',getVal('using_unit'));
+  h+=fullRow('安装地点',getVal('location'));
+  h+=halfRow('设备类别',getVal('device_category'),'设备品种',getVal('device_type'));
+  h+=halfRow('型号',getVal('model'),'产品编号',getVal('product_number'));
+  h+=halfRow('使用登记证编号',getVal('registration_number'),'制造日期',getVal('manufacture_date'));
+  h+=fullRow('制造单位名称',getVal('manufacturer'));
+  h+=halfRow('改造单位名称',getVal('renovation_unit'),'改造日期',getVal('renovation_date'));
+  h+=fullRow('维护保养单位名称',getVal('maintenance_unit'));
+  h+=halfRow('额定载重量',getVal('rated_load')+(getVal('rated_load')?' kg':''),'额定速度',getVal('rated_speed')+(getVal('rated_speed')?' m/s':''));
+  const cengVal=(()=>{const f=getVal('floors_count'),s=getVal('stations_count'),d=getVal('doors_count');return(f||s||d)?(f||'-')+'层 '+(s||'-')+'站 '+(d||'-')+'门':''})();
+  h+=halfRow('层/站/门数',cengVal,'控制方式',getVal('control_method'));
+  h+=fullRow('评估仪器',getVal('assessment_instrument'));
+  h+='<tr>'+tdL+'评估依据</td><td colspan="3" style="white-space:pre-wrap">'+esc(assessmentBasis||'自动从知识图谱获取中...')+'</td></tr>';
+
+  // 评估概况
+  if(fc&&fc.all_risks&&fc.all_risks.length){
+    const highRisks=fc.all_risks.filter(r=>r.extra&&r.extra.risk_level==='高风险').length;
+    const otherRisks=fc.all_risks.length-highRisks;
+    h+='<tr>'+tdL+'评估概况</td><td colspan="3">I类风险 '+highRisks+' 项，II类风险 '+otherRisks+' 项</td></tr>';
+  }
+  // 评估结论 — 综合安全状况等级
+  let gradeText='暂无安全评估等级';
+  if(rpt&&rpt.raw_text){
+    const m=rpt.raw_text.match(/综合安全状况等级[：:]\s*[^\n\r]+/);
+    if(m)gradeText=m[0].replace(/[：:]\s*/,'：').replace(/[.。，,].*/,'').trim();
+  }
+  h+='<tr>'+tdL+'评估结论</td><td id="gradeCell" colspan="3">'+esc(gradeText)+'</td></tr>';
+  // 整机建议
+  if(fc&&fc.all_actions&&fc.all_actions.length){
+    const allAdvice=fc.all_actions.map(a=>a.description||a.name).join('；');
+    h+='<tr>'+tdL+'整机建议</td><td colspan="3">'+esc(allAdvice)+'</td></tr>';
+  }
+  h+='</tbody></table>';
+
+  // 风险清单（独立表格）
+  h+='<h3>风险清单</h3>';
+  if(fc&&fc.all_risks&&fc.all_risks.length){
+    h+='<table class="table"><thead><tr><th>风险名称</th><th>等级</th><th>说明</th></tr></thead><tbody>';
+    fc.all_risks.forEach(r=>{const lv=r.extra?r.extra.risk_level:'';h+='<tr><td>'+esc(r.name)+'</td><td><span class="badge '+(lv==='高风险'?'badge-r':'badge-w')+'">'+(lv||'-')+'</span></td><td>'+esc(r.description||'')+'</td></tr>'});
+    h+='</tbody></table>';
+  }else{
+    h+='<p style="color:var(--text-muted);font-size:0.82rem">暂无风险记录</p>';
+  }
+  // 不合格项明细
+  if(fc&&fc.inspection_results&&fc.inspection_results.length){
+    h+='<h3>不合格项及异常状态</h3>';
+    h+='<table class="table"><thead><tr><th>检测项目</th><th>部件</th><th>异常状态</th><th>严重度</th></tr></thead><tbody>';
+    fc.inspection_results.forEach(ir=>{
+      ir.detected_states.forEach(ds=>{
+        h+='<tr><td>'+esc(ir.inspection_item.name)+'</td><td>'+esc(ds.component.name)+'</td><td>'+esc(ds.state.name)+'</td><td><span class="badge '+(ds.severity>=4?'badge-r':'badge-w')+'">'+(ds.state_level||ds.severity)+'</span></td></tr>';
+      });
+    });
+    h+='</tbody></table>';
+  }
+  // 详细分析报告（仅历史记录或 showDetail 时展示；流式生成时用占位）
+  if(showDetail&&rpt&&rpt.raw_text&&rpt.raw_text.length>50&&!rpt.raw_text.startsWith('{')){
+    h+='<h3>详细分析报告</h3><div class="raw-text">'+md2html(rpt.raw_text)+'</div>';
+  }else if(!showDetail){
+    h+='<div id="aiDetail"></div>';
+  }
+  h+='</div>';
+  document.getElementById('reportArea').innerHTML=h;
+}
+
+// ── History UI ───────────────────
+function renderHistorySidebar(){
+  const list=document.getElementById('historyList');
+  if(!historyCache.length){list.innerHTML='<span style="font-size:.65rem;color:rgba(255,255,255,0.3);padding:6px 14px">暂无记录</span>';return}
+  let h='';
+  historyCache.slice(0,15).forEach((entry,i)=>{h+='<div class="h-item"><span onclick="viewHistory('+i+')" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(entry.reg||'未知')+' · '+esc(entry.items_count||0)+'项</span><span class="h-del" onclick="event.stopPropagation();confirmDelete('+i+')">删除</span></div>'});
+  list.innerHTML=h;
+}
+async function viewHistory(idx){
+  const entry=historyCache[idx];if(!entry)return;
+  try{
+    const d=await api('/api/history/'+entry.id);
+    const full=d.entry||{};
+    renderReport({fault_chain:full.fault_chain,report:{raw_text:full.report_text}},full.items_count,full.states_count,full.form_data||null,true);
+    document.getElementById('reportMeta').textContent='历史报告 · '+esc(full.time_label||'')+' · '+esc(full.reg||'');
+    document.getElementById('sec-report').scrollIntoView({behavior:'smooth'});
+    toast('已加载历史报告: '+esc(full.reg||''));
+  }catch(e){toast('加载失败: '+e.message)}
+}
+
+// ── Sidebar nav ──────────────────
+document.getElementById('sidebarNav').addEventListener('click',function(e){const li=e.target.closest('li');if(!li)return;const target=document.getElementById(li.dataset.target);if(target)target.scrollIntoView({behavior:'smooth'})});
+const navItems=document.querySelectorAll('#sidebarNav li');
+window.addEventListener('scroll',function(){const offset=100;let current=navItems[0].dataset.target;navItems.forEach(li=>{const sec=document.getElementById(li.dataset.target);if(sec&&sec.getBoundingClientRect().top<=offset)current=li.dataset.target});navItems.forEach(li=>li.classList.toggle('active',li.dataset.target===current))},{passive:true});
+
+// ── Sidebar toggle ───────────────
+let sidebarOpen=true;
+function toggleSidebar(){
+  sidebarOpen=!sidebarOpen;
+  document.getElementById('sidebar').classList.toggle('collapsed',!sidebarOpen);
+  document.querySelector('.main').classList.toggle('expanded',!sidebarOpen);
+  document.querySelector('.sidebar-toggle').textContent=sidebarOpen?'◀':'▶';
+}
+// 点击右侧内容自动收起
+document.querySelector('.main').addEventListener('click',function(e){
+  if(sidebarOpen&&e.target.closest('.sidebar-toggle'))return;
+  if(sidebarOpen&&!e.target.closest('.sidebar')){sidebarOpen=false;document.getElementById('sidebar').classList.add('collapsed');document.querySelector('.main').classList.add('expanded');document.querySelector('.sidebar-toggle').textContent='▶';}
+});
+
+// ── Markdown renderer (marked.js) ──
+marked.setOptions({breaks:true,gfm:true});
+function fixChars(s){return s||'';}
+function md2html(md){return marked.parse(md||'');}
+
+// ══ 认证与会话 ═══════════════════
+function getToken(){return localStorage.getItem(TOKEN_KEY)||''}
+function setToken(t){if(t)localStorage.setItem(TOKEN_KEY,t);else localStorage.removeItem(TOKEN_KEY)}
+function authHeaders(){const t=getToken();return t?{'Authorization':'Bearer '+t}:{}}
+
+// 统一的带鉴权请求封装
+async function api(path,opts){
+  opts=opts||{};
+  const headers=Object.assign({},opts.headers||{},authHeaders());
+  if(opts.body!==undefined)headers['Content-Type']='application/json';
+  let r;
+  try{
+    r=await fetch(API+path,Object.assign({},opts,{headers}));
+  }catch(err){
+    // 网络层失败：最常见的原因是直接用 file:// 打开页面，或后端没启动
+    throw new Error('无法连接后端服务，请确认后端已启动，并通过 http://127.0.0.1:8080/ 访问本页面');
+  }
+  let data=null;
+  try{data=await r.json()}catch(e){}
+  // 登录接口自身的 401 交给调用方提示，不触发强制登出
+  if(r.status===401&&path!=='/api/auth/login'){
+    forceLogout('登录已过期，请重新登录');
+    throw new Error('未登录或登录已过期');
+  }
+  if(!r.ok)throw new Error((data&&(data.detail||data.message))||('HTTP '+r.status));
+  return data||{};
+}
+
+function showLogin(msg){
+  document.body.classList.remove('authed');
+  document.getElementById('loginView').classList.add('show');
+  const el=document.getElementById('loginErr');
+  if(msg){el.textContent=msg;el.classList.add('show')}else{el.classList.remove('show')}
+  setTimeout(function(){const u=document.getElementById('loginUser');if(u)u.focus()},100);
+}
+function forceLogout(msg){
+  setToken('');currentUser=null;historyCache=[];failedItems={};
+  showLogin(msg||'');
+}
+function hideSplash(){
+  const s=document.getElementById('splash');
+  if(!s)return;
+  s.classList.add('hide');
+  // ★ 淡出结束后必须真正移出渲染树 ★
+  // .hide 只设了 opacity:0 + visibility:hidden，元素仍然留在渲染树里，
+  // 而里面的 .splash-spin 是 animation:spin .8s linear infinite ——
+  // 这个无限动画会**一直跑下去**，逼着 WebKit 每帧重新合成整个页面。
+  // 实测：空载时 WebKit 因此多吃约 18% CPU（对照实验：空白页只有 2%）。
+  // 用 display:none 让动画停止，同时保留节点以便需要时再显示。
+  setTimeout(function(){ s.style.display='none'; }, 600);   // 600ms > 过渡的 450ms
+}
+
+async function doLogin(){
+  const u=document.getElementById('loginUser').value.trim();
+  const p=document.getElementById('loginPass').value;
+  const err=document.getElementById('loginErr');
+  err.classList.remove('show');
+  if(!u||!p){err.textContent='请输入用户名和口令';err.classList.add('show');return}
+  const btn=document.getElementById('loginBtn');
+  btn.disabled=true;btn.textContent='登录中...';
+  try{
+    const d=await api('/api/auth/login',{method:'POST',body:JSON.stringify({username:u,password:p})});
+    setToken(d.token);currentUser=d.user;
+    document.getElementById('loginPass').value='';
+    await enterApp();
+  }catch(e){
+    err.textContent=e.message||'登录失败';err.classList.add('show');
+  }finally{btn.disabled=false;btn.textContent='登 录'}
+}
+async function doLogout(){
+  if(!await uiConfirm('确定注销当前账号？','注销确认'))return;
+  try{await flushDraft()}catch(e){}
+  try{await api('/api/auth/logout',{method:'POST'})}catch(e){}
+  forceLogout('');
+}
+
+// ── 退出自助终端（返回系统桌面）──────────────
+// 仅在板端 kiosk 模式下显示该按钮；由后端关闭 kiosk 浏览器窗口，
+// 桌面随即显现，桌面上的「电梯安全评估系统」快捷方式可再次启动。
+async function doExitKiosk(){
+  if(!await uiConfirm('确定退出系统并返回桌面？\n\n返回桌面后，可双击桌面上的「电梯安全评估系统」图标重新启动。','退出系统'))return;
+  try{
+    await flushDraft();
+  }catch(e){}
+  try{
+    await api('/api/kiosk/exit',{method:'POST'});
+  }catch(e){
+    await uiAlert('退出失败: '+e.message,'退出失败');
+    return;
+  }
+  // 界面马上会被关闭，先给出结束提示
+  document.body.innerHTML=
+    '<div style="display:flex;align-items:center;justify-content:center;'
+    +'height:100vh;font-family:system-ui,sans-serif;color:#6b6560;font-size:15px">'
+    +'已退出，正在返回桌面…</div>';
+}
+
+// 查询是否运行在 kiosk 模式下，决定是否显示「退出系统」
+// 侧边栏与登录页各有一个「退出系统」，统一按同一条件显示/隐藏：
+// 必须同时满足「本机访问」+「kiosk 正在运行」+「功能已启用」。
+async function refreshKioskButton(){
+  const btns=[document.getElementById('exitKioskBtn'),
+              document.getElementById('exitKioskBtnLogin')];
+  let show=false;
+  try{
+    const d=await api('/api/kiosk/status');
+    show=!!(d.local&&d.kiosk_running&&d.exit_enabled);
+  }catch(e){
+    show=false;
+  }
+  btns.forEach(function(b){ if(b)b.style.display=show?'':'none'; });
+}
+document.addEventListener('keydown',function(e){
+  if(e.key==='Enter'&&!uiIsOpen()&&document.getElementById('loginView').classList.contains('show'))doLogin();
+});
+
+// 登录成功后进入主界面
+async function enterApp(){
+  document.getElementById('loginView').classList.remove('show');
+  document.body.classList.add('authed');
+  const nm=document.getElementById('curUserName'),rl=document.getElementById('curUserRole');
+  if(nm)nm.textContent=currentUser.display_name||currentUser.username;
+  if(rl)rl.textContent=(currentUser.role==='admin'?'管理员':'检验员');
+  const ab=document.getElementById('adminBtn');
+  if(ab)ab.style.display=(currentUser.role==='admin')?'':'none';
+  refreshKioskButton();         // kiosk 模式才显示「退出系统」
+  await loadItems();            // 渲染检测项卡片
+  await loadDraftFromServer();  // 回填填写记录
+  await refreshHistory();       // 加载报告历史
+  hideSplash();
+}
+async function loadDraftFromServer(){
+  try{
+    const d=await api('/api/draft');
+    suppressDraft=true;
+    if(d.draft){
+      applyFormData(d.draft.form_data);   // 基本信息：跨重启保留
+    }
+    // ★ 检测项每次启动一律恢复默认 ★
+    // 即使数据库里还留着老版本存的 items_data，也**故意不应用**，
+    // 避免上一次的合格/不合格判定被误当成本次结果。
+    applyItemsData(null);
+    suppressDraft=false;
+    updateSummary();
+  }catch(e){suppressDraft=false}
+}
+
+// ══ 用户管理（仅管理员）═══════════
+let userCache=[];
+function openUserAdmin(){document.getElementById('userModal').classList.add('show');loadUserList()}
+function closeUserAdmin(){document.getElementById('userModal').classList.remove('show')}
+function openPwdModal(){document.getElementById('pwdModal').classList.add('show')}
+function closePwdModal(){document.getElementById('pwdModal').classList.remove('show')}
+
+async function loadUserList(){
+  const wrap=document.getElementById('userListWrap');
+  wrap.innerHTML='<div class="empty">加载中...</div>';
+  try{
+    const d=await api('/api/auth/users');
+    userCache=d.users||[];
+    let h='<table class="utable"><thead><tr><th>用户名</th><th>姓名</th><th>角色</th><th>状态</th><th>最近登录</th><th></th></tr></thead><tbody>';
+    userCache.forEach(function(u){
+      const isMe=(currentUser&&u.id===currentUser.id);
+      h+='<tr><td><strong>'+esc(u.username)+'</strong>'+(isMe?' <span style="color:var(--text-muted);font-size:.62rem">(我)</span>':'')+'</td>'+
+         '<td>'+esc(u.display_name||'')+'</td>'+
+         '<td><span class="badge '+(u.role==='admin'?'admin':'inspector')+'">'+(u.role==='admin'?'管理员':'检验员')+'</span></td>'+
+         '<td>'+(u.is_active?'<span style="color:var(--success)">正常</span>':'<span class="badge off">已停用</span>')+'</td>'+
+         '<td style="color:var(--text-muted);font-size:.68rem">'+esc(u.last_login_at||'—')+'</td>'+
+         '<td style="text-align:right;white-space:nowrap">'+
+           '<button class="mini-btn" onclick="resetUserPwd('+u.id+')">重置口令</button>'+
+           (isMe?'':' <button class="mini-btn danger" onclick="toggleUser('+u.id+')">'+(u.is_active?'停用':'启用')+'</button>')+
+         '</td></tr>';
+    });
+    h+='</tbody></table>';
+    wrap.innerHTML=h;
+  }catch(e){wrap.innerHTML='<div class="empty">加载失败: '+esc(e.message)+'</div>'}
+}
+async function createUser(){
+  const username=document.getElementById('nu_username').value.trim();
+  const display=document.getElementById('nu_display').value.trim();
+  const password=document.getElementById('nu_password').value;
+  const role=document.getElementById('nu_role').value;
+  if(!username||!password){await uiAlert('请填写用户名和初始口令','信息不完整');return}
+  if(password.length<4){await uiAlert('初始口令至少 4 位','口令太短');return}
+  try{
+    await api('/api/auth/users',{method:'POST',body:JSON.stringify({username:username,password:password,display_name:display,role:role})});
+    document.getElementById('nu_username').value='';
+    document.getElementById('nu_display').value='';
+    document.getElementById('nu_password').value='';
+    loadUserList();toast('用户已创建');
+  }catch(e){await uiAlert('创建失败: '+e.message,'创建失败')}
+}
+async function toggleUser(id){
+  const u=userCache.filter(function(x){return x.id===id})[0];
+  if(!u)return;
+  const act=u.is_active?'停用':'启用';
+  if(!await uiConfirm('确定'+act+'用户 '+u.username+'？'+(u.is_active?'停用后其登录会立即失效。':''),'操作确认'))return;
+  try{await api('/api/auth/users/'+id,{method:'PATCH',body:JSON.stringify({is_active:!u.is_active})});loadUserList()}
+  catch(e){await uiAlert('操作失败: '+e.message,'操作失败')}
+}
+async function resetUserPwd(id){
+  const u=userCache.filter(function(x){return x.id===id})[0];
+  if(!u)return;
+  const p=await uiPrompt('为 '+u.username+' 设置新口令（至少 4 位）：','','重置口令');
+  if(!p)return;
+  if(p.length<4){await uiAlert('口令至少 4 位','口令太短');return}
+  try{
+    await api('/api/auth/users/'+id,{method:'PATCH',body:JSON.stringify({password:p})});
+    await uiAlert('已重置口令，该用户需重新登录','重置成功');
+    loadUserList();
+  }catch(e){await uiAlert('操作失败: '+e.message,'操作失败')}
+}
+async function changeMyPassword(){
+  const o=document.getElementById('cp_old').value;
+  const n=document.getElementById('cp_new').value;
+  if(!o||!n){await uiAlert('请填写原口令和新口令','信息不完整');return}
+  if(n.length<4){await uiAlert('新口令至少 4 位','口令太短');return}
+  try{
+    await api('/api/auth/change-password',{method:'POST',body:JSON.stringify({old_password:o,new_password:n})});
+    closePwdModal();
+    document.getElementById('cp_old').value='';
+    document.getElementById('cp_new').value='';
+    await uiAlert('口令已修改，请重新登录','修改成功');
+    forceLogout('');
+  }catch(e){await uiAlert('修改失败: '+e.message,'修改失败')}
+}
+
+// ══ 输入法中/英切换 ═══════════════════════════════════
+// 板端 fcitx5 + libpinyin 已经装好且与软键盘连通（实测输入 nihao 能弹出
+// 「1.你好 2.你 …」候选窗），只是默认停在英文态；而 GNOME 软键盘上没有
+// Ctrl+Space 触发键，所以在界面上提供一个按钮。
+function applyImeLabel(label){
+  const b = document.getElementById('imeToggle');
+  if (!b) return;
+  b.textContent = label;
+  if (label === '中') b.classList.add('on'); else b.classList.remove('on');
+}
+async function refreshIME(){
+  const b = document.getElementById('imeToggle');
+  if (!b) return;
+  try{
+    const d = await api('/api/ime/status');
+    if (d.available === false){ b.style.display = 'none'; return; }
+    applyImeLabel(d.label || '英');
+  }catch(e){ /* 输入法不可用不应影响主流程 */ }
+}
+async function toggleIME(){
+  const b = document.getElementById('imeToggle');
+  if (b) b.disabled = true;
+  try{
+    const d = await api('/api/ime/toggle', { method:'POST' });
+    applyImeLabel(d.label || '英');
+    toast(d.label === '中' ? '已切换到中文输入（拼音）' : '已切换到英文输入');
+  }catch(e){
+    toast('切换输入法失败: ' + (e.message || e));
+  }finally{
+    if (b) b.disabled = false;
+  }
+}
+
+// ══ 报告导出（PDF / Word）══════════════════════════════
+// 内容直接取页面已渲染的 #reportArea HTML —— 这样"导出的就是屏幕上看到的"，
+// 后端也不必再实现一遍 markdown 渲染。后端把它套进打印样式的模板，
+// 再交给板端已装的 LibreOffice 转成 docx / pdf。
+// 转换是阻塞的（数秒），所以按钮期间置灰并显示"导出中…"。
+const EXPORT_FMT_LABEL = { pdf: 'PDF', docx: 'Word' };
+
+async function exportReport(fmt){
+  const area = document.getElementById('reportArea');
+  if (!area || !area.innerHTML.trim()) {
+    await uiAlert('还没有可导出的报告。\n\n请先在「评估项目」中勾选异常项并生成 AI 报告。', '无法导出');
+    return;
+  }
+  const btns = [document.getElementById('exportPdfBtn'), document.getElementById('exportWordBtn')];
+  const old = btns.map(function(b){ return b ? b.textContent : ''; });
+  btns.forEach(function(b){ if (b) b.disabled = true; });
+  const cur = btns[fmt === 'pdf' ? 0 : 1];
+  if (cur) cur.textContent = '导出中…';
+
+  const n = new Date(), p = function(x){ return String(x).padStart(2,'0'); };
+  const stamp = n.getFullYear() + p(n.getMonth()+1) + p(n.getDate()) + '_'
+              + p(n.getHours()) + p(n.getMinutes()) + p(n.getSeconds());
+
+  try{
+    const d = await api('/api/report/export', { method:'POST', body: JSON.stringify({
+      fmt: fmt,
+      title: '电梯安全评估报告',
+      subtitle: 'Elevator Safety Assessment Report',
+      filename: '电梯安全评估报告_' + stamp,
+      body_html: area.innerHTML,
+      footer: '依据 GB/T 42615-2023《在用电梯安全评估规范》'
+    })});
+    await uiAlert('已导出 ' + (EXPORT_FMT_LABEL[fmt] || fmt) + '：\n\n'
+      + d.path + '\n\n（' + Math.round((d.size || 0) / 1024) + ' KB）\n'
+      + '退出系统回到桌面后，可在该目录取走文件。', '导出成功');
+  }catch(e){
+    await uiAlert('导出失败：\n\n' + (e.message || e), '导出失败');
+  }finally{
+    btns.forEach(function(b, i){ if (b){ b.disabled = false; b.textContent = old[i]; } });
+  }
+}
+
+// ══ 页面内对话框（替代原生 confirm/alert/prompt）══════════
+// 原生弹窗会显示 "http://127.0.0.1:8081 显示" 与英文 OK/Cancel，
+// 而且 alert 会阻塞渲染线程。这里统一换成自绘的、按钮为中文的模态框。
+let _uiDlgResolve = null;
+
+function _uiDlgOpen(opts){
+  return new Promise(function(resolve){
+    document.getElementById('uiDlgTitle').textContent = opts.title || '提示';
+    const msg = document.getElementById('uiDlgMsg');
+    msg.textContent = opts.message || '';
+    msg.style.display = opts.message ? '' : 'none';
+
+    const inp = document.getElementById('uiDlgInput');
+    if (opts.input) { inp.style.display=''; inp.value = opts.value || ''; }
+    else            { inp.style.display='none'; inp.value=''; }
+
+    const cancel = document.getElementById('uiDlgCancel');
+    cancel.style.display = opts.cancel ? '' : 'none';
+    cancel.textContent = opts.cancelText || '取消';
+    document.getElementById('uiDlgOk').textContent = opts.okText || '确定';
+
+    _uiDlgResolve = resolve;
+    document.getElementById('uiDlg').classList.add('show');
+    // 让键盘立刻弹到该输入的控件上（一体机是触摸屏，没有物理键盘）
+    setTimeout(function(){
+      const t = opts.input ? inp : document.getElementById('uiDlgOk');
+      try { t.focus(); if (opts.input) inp.select(); } catch(e){}
+    }, 60);
+  });
+}
+
+function _uiDlgClose(v){
+  document.getElementById('uiDlg').classList.remove('show');
+  const r = _uiDlgResolve; _uiDlgResolve = null;
+  if (r) r(v);
+}
+
+function uiIsOpen(){ return document.getElementById('uiDlg').classList.contains('show'); }
+
+// 单按钮提示
+function uiAlert(message, title){ return _uiDlgOpen({message:message, title:title||'提示', cancel:false}); }
+// 双按钮确认：返回 true / null
+function uiConfirm(message, title){ return _uiDlgOpen({message:message, title:title||'请确认', cancel:true}); }
+// 文本输入：返回字符串 / null
+function uiPrompt(message, value, title){
+  return _uiDlgOpen({message:message, value:value, title:title||'请输入', cancel:true, input:true});
+}
+
+// 事件绑定：确定 / 取消 / 点遮罩取消 / 回车确认 / Esc 取消
+document.getElementById('uiDlgOk').addEventListener('click', function(){
+  const inp = document.getElementById('uiDlgInput');
+  _uiDlgClose(inp.style.display !== 'none' ? inp.value.trim() : true);
+});
+document.getElementById('uiDlgCancel').addEventListener('click', function(){ _uiDlgClose(null); });
+document.getElementById('uiDlg').addEventListener('click', function(e){
+  if (e.target === this) _uiDlgClose(null);       // 点空白处 = 取消
+});
+// 必须用捕获并 stopPropagation：页面另有一个「回车=登录」的全局监听，
+// 不拦住的话在弹窗里按回车会顺带触发登录。
+document.getElementById('uiDlg').addEventListener('keydown', function(e){
+  if (e.key === 'Enter'){
+    e.preventDefault(); e.stopPropagation();
+    document.getElementById('uiDlgOk').click();
+  } else if (e.key === 'Escape'){
+    e.preventDefault(); e.stopPropagation();
+    _uiDlgClose(null);
+  }
+}, true);
+
+// ══ Init ═════════════════════════
+async function boot(){
+  const started=Date.now();
+  let logged=false,msg='';
+  if(getToken()){
+    try{const d=await api('/api/auth/me');currentUser=d.user;logged=true}
+    catch(e){setToken('');msg=(e&&e.message)||''}
+  }
+  if(logged){await enterApp()}
+  else if(!document.getElementById('loginView').classList.contains('show')){
+    // 若 forceLogout 已经提示过(登录过期)，就不要再覆盖它的文案
+    showLogin(msg.indexOf('无法连接')===0?msg:'');
+  }
+  // 登录页也要能退出系统：未登录时同样查询一次 kiosk 状态
+  if(!logged)refreshKioskButton();
+  refreshIME();   // 中/英输入法按钮的初始状态
+  // 启动页至少展示 700ms，避免闪烁
+  const wait=Math.max(0,700-(Date.now()-started));
+  setTimeout(hideSplash,wait);
+}
+boot();
+</script>
+</body>
+</html>

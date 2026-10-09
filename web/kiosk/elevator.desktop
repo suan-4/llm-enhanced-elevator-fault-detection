@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=电梯安全评估系统
+Comment=启动电梯安全评估系统（全屏运行）
+Exec=/home/user/elevator-launch.sh
+Icon=/home/user/.local/share/icons/elevator.png
+Terminal=false
+Categories=Utility;
+StartupNotify=false

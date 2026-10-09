@@ -1,0 +1,22 @@
+evidence_id,evidence_name,source_type,source_ref,reliability
+EVI_STD_001,GB/T 7588.1-2020 电梯制造与安装安全规范第1部分,国家标准,https://std.samr.gov.cn/gb/search/gbDetailed?id=B691BB7786EFD126E05397BE0A0AF3B3,1.0
+EVI_STD_002,GB/T 7588.2-2020 电梯制造与安装安全规范第2部分,国家标准,https://std.samr.gov.cn/gb/search/gbDetailed?id=B691BB7786EED126E05397BE0A0AF3B3,1.0
+EVI_STD_003,GB/T 42615-2023 在用电梯安全评估规范,国家标准,https://std.samr.gov.cn/gb/search/gbDetailed?id=FC816D04FEE762EBE05397BE0A0AD5FA,1.0
+EVI_STD_004,TSG T7001-2023 和 TSG T7008-2023 发布公告,监管规则公告,https://www.samr.gov.cn/tzsbj/dtzb/gzdt/art/2023/art_8e4a90c560244ced8959c8a529577987.html,1.0
+EVI_STD_005,GB 45067-2024 特种设备重大事故隐患判定准则,国家标准,https://std.samr.gov.cn/gb/search/gbDetailedCNF?id=281E70489E02C9D3E06397BE0A0A73E0,0.9
+EVI_STD_006,GB/T 24804-2023 提高在用电梯安全性的规范,国家标准,https://std.samr.gov.cn/gb/search/gbDetailedCNF?id=053404E3EE0E8F91E06397BE0A0A9209,0.9
+EVI_STD_007,GB/T 10060-2023 电梯安装验收规范,国家标准,https://std.samr.gov.cn/gb/search/gbDetailed?id=053404E3EF588F91E06397BE0A0A9209,0.9
+EVI_CASE_001,天津河东东润名邸11·27较大电梯挤压事故调查报告,事故调查报告,https://www.tjhd.gov.cn/zwgk/zfxxgk/zfxxgkqjjg/qscjdglj/fdzdgknr60/qtfdgkxx60/202502/t20250217_6860451.html,0.9
+EVI_CASE_002,门锁接触器故障检验案例,项目组案例,项目组论文与案例材料,0.8
+EVI_CASE_003,缓冲器失效形式案例分析,项目组案例,项目组论文与案例材料,0.8
+EVI_CASE_004,限速器安全钳联动异常公开案例,公开案例,公开报道待核验,0.6
+EVI_CASE_005,安全回路接触不良异常停梯公开案例,公开案例,公开报道待核验,0.6
+EVI_CASE_006,编码器异常导致平层误差公开案例,公开案例,公开报道待核验,0.6
+EVI_CASE_007,曳引钢丝绳磨损断丝检验案例,检验案例,公开检验案例与专家经验汇总,0.7
+EVI_CASE_008,门滑块磨损导致层门晃动案例,检验案例,公开检验案例与专家经验汇总,0.7
+EVI_EXP_001,制动系统专家经验,专家经验,课题组专家知识整理,0.9
+EVI_EXP_002,门系统专家经验,专家经验,课题组专家知识整理,0.9
+EVI_EXP_003,安全保护系统专家经验,专家经验,课题组专家知识整理,0.9
+EVI_EXP_004,电气控制系统专家经验,专家经验,课题组专家知识整理,0.9
+EVI_EXP_005,曳引系统专家经验,专家经验,课题组专家知识整理,0.9
+EVI_EXP_006,缓冲器与底坑专家经验,专家经验,课题组专家知识整理,0.9

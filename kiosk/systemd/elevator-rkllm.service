@@ -1,0 +1,14 @@
+[Unit]
+Description=RKLLM Flask Server
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/home/ubuntu/elevator/rkllm
+ExecStart=/usr/bin/python3 flask_server.py --rkllm_model_path /home/ubuntu/elevator/rkllm/Qwen3-4B-Instruct-2507_W8A8_RK3588.rkllm --target_platform rk3588
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

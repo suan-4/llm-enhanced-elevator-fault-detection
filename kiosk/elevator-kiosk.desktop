@@ -1,0 +1,16 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=电梯安全评估系统
+Comment=开机自动全屏启动电梯安全评估系统
+Exec=/home/user/elevator-launch.sh
+Icon=/home/user/.local/share/icons/elevator.png
+Terminal=false
+Categories=Utility;
+StartupNotify=false
+X-GNOME-Autostart-enabled=true
+# 原来是 6 —— 那 6 秒里 GNOME 桌面（壁纸/图标/Dock）是完全可见的，
+# 开机时会明显看到"先出现桌面、再被应用盖住"。
+# 应用自身的窗口铺满、几何重试、页面重试都已经做得比较健壮，
+# 不需要再靠延迟去等会话settle，这里直接去掉延迟让应用尽早出现。
+X-GNOME-Autostart-Delay=0

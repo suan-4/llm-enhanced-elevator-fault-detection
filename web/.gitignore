@@ -1,0 +1,46 @@
+# ── 大文件 / 离线安装包（不进仓库，板端离线部署时另行拷贝）──
+model/
+rknn-llm/
+# 官方 RKLLM 发行包（解压后约 620 MB，含 OpenCV Android SDK 等第三方件）
+# 注意：目录名是 rknn-llm-release-v1.3.0，原规则 "rknn-llm/" 匹配不到它，
+# 少这一条会把整个 OpenCV SDK 提进仓库。
+rknn-llm-release-*/
+*.7z
+*.tar.gz
+*.zip
+
+# ── 字体 ──
+# 顶层那份是备份；web/NotoSansSymbols2.ttf 是运行时真正要用的，故意保留
+*.ttf
+!web/NotoSansSymbols2.ttf
+
+# ── Python ──
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# ── 配置 / 密钥 ──
+# .env 里有 Neo4j 口令；模板见 .env.example
+backend/.env
+
+# ── IDE ──
+.idea/
+
+# ── 运行时数据（SQLite 业务库、日志、导出目录）──
+backend/data/
+*.log
+.elevator-app.log*
+导出/
+
+# ── 板端调试产物 ──
+tools/*.png
+tools/*.jpg
+*.pid
+
+# ── 编辑器 / 系统 ──
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
