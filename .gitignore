@@ -91,3 +91,11 @@ docs/superpowers/specs/2026-09-22-patent-claims-design.md
 # ── 他人的已公开专利（prior art，无需入库）──
 **/大模型构建电梯故障知识图谱专利*
 **/知识图谱和神经网络电梯故障诊断专利书*
+
+# ── 专利材料的中间产物（PDF 提取的文本、拆出的图片、分析记录）──
+# 这些是专利撰写过程中的副产物，同样不进公开仓库
+附录/_*
+附录/figs_*/
+**/_page_density.txt
+**/_report_figs.txt
+**/_txt_*
