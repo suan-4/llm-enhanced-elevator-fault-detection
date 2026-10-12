@@ -56,7 +56,7 @@ onMounted(async () => {
   height: 32px;
   padding: 0 12px;
   border-radius: 16px;
-  border: 1px solid #e4ded4;
+  border: 1px solid #c9dbe3;
   background: rgba(255, 255, 255, 0.94);
   color: #1b5e7a;
   font-family: 'Noto Sans SC', 'Source Han Sans CN', 'Noto Sans Symbols2', sans-serif;

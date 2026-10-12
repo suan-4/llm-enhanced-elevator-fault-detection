@@ -166,10 +166,44 @@ const { chromium } = require(PLAYWRIGHT_MODULE);
       };
     });
     const themeOk =
-      theme.bg === "rgb(246, 243, 238)" &&
+      theme.bg === "rgb(244, 248, 250)" &&
       theme.sheetRadius === "10px" &&
       theme.btnRadius === "6px" &&
       theme.font.includes("Noto Sans SC");
+
+    // 暖色检查：全站不得出现暖色（米 / 褐 / 粉底）。
+    // 设计口径是「白色 + 蓝青色」，浅色填充一律用冷中性色。
+    // 注意要扫描所有元素的所有颜色属性，只看选出来的几个容器会漏。
+    const warmHits = await page.evaluate(() => {
+      const isWarm = (s) => {
+        const m = String(s).match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+        if (!m) return false;
+        const [R, G, B] = [+m[1], +m[2], +m[3]];
+        // R ≥ G ≥ B 且 R 与 B 有可感差距 → 暖色；上限排除饱和橙红
+        return R >= G && G >= B && R - B >= 2 && R - Math.min(G, B) <= 70;
+      };
+      const hits = [];
+      const props = [
+        "color",
+        "backgroundColor",
+        "borderTopColor",
+        "borderRightColor",
+        "borderBottomColor",
+        "borderLeftColor",
+      ];
+      document.querySelectorAll("*").forEach((el) => {
+        const cs = getComputedStyle(el);
+        props.forEach((prop) => {
+          if (isWarm(cs[prop])) {
+            hits.push(
+              `${el.tagName.toLowerCase()}.${String(el.className).split(" ")[0]} ${prop}=${cs[prop]}`,
+            );
+          }
+        });
+      });
+      return [...new Set(hits)];
+    });
+    const warmOk = warmHits.length === 0;
 
     await page.click(".actionbar .btn-primary");
     await page.locator(".export-zone").waitFor({ state: "visible", timeout: 12000 });
@@ -194,7 +228,7 @@ const { chromium } = require(PLAYWRIGHT_MODULE);
       : false;
 
     const pass =
-      loginPageOk && themeOk && rows === 66 && overflow <= 0 && alertVisible && alertCount > 0 &&
+      loginPageOk && themeOk && warmOk && rows === 66 && overflow <= 0 && alertVisible && alertCount > 0 &&
       focusedId.startsWith("f-") && counters.includes("未填 0 项") &&
       papers === 4 && overflowReport <= 0 && grade4 && score0 &&
       hasAppendix && hasAppendixA && filled &&
@@ -216,6 +250,9 @@ const { chromium } = require(PLAYWRIGHT_MODULE);
     console.log(`  条目行数        ${rows}`);
     console.log(
       `  主题统一        底色=${theme.bg} 卡片圆角=${theme.sheetRadius} 按钮圆角=${theme.btnRadius} 字体=${theme.font} ${themeOk ? "✓" : "✗"}`,
+    );
+    console.log(
+      `  暖色(褐/米)残留  ${warmHits.length} 处 ${warmOk ? "✓" : "✗ " + warmHits.slice(0, 3).join(" | ")}`,
     );
     console.log(`  横向溢出        主页面 ${overflow} px / 报告页 ${overflowReport} px`);
     console.log(`  必填拦截        ${alertVisible}，清单 ${alertCount} 条`);

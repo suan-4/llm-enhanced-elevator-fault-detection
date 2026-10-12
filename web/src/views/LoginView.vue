@@ -136,7 +136,7 @@ async function exitSystem(): Promise<void> {
   background: none;
   border: 0;
   border-radius: 50%;
-  color: #99948e;
+  color: #8a959d;
   font-size: 22px;
   font-family: inherit;
   cursor: pointer;
@@ -164,7 +164,7 @@ async function exitSystem(): Promise<void> {
 
 .login-sub {
   font-size: 10.5px;
-  color: #99948e;
+  color: #8a959d;
   text-align: center;
   margin: 4px 0 20px;
 }
@@ -189,11 +189,11 @@ async function exitSystem(): Promise<void> {
 .form-label {
   font-size: 11.4px;
   font-weight: 600;
-  color: #6b6560;
+  color: #5d6b74;
 }
 
 .form-input {
-  border: 1.5px solid #e4ded4;
+  border: 1.5px solid #c9dbe3;
   border-radius: 6px;
   padding: 8px 12px;
   font-size: 12.9px;
@@ -249,6 +249,6 @@ async function exitSystem(): Promise<void> {
   margin-top: 16px;
   text-align: center;
   font-size: 9.6px;
-  color: #99948e;
+  color: #8a959d;
 }
 </style>

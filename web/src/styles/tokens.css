@@ -5,22 +5,23 @@
   /* 文字 */
   --c-text: #2c2c2c;
   --c-ink: #2c2c2c;
-  --c-secondary: #6b6560;
-  --c-muted: #99948e;
+  --c-secondary: #5d6b74;
+  --c-muted: #8a959d;
 
   /* 结构 */
-  --c-bg: #f6f3ee;
+  --c-bg: #f4f8fa;
   --c-panel: #ffffff;
-  --c-line: #e4ded4;
-  --c-line-soft: #efeae2;
-  --c-head: #f7f4ef;
+  --c-line: #c9dbe3;
+  --c-line-soft: #e0eaef;
+  --c-head: #edf4f7;
 
   /* 语义 */
   --c-primary: #1b5e7a;
   --c-primary-dark: #164b63;
   --c-primary-soft: #e8f0f8;
   --c-danger: #c5343e;
-  --c-danger-soft: #fef0f0;
+  /* 浅色填充统一用冷中性色：整体只保留「白 + 蓝青」，红色只出现在文字与细边框上 */
+  --c-danger-soft: #f6f8fa;
   --c-ok: #2d7d46;
   --c-ok-soft: #eef8f0;
 
