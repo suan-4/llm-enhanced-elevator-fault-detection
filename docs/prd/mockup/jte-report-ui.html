@@ -1,0 +1,715 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>在用曳引驱动电梯安全评估 — 页面模板（评审用）</title>
+<style>
+:root{
+  --ink:#17233d; --text:#353535; --muted:#808695;
+  --line:#dcdee2; --line-soft:#e8eaec;
+  --bg:#f0f2f5; --panel:#ffffff; --head:#f1f4f8;
+  --primary:#0C86D8; --primary-dark:#0a6cb0; --primary-soft:#e8f3fb;
+  --danger:#ed4014; --danger-soft:#fdecea; --ok:#19be6b; --warn:#ff9900;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg);color:var(--text);
+  font:13.5px/1.5 "Microsoft YaHei","SimSun",sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+table{border-collapse:collapse}
+
+/* 顶栏 */
+.topbar{
+  display:flex;align-items:center;gap:16px;height:48px;padding:0 16px;
+  background:var(--panel);border-bottom:1px solid var(--line);
+  border-top:3px solid var(--primary);position:sticky;top:0;z-index:20;
+}
+.brand{display:flex;align-items:center;gap:10px}
+.brand-mark{font:700 12px/1 "Microsoft YaHei";color:#fff;background:var(--primary);padding:5px 7px}
+.brand-text{font-size:15.5px;font-weight:700;color:var(--ink);white-space:nowrap}
+.topbar-sep{width:1px;height:18px;background:var(--line)}
+.topbar-meta{color:var(--muted);font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:12px}
+.view-tabs{display:flex}
+.view-tabs button{
+  font:inherit;font-size:13.5px;height:30px;padding:0 16px;background:var(--panel);
+  border:1px solid var(--line);margin-left:-1px;color:var(--ink);cursor:pointer;
+}
+.view-tabs button:first-child{margin-left:0}
+.view-tabs button.active{background:var(--primary);border-color:var(--primary);color:#fff}
+
+/* 控件 */
+.btn{
+  font:inherit;font-size:13.5px;height:30px;padding:0 14px;background:var(--panel);
+  border:1px solid var(--line);color:var(--ink);cursor:pointer;white-space:nowrap;
+}
+.btn:hover{border-color:#c5cdd8}
+.btn-primary{background:var(--primary);border-color:var(--primary);color:#fff}
+.btn-primary:hover{background:var(--primary-dark);border-color:var(--primary-dark)}
+.btn-lg{height:36px;padding:0 22px;font-size:14px}
+.field{display:flex;align-items:center;gap:8px}
+.field label{color:var(--ink);font-size:13px;white-space:nowrap}
+.req{color:var(--danger)}
+.input{
+  font:inherit;font-size:13.5px;height:30px;padding:0 8px;
+  border:1px solid var(--line);background:#fff;color:var(--text);width:100%;
+}
+.input:focus{outline:none;border-color:var(--primary)}
+.textarea{
+  font:inherit;font-size:13.5px;width:100%;min-height:52px;padding:6px 8px;
+  border:1px solid var(--line);background:#fff;resize:vertical;
+}
+
+/* 校验提示 */
+.alert{display:none;border:1px solid #f3c6bb;border-left:3px solid var(--danger);
+  background:var(--danger-soft);padding:8px 12px;margin-bottom:12px}
+.alert.show{display:block}
+.alert-head{font-weight:700;color:var(--danger);margin-bottom:4px}
+.alert-list{margin:0;padding-left:18px}
+.alert-list a{color:var(--danger);text-decoration:underline;cursor:pointer}
+
+/* 作业布局 */
+.workbench{display:flex;gap:12px;padding:12px;align-items:flex-start}
+.side{width:208px;flex:0 0 208px;background:var(--panel);border:1px solid var(--line);
+  position:sticky;top:60px}
+.side-title{height:32px;display:flex;align-items:center;padding:0 10px;background:var(--head);
+  border-bottom:1px solid var(--line);font-weight:700;color:var(--ink);font-size:13px}
+.side a{display:flex;justify-content:space-between;gap:8px;padding:7px 10px;
+  border-bottom:1px solid var(--line-soft);color:var(--ink);text-decoration:none;font-size:13px}
+.side a:hover{background:var(--primary-soft)}
+.side a.active{background:var(--primary-soft);box-shadow:inset 3px 0 0 var(--primary)}
+.side a .n{color:var(--muted);font-size:12px}
+.side a .n.bad{color:var(--danger);font-weight:700}
+.main{flex:1;min-width:0;display:flex;flex-direction:column;gap:12px}
+.panel{background:var(--panel);border:1px solid var(--line)}
+.panel-title{height:34px;display:flex;align-items:center;gap:10px;padding:0 12px;
+  background:var(--head);border-bottom:1px solid var(--line);font-weight:700;color:var(--ink)}
+.panel-title .hint{margin-left:auto;font-weight:400;font-size:12.5px;color:var(--muted)}
+.panel-body{padding:12px}
+.info-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px 16px}
+.info-grid .field label{width:88px;flex:0 0 88px;text-align:right}
+
+/* 条目表 */
+.items-table{width:100%;border:1px solid var(--line)}
+.items-table th{background:var(--head);color:var(--ink);font-weight:700;
+  border:1px solid var(--line);padding:6px 8px;text-align:left;font-size:13px}
+.items-table td{border:1px solid var(--line);padding:8px;vertical-align:top}
+.items-table col.c-no{width:68px}
+.items-table col.c-name{width:150px}
+.items-table col.c-result{width:330px}
+.items-table col.c-risk{width:180px}
+.item-no{font-weight:700;color:var(--ink)}
+.item-name{font-weight:700;color:var(--ink);margin-bottom:4px}
+.item-req{color:var(--text);font-size:13px;line-height:1.7;white-space:pre-line}
+.item-req .k{font-weight:700}
+tr.row-invalid td{background:#fffaf9}
+tr.row-invalid .item-no{color:var(--danger)}
+tr.row-unfit td:first-child{box-shadow:inset 3px 0 0 var(--danger)}
+tr.mark{animation:mark 1.4s ease-out}
+@keyframes mark{0%{background:#fff5d6}100%{background:transparent}}
+
+/* 三态选择 */
+.seg{display:flex;border:1px solid var(--line);width:100%}
+.seg label{flex:1;text-align:center;padding:7px 0;cursor:pointer;font-size:13px;
+  color:var(--ink);background:#fff;border-right:1px solid var(--line);user-select:none}
+.seg label:last-child{border-right:0}
+.seg input{position:absolute;opacity:0;pointer-events:none}
+.seg label.on{background:var(--primary);color:#fff}
+.seg label.on.unfit{background:var(--danger)}
+
+/* 不符合情形 */
+.reasons{margin-top:8px;border:1px solid var(--line);background:#fafbfc;padding:8px}
+.reasons.hide{display:none}
+.reasons-head{font-size:12.5px;color:var(--muted);margin-bottom:6px}
+.chk-list{display:flex;flex-direction:column;gap:4px}
+.chk{display:flex;align-items:flex-start;gap:6px;font-size:13px;cursor:pointer}
+.chk input{margin:3px 0 0}
+.other-box{margin-top:6px}
+.other-box.hide{display:none}
+
+/* 风险评定值 */
+.risk-grid{display:grid;grid-template-columns:auto 1fr;gap:4px 8px;font-size:12.5px}
+.risk-grid dt{color:var(--muted)}
+.risk-grid dd{margin:0;color:var(--ink);font-weight:700}
+.risk-auto{display:block;margin-top:6px;font-size:12px;color:var(--muted);
+  border-top:1px solid var(--line-soft);padding-top:4px}
+.cat{display:inline-block;min-width:38px;text-align:center;padding:1px 6px;
+  border:1px solid var(--line);font-weight:700}
+.cat-1{color:#fff;background:var(--danger);border-color:var(--danger)}
+.cat-2{color:#fff;background:var(--warn);border-color:var(--warn)}
+.cat-none{color:var(--muted)}
+
+/* 底部操作条 */
+.actionbar{position:sticky;bottom:0;z-index:15;display:flex;align-items:center;gap:12px;
+  background:var(--panel);border-top:1px solid var(--line);padding:10px 12px}
+.actionbar .count{color:var(--muted);font-size:12.5px}
+.actionbar .count b{color:var(--ink)}
+.actionbar .bad{color:var(--danger)}
+.actionbar .spacer{margin-left:auto}
+
+/* 报告模式 */
+.report-wrap{padding:12px}
+.report-toolbar{display:flex;align-items:center;gap:12px;background:var(--panel);
+  border:1px solid var(--line);padding:8px 12px;margin-bottom:12px}
+.report-toolbar .t{font-weight:700;color:var(--ink)}
+.report-toolbar .meta{color:var(--muted);font-size:12.5px}
+.paper{width:210mm;min-height:297mm;margin:0 auto 12px;padding:18mm 16mm;background:#fff;
+  box-shadow:0 1px 4px rgba(0,0,0,.15);
+  font-family:"仿宋_GB2312","FangSong","仿宋","SimSun",serif;
+  font-size:10.5pt;line-height:1.35;color:#000}
+.paper h1{font-family:"黑体","Microsoft YaHei",sans-serif;font-size:16pt;text-align:center;margin:0 0 4mm}
+.paper table{width:100%;border:1px solid #000}
+.paper th,.paper td{border:1px solid #000;padding:1.5mm 2mm;vertical-align:top;font-size:9pt}
+.paper th{background:#f2f2f2;font-weight:400;text-align:left}
+.paper .lbl{width:26mm}
+.paper .ctr{text-align:center}
+.paper .notes{margin-top:2mm;font-size:9pt}
+.paper .sec-title{text-align:center;font-family:"黑体",sans-serif;font-size:12pt;margin:6mm 0 3mm}
+
+/* 导出区（在报告预览下方） */
+.export-zone{background:var(--panel);border:1px solid var(--line);padding:12px;
+  max-width:210mm;margin:0 auto}
+.export-zone .zt{font-weight:700;color:var(--ink);margin-bottom:4px}
+.export-zone .zm{color:var(--muted);font-size:12.5px;margin-bottom:10px}
+.export-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.export-result{margin-top:10px;border:1px solid var(--line-soft);border-left:3px solid var(--ok);
+  background:#f6fdf9;padding:8px 10px;display:none}
+.export-result.show{display:block}
+.export-result .path{color:var(--muted);font-size:12.5px;word-break:break-all;margin:2px 0 8px}
+
+/* 提示条 */
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#2b3a4a;
+  color:#fff;font-size:13px;padding:9px 14px;display:none;z-index:50}
+.toast.show{display:block}
+.review-note{background:#fffdf2;border:1px solid #f0e2b6;border-left:3px solid var(--warn);
+  padding:8px 12px;margin:12px;font-size:12.5px;color:#6b5b2a}
+.review-note b{color:#8a6d1f}
+.review-note ol{margin:4px 0 0;padding-left:20px}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="brand">
+    <span class="brand-mark">GDSEI</span>
+    <span class="brand-text">在用曳引驱动电梯安全评估系统</span>
+  </div>
+  <span class="topbar-sep"></span>
+  <div class="topbar-meta">委托单位：佛山市展翰房地产开发有限公司　|　产品编号：44786091</div>
+  <div class="topbar-right">
+    <div class="view-tabs">
+      <button id="tabInput" class="active" type="button">评估录入</button>
+      <button id="tabReport" type="button">报告预览</button>
+    </div>
+    <button class="btn" type="button">系统管理员</button>
+  </div>
+</div>
+
+<section id="viewInput">
+  <div class="review-note">
+    <b>评审说明</b>：本页为静态页面模板，用于确认版式与交互，未连接后端。
+    <ol>
+      <li>术语由「合格／不合格」改为「符合／不符合」，并保留「无此项」。</li>
+      <li>「不符合」支持多选情形，并新增「其他」自由填写。</li>
+      <li>点击底部「校验并生成报告」可查看漏填拦截与自动定位效果。</li>
+    </ol>
+  </div>
+
+  <div class="workbench">
+    <aside class="side">
+      <div class="side-title">评估项目</div>
+      <a href="#" class="active"><span>1 机房及相关设备</span><span class="n bad">1</span></a>
+      <a href="#"><span>2 曳引机</span><span class="n">0</span></a>
+      <a href="#"><span>3 联轴器</span><span class="n">0</span></a>
+      <a href="#"><span>4 电动机</span><span class="n">0</span></a>
+      <a href="#"><span>5 制动器</span><span class="n">0</span></a>
+      <a href="#"><span>6 紧急操作装置</span><span class="n">0</span></a>
+      <a href="#"><span>7 门系统</span><span class="n">0</span></a>
+      <a href="#"><span>8 电气设备</span><span class="n">0</span></a>
+      <a href="#"><span>9 井道</span><span class="n">0</span></a>
+      <a href="#"><span>10 对重</span><span class="n">0</span></a>
+      <a href="#"><span>11 导轨</span><span class="n">0</span></a>
+      <a href="#"><span>12 悬挂装置</span><span class="n">0</span></a>
+      <a href="#"><span>13 轿厢</span><span class="n">0</span></a>
+      <a href="#"><span>14 缓冲器与底坑</span><span class="n">0</span></a>
+      <a href="#"><span>15 功能试验</span><span class="n">0</span></a>
+      <a href="#"><span>16 电气控制</span><span class="n">0</span></a>
+    </aside>
+
+    <div class="main">
+      <div class="alert" id="alertBox">
+        <div class="alert-head">以下 3 项未填写，无法生成报告：</div>
+        <ul class="alert-list">
+          <li><a data-goto="row-19">1.9 限速器</a>　未选择评价结果</li>
+          <li><a data-goto="row-110">1.10 作用于钢丝绳系统的减速元件（如夹绳器等）</a>　未选择评价结果</li>
+          <li><a data-goto="row-21">2.1 减速箱箱体</a>　选择了「不符合」但未填写具体情形</li>
+        </ul>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">
+          电梯基本信息
+          <span class="hint">带 <span class="req">*</span> 的为必填；其余字段默认为「/」，可在报告预览中补充</span>
+        </div>
+        <div class="panel-body">
+          <div class="info-grid">
+            <div class="field"><label><span class="req">*</span> 委托单位名称</label><input class="input" value="佛山市展翰房地产开发有限公司"></div>
+            <div class="field"><label><span class="req">*</span> 使用单位名称</label><input class="input" value="佛山市展翰房地产开发有限公司"></div>
+            <div class="field"><label><span class="req">*</span> 设备类别</label><input class="input" value="曳引驱动电梯"></div>
+            <div class="field"><label><span class="req">*</span> 产品编号</label><input class="input" value="44786091"></div>
+            <div class="field"><label>评估日期</label><input class="input" value="2026-10-12"></div>
+            <div class="field"><label>安装地点</label><input class="input" value="/"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">1 机房及相关设备<span class="hint">共 4 项　已评 2 项</span></div>
+        <table class="items-table">
+          <colgroup><col class="c-no"><col class="c-name"><col><col class="c-result"><col class="c-risk"></colgroup>
+          <thead>
+            <tr><th>项目编号</th><th>项目</th><th>评价内容与要求</th><th>评价结果</th><th>风险评定值</th></tr>
+          </thead>
+          <tbody>
+            <tr id="row-17" class="row-unfit">
+              <td class="item-no">1.7</td>
+              <td><div class="item-name">机房工作安全空间</div></td>
+              <td class="item-req"><span class="k">a)</span> 机房应有足够的空间，符合 GB/T 7588.1—2020 中 5.2.6.3.2.1 的要求，以允许人员安全和容易地对有关设备进行作业，尤其是对电气设备的作业
+<span class="k">b)</span> 活动区域的净高度，以及通道宽度应符合 GB/T 7588.1—2020 中 5.2.6.3.2.2 的要求
+<span class="k">c)</span> 在无防护的电梯驱动主机旋转部件及滑轮的上方的净垂直距离应符合 GB/T 7588.1—2020 中 5.2.6.3.2.3 的要求</td>
+              <td>
+                <div class="seg">
+                  <label><input type="radio" name="seg17"><span>符合</span></label>
+                  <label class="on unfit"><input type="radio" name="seg17" checked><span>不符合</span></label>
+                  <label><input type="radio" name="seg17"><span>无此项</span></label>
+                </div>
+                <div class="reasons">
+                  <div class="reasons-head">不符合情形（可多选）</div>
+                  <div class="chk-list">
+                    <label class="chk"><input type="checkbox" checked><span>机房活动区域净高度不足</span></label>
+                    <label class="chk"><input type="checkbox"><span>通道宽度不足</span></label>
+                    <label class="chk"><input type="checkbox" checked><span>无防护旋转部件上方净垂直距离不足</span></label>
+                    <label class="chk"><input type="checkbox" data-other><span>其他</span></label>
+                  </div>
+                  <div class="other-box hide">
+                    <textarea class="textarea" placeholder="请填写具体情况（将写入报告「存在风险」列）"></textarea>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <dl class="risk-grid">
+                  <dt>严重程度</dt><dd>4</dd>
+                  <dt>概率等级</dt><dd>B</dd>
+                  <dt>风险类别</dt><dd><span class="cat cat-1">Ⅰ类</span></dd>
+                </dl>
+                <span class="risk-auto">由知识图谱与大模型自动判定</span>
+              </td>
+            </tr>
+
+            <tr id="row-19" class="row-invalid">
+              <td class="item-no">1.9</td>
+              <td><div class="item-name">限速器</div></td>
+              <td class="item-req">限速器应有有效期内的校验证书，且不应出现下列情况之一：
+<span class="k">a)</span> 运行中有异响
+<span class="k">b)</span> 传动部件严重锈蚀
+<span class="k">c)</span> 轴承损坏导致限速器轮转动不灵活
+<span class="k">d)</span> 限速器座变形
+<span class="k">e)</span> 限速器绳表面油污严重
+<span class="k">f)</span> 限速器绳达到或接近达到 GB/T 31821—2015 中 4.4.2 的报废技术条件
+<span class="k">g)</span> 限速器的动作速度和限速器绳的提拉力不符合 GB/T 7588.1—2020 中 5.6.2.2.1.1 的要求</td>
+              <td>
+                <div class="seg">
+                  <label><input type="radio" name="seg19"><span>符合</span></label>
+                  <label><input type="radio" name="seg19"><span>不符合</span></label>
+                  <label><input type="radio" name="seg19"><span>无此项</span></label>
+                </div>
+              </td>
+              <td><span class="req">待填写</span></td>
+            </tr>
+
+            <tr id="row-110" class="row-invalid">
+              <td class="item-no">1.10</td>
+              <td><div class="item-name">作用于钢丝绳系统的减速元件（如夹绳器等）</div></td>
+              <td class="item-req">作用于钢丝绳系统的减速元件不应出现下列情况之一：
+<span class="k">a)</span> 触发联动机构卡阻或损坏
+<span class="k">b)</span> 钳体或制动弹簧出现塑性变形、裂纹或断裂
+<span class="k">c)</span> 夹紧件严重磨损或锈蚀
+<span class="k">d)</span> 夹紧件擦碰钢丝绳
+<span class="k">e)</span> 复位装置卡阻或损坏</td>
+              <td>
+                <div class="seg">
+                  <label><input type="radio" name="seg110"><span>符合</span></label>
+                  <label><input type="radio" name="seg110"><span>不符合</span></label>
+                  <label><input type="radio" name="seg110"><span>无此项</span></label>
+                </div>
+              </td>
+              <td><span class="req">待填写</span></td>
+            </tr>
+
+            <tr id="row-111">
+              <td class="item-no">1.11</td>
+              <td><div class="item-name">机房和滑轮间的专用</div></td>
+              <td class="item-req">机房和滑轮间不应用于电梯以外的其他用途，也不应设置非电梯用的线槽、电缆或装置</td>
+              <td>
+                <div class="seg">
+                  <label class="on"><input type="radio" name="seg111" checked><span>符合</span></label>
+                  <label><input type="radio" name="seg111"><span>不符合</span></label>
+                  <label><input type="radio" name="seg111"><span>无此项</span></label>
+                </div>
+              </td>
+              <td><span class="cat-none">—</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">2 曳引机<span class="hint">共 4 项　已评 1 项</span></div>
+        <table class="items-table">
+          <colgroup><col class="c-no"><col class="c-name"><col><col class="c-result"><col class="c-risk"></colgroup>
+          <thead>
+            <tr><th>项目编号</th><th>项目</th><th>评价内容与要求</th><th>评价结果</th><th>风险评定值</th></tr>
+          </thead>
+          <tbody>
+            <tr id="row-21" class="row-invalid row-unfit">
+              <td class="item-no">2.1</td>
+              <td><div class="item-name">减速箱箱体</div></td>
+              <td class="item-req">不应出现裂纹</td>
+              <td>
+                <div class="seg">
+                  <label><input type="radio" name="seg21"><span>符合</span></label>
+                  <label class="on unfit"><input type="radio" name="seg21" checked><span>不符合</span></label>
+                  <label><input type="radio" name="seg21"><span>无此项</span></label>
+                </div>
+                <div class="reasons">
+                  <div class="reasons-head">不符合情形（可多选）</div>
+                  <div class="chk-list">
+                    <label class="chk"><input type="checkbox"><span>箱体出现裂纹</span></label>
+                    <label class="chk"><input type="checkbox"><span>箱体渗漏油</span></label>
+                    <label class="chk"><input type="checkbox" data-other><span>其他</span></label>
+                  </div>
+                  <div class="other-box hide">
+                    <textarea class="textarea" placeholder="请填写具体情况"></textarea>
+                  </div>
+                  <div class="reasons-err" style="margin-top:6px;color:#ed4014;font-size:12.5px">已选「不符合」，请至少勾选一项情形或填写「其他」</div>
+                </div>
+              </td>
+              <td><span class="req">待填写</span></td>
+            </tr>
+
+            <tr id="row-22">
+              <td class="item-no">2.2</td>
+              <td><div class="item-name">减速箱固定</div></td>
+              <td class="item-req">固定结构牢固无严重锈蚀，或无影响安全运行的损坏</td>
+              <td>
+                <div class="seg">
+                  <label><input type="radio" name="seg22"><span>符合</span></label>
+                  <label><input type="radio" name="seg22"><span>不符合</span></label>
+                  <label><input type="radio" name="seg22"><span>无此项</span></label>
+                </div>
+              </td>
+              <td><span class="cat-none">—</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="actionbar">
+        <span class="count">已评 <b>2</b> / 8 项　不符合 <span class="bad">1</span> 项　漏填 <span class="bad">3</span> 项</span>
+        <span class="spacer"></span>
+        <button class="btn" type="button">保存草稿</button>
+        <button class="btn" type="button" id="btnValidate">校验并生成报告</button>
+        <button class="btn btn-primary" type="button" id="btnToReport">前往报告预览</button>
+      </div>
+    </div>
+  </div>
+</section>
+<section id="viewReport" hidden>
+  <div class="report-wrap">
+    <div class="report-toolbar">
+      <span class="t">报告预览</span>
+      <span class="meta">JTE-09-R02-3.00　Ⅰ类风险 1 项　Ⅱ类风险 1 项　综合安全状况等级 四级</span>
+      <button class="btn" type="button" id="btnBackInput" style="margin-left:auto">返回修改</button>
+    </div>
+
+    <div class="paper">
+      <h1>在用曳引驱动电梯安全评估报告</h1>
+      <table>
+        <tr><th class="lbl">委托单位名称</th><td>佛山市展翰房地产开发有限公司</td></tr>
+        <tr><th class="lbl">使用单位名称</th><td>佛山市展翰房地产开发有限公司</td></tr>
+        <tr><th class="lbl">安装地点</th><td>/</td></tr>
+        <tr><th class="lbl">设备类别</th><td>曳引驱动电梯</td></tr>
+        <tr><th class="lbl">设备品种</th><td>/</td></tr>
+        <tr><th class="lbl">型号</th><td>/</td></tr>
+        <tr><th class="lbl">产品编号</th><td>44786091</td></tr>
+        <tr><th class="lbl">使用登记证编号</th><td>/</td></tr>
+        <tr><th class="lbl">制造日期</th><td>/</td></tr>
+        <tr><th class="lbl">制造单位名称</th><td>/</td></tr>
+        <tr><th class="lbl">改造单位名称</th><td>/</td></tr>
+        <tr><th class="lbl">改造日期</th><td>/</td></tr>
+        <tr><th class="lbl">维护保养单位名称</th><td>/</td></tr>
+        <tr><th class="lbl">设备技术参数</th><td>额定载重量 / kg　　额定速度 / m/s　　层站门数 / 层　站　门　　控制方式 /</td></tr>
+        <tr><th class="lbl">评估仪器</th><td>温湿度计、万用表、绝缘电阻仪、转速表、钢卷尺、钢直尺、塞尺、游标卡尺、钳形电流表、照度计、乘运质量测试仪、声级计等</td></tr>
+        <tr><th class="lbl">评估依据</th><td>1、GB/T 42615-2023《在用电梯安全评估规范》<br>2、技术服务合同/协议（合同/协议编号：　　　　）</td></tr>
+        <tr><th class="lbl">评估概况</th><td>1、存在Ⅰ类风险　1　项，Ⅱ类风险　1　项。<br>2、综合安全状况得分：0</td></tr>
+        <tr><th class="lbl">评估结论</th><td>综合安全状况等级：四级</td></tr>
+        <tr><th class="lbl">整机建议</th><td>建议结合技术及经济可行性，加装或改进安全保护装置（措施）来消除或降低风险。</td></tr>
+        <tr><th class="lbl">备注</th><td>/</td></tr>
+        <tr><th class="lbl">评估日期</th><td>2026 年 10 月 12 日</td></tr>
+      </table>
+      <div class="notes">
+        评估：　　　　　　　　　日期：　　年　　月　　日　　　　检验机构核准证号：TS7Ⅰ10007-2029<br>
+        审核：　　　　　　　　　日期：　　年　　月　　日　　　　（检验机构检验专用章）<br>
+        批准：　　　　　　　　　日期：　　年　　月　　日
+      </div>
+    </div>
+
+    <div class="paper">
+      <table>
+        <thead>
+          <tr>
+            <th rowspan="2" style="width:16mm">项目编号</th>
+            <th rowspan="2" style="width:22mm">项目</th>
+            <th rowspan="2">评价内容与要求</th>
+            <th rowspan="2" style="width:30mm">评价结果</th>
+            <th colspan="3" class="ctr" style="width:38mm">风险评定值</th>
+          </tr>
+          <tr>
+            <th class="ctr" style="width:12mm">严重程度</th>
+            <th class="ctr" style="width:12mm">概率等级</th>
+            <th class="ctr" style="width:12mm">风险类别</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>1.7</td><td>机房工作安全空间</td>
+            <td>a) 机房应有足够的空间……<br>b) 活动区域的净高度，以及通道宽度……<br>c) 在无防护的电梯驱动主机旋转部件及滑轮的上方的净垂直距离……</td>
+            <td>不符合（机房活动区域净高度不足；无防护旋转部件上方净垂直距离不足）</td>
+            <td class="ctr">4</td><td class="ctr">B</td><td class="ctr">Ⅰ类</td>
+          </tr>
+          <tr>
+            <td>1.9</td><td>限速器</td>
+            <td>限速器应有有效期内的校验证书，且不应出现下列情况之一……</td>
+            <td>符合</td>
+            <td class="ctr">—</td><td class="ctr">—</td><td class="ctr">—</td>
+          </tr>
+          <tr>
+            <td>1.10</td><td>作用于钢丝绳系统的减速元件</td>
+            <td>作用于钢丝绳系统的减速元件不应出现下列情况之一……</td>
+            <td>无此项</td>
+            <td class="ctr">—</td><td class="ctr">—</td><td class="ctr">—</td>
+          </tr>
+          <tr>
+            <td>1.11</td><td>机房和滑轮间的专用</td>
+            <td>机房和滑轮间不应用于电梯以外的其他用途……</td>
+            <td>符合</td>
+            <td class="ctr">—</td><td class="ctr">—</td><td class="ctr">—</td>
+          </tr>
+          <tr>
+            <td>2.1</td><td>减速箱箱体</td>
+            <td>不应出现裂纹</td>
+            <td>不符合（箱体出现裂纹）</td>
+            <td class="ctr">3</td><td class="ctr">C</td><td class="ctr">Ⅱ类</td>
+          </tr>
+          <tr>
+            <td>2.2</td><td>减速箱固定</td>
+            <td>固定结构牢固无严重锈蚀，或无影响安全运行的损坏</td>
+            <td>符合</td>
+            <td class="ctr">—</td><td class="ctr">—</td><td class="ctr">—</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="paper">
+      <div class="sec-title">附页</div>
+      <table>
+        <thead>
+          <tr>
+            <th class="ctr" style="width:12mm">序号</th>
+            <th class="ctr" style="width:18mm">项目编号</th>
+            <th>存在风险</th>
+            <th class="ctr" style="width:18mm">风险类别</th>
+            <th>降低风险措施</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="ctr">1</td><td class="ctr">1.7</td>
+            <td>机房活动区域净高度不足；无防护旋转部件上方净垂直距离不足（见注）</td>
+            <td class="ctr">Ⅰ类</td>
+            <td>建议结合技术及经济可行性，加装或改进安全保护装置（措施）来消除或降低风险。</td>
+          </tr>
+          <tr>
+            <td class="ctr">2</td><td class="ctr">2.1</td>
+            <td>减速箱箱体出现裂纹（见图1）</td>
+            <td class="ctr">Ⅱ类</td>
+            <td>应采用修理、调整、更换等措施消除或降低风险。</td>
+          </tr>
+          <tr><td class="ctr">3</td><td></td><td></td><td></td><td></td></tr>
+          <tr><td class="ctr">4</td><td></td><td></td><td></td><td></td></tr>
+          <tr><td class="ctr">5</td><td></td><td></td><td></td><td></td></tr>
+        </tbody>
+      </table>
+      <div class="notes">注：出厂时符合当时标准，但缺少或不符合现行标准所规定的安全保护装置（措施）而产生的风险。</div>
+    </div>
+
+    <div class="paper">
+      <div class="sec-title">附录A　电梯综合安全状况等级确定方法说明</div>
+      <p>在确定每个评价项目风险情节的风险类别后，按如下方法确定综合安全状况等级：</p>
+      <p>a) 将三种风险类别分别按照表A.1所示规则赋值，假设 v<sub>i</sub> 为对应于第 i 个风险情节的风险类别取值，其中 n 为进行评价的风险情节的总数。</p>
+      <p class="ctr">表A.1　风险类别分值</p>
+      <table>
+        <tr><th class="ctr">风险类别</th><th class="ctr">Ⅰ</th><th class="ctr">Ⅱ</th><th class="ctr">Ⅲ</th></tr>
+        <tr><td class="ctr">值</td><td class="ctr">0</td><td class="ctr">-1</td><td class="ctr">2</td></tr>
+      </table>
+      <p class="notes">注：Ⅰ类风险为一票否决项。</p>
+      <p>b) 按照以下公式计算综合安全状况得分 G：</p>
+      <p class="ctr" style="font-family:'Cambria Math',serif">
+        G = 100 × ( Σ<sub>i=1..n</sub> v<sub>i</sub> ) / (2n)　　（∀v<sub>i</sub>≠0）<br>
+        G = 0　　（∃v<sub>i</sub>=0，或 Σ<sub>i=1..n</sub> v<sub>i</sub> &lt; 0）
+      </p>
+      <p>c) 根据得分情况，按照表A.2判断电梯综合安全状况等级</p>
+      <p class="ctr">表A.2　电梯综合安全状况等级</p>
+      <table>
+        <tr><th class="ctr">G</th><th class="ctr">G≥90</th><th class="ctr">75≤G&lt;90</th><th class="ctr">60≤G&lt;75</th><th class="ctr">G&lt;60</th></tr>
+        <tr><td class="ctr">综合安全状况等级</td><td class="ctr">一级</td><td class="ctr">二级</td><td class="ctr">三级</td><td class="ctr">四级</td></tr>
+      </table>
+    </div>
+
+    <div class="export-zone">
+      <div class="zt">导出报告</div>
+      <div class="zm">导出文件保存在板端「导出」目录，退出系统后可取走；导出耗时约 2 秒。</div>
+      <div class="export-row">
+        <button class="btn btn-lg btn-primary" type="button" id="btnPdf">导出 PDF</button>
+        <button class="btn btn-lg" type="button" id="btnWord">导出 Word</button>
+      </div>
+      <div class="export-result" id="exportResult">
+        <div><b>导出成功</b><span id="expName">　电梯安全评估报告.pdf　(248 KB)</span></div>
+        <div class="path">保存位置：/home/user/导出/电梯安全评估报告.pdf</div>
+        <div class="export-row">
+          <button class="btn btn-primary" type="button" id="btnOpenFile">打开文件</button>
+          <button class="btn" type="button" id="btnOpenDir">打开所在文件夹</button>
+          <button class="btn" type="button" id="btnCloseResult">关闭</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function () {
+  var tabInput = document.getElementById('tabInput');
+  var tabReport = document.getElementById('tabReport');
+  var viewInput = document.getElementById('viewInput');
+  var viewReport = document.getElementById('viewReport');
+  var alertBox = document.getElementById('alertBox');
+  var toast = document.getElementById('toast');
+  var exportResult = document.getElementById('exportResult');
+  var toastTimer = null;
+
+  function showToast(msg) {
+    toast.textContent = msg;
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { toast.classList.remove('show'); }, 3000);
+  }
+
+  function switchTo(report) {
+    viewInput.hidden = report;
+    viewReport.hidden = !report;
+    tabInput.classList.toggle('active', !report);
+    tabReport.classList.toggle('active', report);
+    window.scrollTo(0, 0);
+  }
+
+  tabInput.onclick = function () { switchTo(false); };
+  tabReport.onclick = function () { switchTo(true); };
+  document.getElementById('btnToReport').onclick = function () { switchTo(true); };
+  document.getElementById('btnBackInput').onclick = function () { switchTo(false); };
+
+  // 需求2：校验拦截时列出缺哪些，并能跳转定位
+  document.getElementById('btnValidate').onclick = function () {
+    alertBox.classList.add('show');
+    window.scrollTo(0, 0);
+    showToast('有 3 项未填写，请在下方清单中逐项处理');
+  };
+
+  Array.prototype.forEach.call(alertBox.querySelectorAll('a[data-goto]'), function (a) {
+    a.onclick = function (e) {
+      e.preventDefault();
+      var row = document.getElementById(a.getAttribute('data-goto'));
+      if (!row) return;
+      row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      row.classList.remove('mark');
+      void row.offsetWidth;
+      row.classList.add('mark');
+      var target = row.querySelector('input[type=radio], input[type=checkbox], textarea');
+      if (target) target.focus({ preventScroll: true });
+    };
+  });
+
+  // 三态切换：符合 / 不符合 / 无此项
+  Array.prototype.forEach.call(document.querySelectorAll('.seg'), function (seg) {
+    var row = seg.closest('tr');
+    var cell = seg.parentElement;
+    var reasons = cell.querySelector('.reasons');
+    Array.prototype.forEach.call(seg.querySelectorAll('input'), function (r) {
+      r.onchange = function () {
+        Array.prototype.forEach.call(seg.querySelectorAll('label'), function (l) {
+          l.classList.remove('on', 'unfit');
+        });
+        var label = r.parentElement;
+        var text = label.textContent.trim();
+        label.classList.add('on');
+        if (text === '不符合') label.classList.add('unfit');
+        if (row) row.classList.toggle('row-unfit', text === '不符合');
+        if (reasons) reasons.classList.toggle('hide', text !== '不符合');
+      };
+    });
+  });
+
+  // 需求1：勾选「其他」后展开自由填写
+  Array.prototype.forEach.call(document.querySelectorAll('input[data-other]'), function (cb) {
+    cb.onchange = function () {
+      var box = cb.closest('.reasons').querySelector('.other-box');
+      box.classList.toggle('hide', !cb.checked);
+      if (cb.checked) {
+        var ta = box.querySelector('textarea');
+        if (ta) ta.focus();
+      }
+    };
+  });
+
+  // 需求4：导出后提示带跳转按钮
+  function doExport(fmt) {
+    exportResult.classList.remove('show');
+    showToast('正在导出 ' + fmt + '，请稍候…');
+    setTimeout(function () {
+      var ext = (fmt === 'PDF') ? 'pdf' : 'docx';
+      document.getElementById('expName').textContent = '　电梯安全评估报告.' + ext + '　(248 KB)';
+      exportResult.classList.add('show');
+      exportResult.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      showToast('导出成功，可点击「打开文件」查看');
+    }, 900);
+  }
+  document.getElementById('btnPdf').onclick = function () { doExport('PDF'); };
+  document.getElementById('btnWord').onclick = function () { doExport('Word'); };
+  document.getElementById('btnOpenFile').onclick = function () {
+    showToast('页面模板演示：实际运行时将打开导出的文件');
+  };
+  document.getElementById('btnOpenDir').onclick = function () {
+    showToast('页面模板演示：实际运行时将打开导出目录');
+  };
+  document.getElementById('btnCloseResult').onclick = function () {
+    exportResult.classList.remove('show');
+  };
+})();
+</script>
+
+</body>
+</html>
