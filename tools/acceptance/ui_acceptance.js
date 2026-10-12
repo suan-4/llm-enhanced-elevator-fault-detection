@@ -45,6 +45,41 @@ const { chromium } = require(PLAYWRIGHT_MODULE);
     });
 
     await page.goto(BASE + "/#/login", { waitUntil: "load" });
+
+    // ── 启动页与登录页要素（原版有、迁移中曾被遗漏，这里固化为回归项）──
+    const splashSeen = await page
+      .waitForSelector(".splash", { state: "attached", timeout: 5000 })
+      .then(() => true)
+      .catch(() => false);
+    await page.waitForSelector(".login-card", { timeout: 10000 });
+    const logoCount = await page.locator(".login-card .lockup img").count();
+    const logoAlts = await page.locator(".login-card .lockup img").evaluateAll((els) =>
+      els.map((e) => e.getAttribute("alt") || ""),
+    );
+    const hasFsLogo = logoAlts.some((a) => a.includes("特种设备"));
+    const hasFosuLogo = logoAlts.some((a) => a.includes("佛山大学"));
+    const loginTitle = (await page.locator(".login-title").innerText()).trim();
+    const loginSub = (await page.locator(".login-sub").innerText()).trim();
+    const loginFoot = (await page.locator(".login-foot").innerText()).trim();
+    const placeholders = await page
+      .locator(".login-field input")
+      .evaluateAll((els) => els.map((e) => e.placeholder));
+    // 退出系统按钮：非一体机环境下不应出现（kiosk 未运行）
+    const exitBtnCount = await page.locator(".login-x").count();
+
+    const loginPageOk =
+      splashSeen &&
+      logoCount === 2 &&
+      hasFsLogo &&
+      hasFosuLogo &&
+      loginTitle === "电梯安全评估系统" &&
+      loginSub.includes("请使用您的账号登录") &&
+      loginFoot.includes("广东省特种设备检测研究院佛山检测院") &&
+      loginFoot.includes("佛山大学") &&
+      placeholders.includes("请输入用户名") &&
+      placeholders.includes("请输入口令") &&
+      exitBtnCount === 0;
+
     await page.fill(".login-field input[type=text]", USERNAME);
     await page.fill(".login-field input[type=password]", PASSWORD);
     await page.click("button[type=submit]");
@@ -109,7 +144,7 @@ const { chromium } = require(PLAYWRIGHT_MODULE);
       : false;
 
     const pass =
-      rows === 66 && overflow <= 0 && alertVisible && alertCount > 0 &&
+      loginPageOk && rows === 66 && overflow <= 0 && alertVisible && alertCount > 0 &&
       focusedId.startsWith("f-") && counters.includes("未填 0 项") &&
       papers === 4 && overflowReport <= 0 && grade4 && score0 &&
       hasAppendix && hasAppendixA && filled &&
@@ -117,6 +152,11 @@ const { chromium } = require(PLAYWRIGHT_MODULE);
     allOk = allOk && pass;
 
     console.log(`══ ${vp.label} ══`);
+    console.log(`  启动页              ${splashSeen ? "出现" : "未捕获"}`);
+    console.log(`  登录页要素          联合logo=${logoCount}（特检院=${hasFsLogo} 佛山大学=${hasFosuLogo}）`);
+    console.log(`                     标题「${loginTitle}」/「${loginSub}」`);
+    console.log(`                     页脚含机构署名=${loginFoot.includes("广东省特种设备检测研究院佛山检测院")}`);
+    console.log(`                     退出按钮（非一体机应无）=${exitBtnCount}`);
     console.log(`  条目行数        ${rows}`);
     console.log(`  横向溢出        主页面 ${overflow} px / 报告页 ${overflowReport} px`);
     console.log(`  必填拦截        ${alertVisible}，清单 ${alertCount} 条`);

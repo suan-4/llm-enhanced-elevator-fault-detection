@@ -20,14 +20,9 @@ const router = createRouter({
   ],
 })
 
-let restored = false
-
-router.beforeEach(async (to) => {
+/* 登录态由 App.vue 在启动页期间恢复，这里只做路由守卫 */
+router.beforeEach((to) => {
   const auth = useAuthStore()
-  if (!restored) {
-    await auth.restore()
-    restored = true
-  }
   if (to.meta.requiresAuth && !auth.user) {
     return { name: 'login' }
   }
