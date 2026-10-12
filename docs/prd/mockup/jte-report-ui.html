@@ -6,17 +6,18 @@
 <title>在用曳引驱动电梯安全评估报告</title>
 <style>
 :root{
-  --ink:#17233d; --text:#353535; --muted:#808695;
-  --line:#dcdee2; --line-soft:#e8eaec;
-  --bg:#f0f2f5; --panel:#ffffff; --head:#f1f4f8;
-  --primary:#0C86D8; --primary-dark:#0a6cb0; --primary-soft:#e8f3fb;
-  --danger:#ed4014; --danger-soft:#fdecea; --ok:#19be6b; --warn:#ff9900;
+  --ink:#2c2c2c; --text:#2c2c2c; --muted:#99948e; --secondary:#6b6560;
+  --line:#e4ded4; --line-soft:#efeae2;
+  --bg:#f6f3ee; --panel:#ffffff; --head:#f7f4ef;
+  --primary:#1b5e7a; --primary-dark:#164b63; --primary-soft:#e8f0f8;
+  --danger:#c5343e; --danger-soft:#fef0f0; --ok:#2d7d46; --ok-soft:#eef8f0;
+  --font:'Noto Sans SC','Source Han Sans CN','Noto Sans Symbols2',sans-serif;
 }
 *{box-sizing:border-box}
 html,body{margin:0;padding:0}
 body{
   background:var(--bg);color:var(--text);
-  font:13.5px/1.5 "Microsoft YaHei","SimSun",sans-serif;
+  font:13.5px/1.6 var(--font);
   -webkit-font-smoothing:antialiased;
 }
 table{border-collapse:collapse}
@@ -28,7 +29,7 @@ table{border-collapse:collapse}
   border-top:3px solid var(--primary);position:sticky;top:0;z-index:30;
 }
 .brand{display:flex;align-items:center;gap:10px}
-.brand-mark{font:700 12px/1 "Microsoft YaHei";color:#fff;background:var(--primary);padding:5px 7px}
+.brand-mark{font:700 12px/1 var(--font);color:#fff;background:var(--primary);padding:5px 7px}
 .brand-text{font-size:15.5px;font-weight:700;color:var(--ink);white-space:nowrap}
 .topbar-sep{width:1px;height:18px;background:var(--line)}
 .topbar-meta{color:var(--muted);font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -46,7 +47,7 @@ table{border-collapse:collapse}
   font:inherit;font-size:13.5px;height:30px;padding:0 14px;background:var(--panel);
   border:1px solid var(--line);color:var(--ink);cursor:pointer;white-space:nowrap;
 }
-.btn:hover{border-color:#c5cdd8}
+.btn:hover{border-color:#cfc6b9}
 .btn-primary{background:var(--primary);border-color:var(--primary);color:#fff}
 .btn-primary:hover{background:var(--primary-dark);border-color:var(--primary-dark)}
 .btn-lg{height:36px;padding:0 22px;font-size:14px}
@@ -81,7 +82,7 @@ table{border-collapse:collapse}
 
 /* ── 校验提示 ── */
 .alert{
-  display:none;border:1px solid #f3c6bb;border-left:3px solid var(--danger);
+  display:none;border:1px solid #f3c9cc;border-left:3px solid var(--danger);
   background:var(--danger-soft);padding:8px 12px;margin:12px auto 0;
   width:1240px;max-width:calc(100% - 24px);
 }
@@ -106,9 +107,9 @@ table{border-collapse:collapse}
 .item-req{font-size:13px;line-height:1.75;color:var(--text)}
 .item-req div+div{margin-top:1px}
 tr.row-unfit td:first-child{box-shadow:inset 3px 0 0 var(--danger)}
-tr.row-miss td{background:#fffaf9}
+tr.row-miss td{background:var(--danger-soft)}
 tr.mark{animation:mark 1.5s ease-out}
-@keyframes mark{0%{background:#fff5d6}100%{background:transparent}}
+@keyframes mark{0%{background:var(--primary-soft)}100%{background:transparent}}
 
 /* ── 三态选择 ── */
 .seg{display:flex;border:1px solid var(--line);width:100%}
@@ -122,10 +123,10 @@ tr.mark{animation:mark 1.5s ease-out}
 .seg label.on.unfit{background:var(--danger)}
 .seg label:hover{background:var(--primary-soft)}
 .seg label.on:hover{background:var(--primary-dark)}
-.seg label.on.unfit:hover{background:#c9330f}
+.seg label.on.unfit:hover{background:#a82a33}
 
 /* ── 不符合情形 ── */
-.reasons{margin-top:8px;border:1px solid var(--line);background:#fafbfc;padding:8px}
+.reasons{margin-top:8px;border:1px solid var(--line);background:#fbf9f6;padding:8px}
 .reasons.hide{display:none}
 .reasons-head{font-size:12.5px;color:var(--muted);margin-bottom:6px}
 .chk{display:flex;align-items:flex-start;gap:6px;font-size:12.5px;line-height:1.55;cursor:pointer;padding:2px 0}
@@ -177,13 +178,13 @@ tr.mark{animation:mark 1.5s ease-out}
 .export-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .export-result{
   margin-top:10px;border:1px solid var(--line-soft);border-left:3px solid var(--ok);
-  background:#f6fdf9;padding:8px 10px;display:none;
+  background:var(--ok-soft);padding:8px 10px;display:none;
 }
 .export-result.show{display:block}
 
 /* ── 提示条 ── */
 .toast{
-  position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#2b3a4a;
+  position:fixed;left:50%;bottom:30px;transform:translateX(-50%);background:#2c2c2c;
   color:#fff;font-size:13px;padding:9px 14px;display:none;z-index:60;
 }
 .toast.show{display:block}
@@ -248,8 +249,8 @@ tr.mark{animation:mark 1.5s ease-out}
       </tr>
       <tr><th>评估仪器</th><td class="cell" colspan="3"><input class="input" value="温湿度计、万用表、绝缘电阻仪、转速表、钢卷尺、钢直尺、塞尺、游标卡尺、钳形电流表、照度计、乘运质量测试仪、声级计等"></td></tr>
       <tr><th>评估依据</th><td class="cell" colspan="3"><input class="input" value="1、GB/T 42615-2023《在用电梯安全评估规范》　2、技术服务合同/协议（合同/协议编号：　　　　）"></td></tr>
-      <tr><th>评估概况</th><td class="cell" colspan="3"><span id="statOverview" style="color:#808695">生成报告后自动填写</span></td></tr>
-      <tr><th>评估结论</th><td class="cell" colspan="3"><span id="statConclusion" style="color:#808695">生成报告后自动填写</span></td></tr>
+      <tr><th>评估概况</th><td class="cell" colspan="3"><span id="statOverview" style="color:var(--muted)">生成报告后自动填写</span></td></tr>
+      <tr><th>评估结论</th><td class="cell" colspan="3"><span id="statConclusion" style="color:var(--muted)">生成报告后自动填写</span></td></tr>
       <tr><th>整机建议</th><td class="cell" colspan="3"><input class="input" value="/"></td></tr>
       <tr><th>备注</th><td class="cell" colspan="3"><input class="input" value="/"></td></tr>
       <tr><th>评估日期</th><td class="cell" colspan="3"><input class="input" value="/"></td></tr>

@@ -287,7 +287,7 @@ table {
 
 @keyframes row-highlight {
   0% {
-    background: #fff3d9;
+    background: var(--c-primary-soft);
   }
   100% {
     background: transparent;
