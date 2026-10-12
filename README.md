@@ -5,7 +5,7 @@ RK3588 开发板上的**完全离线**电梯安全评估终端。依据 **GB/T 4
 的知识图谱与大模型报告生成，做到一块触摸屏一体机上。
 
 - **知识图谱**：Neo4j，6 大子系统 / 41 个检测项 / 67 种异常状态 / 392 条关系
-- **大模型**：Qwen3-4B（W8A8）跑在 RK3588 NPU 上，经 RKLLM 推理，SSE 流式输出
+- **大模型**：Qwen3.5-4B（W8A8）跑在 RK3588 NPU 上，经 RKLLM 推理，SSE 流式输出
 - **后端**：FastAPI + SQLite（用户 / 会话 / 历史报告 / 填写记录）
 - **前端**：单页应用（原生 JS，无构建步骤）
 - **终端形态**：GTK3 + WebKit2GTK 原生全屏应用，开机直入，含自研软键盘 Shell 扩展
@@ -29,30 +29,59 @@ RK3588 开发板上的**完全离线**电梯安全评估终端。依据 **GB/T 4
 
 ## 目录结构
 
+本仓库顶层结构就是板端 `/home/ubuntu/elevator` 的部署布局，两边一一对应。
+
     backend/          FastAPI 服务
       app/api/          auth / history / report / kiosk / export / ime
       app/services/     kg_service(图谱) llm_service(模型) auth_service
                         report_service  export_service(Word/PDF)
       pkgs/             板端离线安装的 wheel（aarch64）
       import_kg.py      知识图谱导入
-    web/              前端单页（index.html 是唯一入口）
+    web/              前端单页（index.html 是唯一入口，只放前端文件）
     native/           elevator_app.py —— GTK3 + WebKit2 原生应用
     kiosk/            板端无人值守：安装脚本、加固、自启、启动器  ★文档最全
     osk-helper/       自研 GNOME Shell 扩展：经 D-Bus 桥接系统软键盘
-    tools/            板端调试脚本 + 排查手法
-    legacy/           历史部署方案（与当前板端不符，仅参考）
     elevator_kg_csv/  知识图谱的 CSV 源数据
-    model/ rknn-llm/  模型与推理库（不进仓库，体积大）
+    docs/
+      prd/            产品需求文档与页面模板
+      规范与模板/      国标、报告模板、项目计划书等参考资料
+    _archive/         历史归档，不参与部署，见下节
+
+    model/ rknn-llm/  模型与推理库（体积大，不进仓库；板端在 rkllm/ 下）
+
+### 关于 `_archive/`
+
+整理前仓库内同时存在三套项目副本，且互相不一致。现已归档，只保留与板端
+完全一致的一套作为生产代码：
+
+    _archive/01-旧版源码/       整理前顶层的旧版 backend/native/osk-helper 等
+    _archive/02-重复项目副本/   整理前 web/ 下的整套嵌套项目（2026-09-22）
+    _archive/03-临时产物/       文档提取、渲染、playwright 等中间产物
+    _archive/04-专利与研究/     专利文稿、附录资料、patent_validation
+    _archive/05-离线备份/       elevator_kg.7z 等离线数据备份
+
+**归档只做移动，没有删除。** 需要查旧版本时直接进 `_archive/`。
+
+## 端口约定
+
+| 服务 | 端口 | 说明 |
+|---|---|---|
+| FastAPI 业务后端 | 8081 | 前端与原生应用访问的入口 |
+| RKLLM 推理服务 | 8080 | 路由 `/v1/chat/completions`（OpenAI 兼容） |
+| Neo4j Bolt | 7687 | 知识图谱 |
+| Neo4j HTTP | 7474 | 图谱 Web 界面 |
 
 ## 文档在哪
 
 | 想了解 | 看 |
 |---|---|
 | **板端一切细节与踩过的坑** | `kiosk/README.md` ← 最全，优先看这个 |
-| 板端常用排查命令 | `tools/README.md` |
 | 怎么部署到板子 | `push.bat`（头注释里写了实测布局） |
 | 项目的能力清单 | `RESUME.md` |
 | 后端接口 | `backend/API.md` |
+| 报告格式要求与改造计划 | `docs/prd/PRD-JTE报告模板对齐与交互优化-v0.2.md` |
+| 新页面长什么样 | 直接打开 `docs/prd/mockup/jte-report-ui.html` |
+| 国标与报告模板原件 | `docs/规范与模板/` |
 
 ## 部署到板端
 

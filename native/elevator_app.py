@@ -264,7 +264,6 @@ class ElevatorWindow(Gtk.ApplicationWindow):
         self._geometry_id = 0
         self._geometry_tries = 0
         self._geometry_why = ""
-        self._tried_maximize = False
         self._last_cfg = None
 
         # 让 GNOME 把这个窗口归到我们的应用名下（而不是 Chromium）
@@ -374,40 +373,78 @@ class ElevatorWindow(Gtk.ApplicationWindow):
         return False
 
     def _expected_size(self):
-        """期望的窗口尺寸（GTK 逻辑像素）。
+        """期望的窗口尺寸（GTK 逻辑像素）= **工作区**尺寸。
 
-        get_monitor_geometry() 返回的**已经是应用像素（逻辑像素）**，
+        ★ 为什么是工作区而不是整块显示器 ★
+        本应用改用 maximize() 而不是自己 resize（理由见 _apply_geometry），
+        而最大化窗口的尺寸就是工作区。工作区已经扣掉了顶栏占的 strut：
+          - 顶栏被收起时（应用运行期间，见 elevator-osk@local）工作区 == 整屏
+            → 窗口满屏；
+          - 顶栏可见时（扩展没装、或应用退出前的瞬间）工作区少一条
+            → 窗口正好让出顶栏那一条。
+        两种情况加起来屏幕都被"顶栏 + 窗口"完整覆盖，不会露桌面。
+
+        get_monitor_workarea() 返回的**已经是应用像素（逻辑像素）**，
         本机 1920x1200 物理 / scale=2 = 960x600，它就直接返回 960x600。
         千万不要再除一次 scale —— 那会算成 480x300，导致把已经正确的
         窗口误判为失败并"兜底"改坏（实测踩过）。
         """
         screen = self.get_screen()
-        geo = screen.get_monitor_geometry(screen.get_primary_monitor())
-        return geo.width, geo.height, (self.get_scale_factor() or 1)
+        wa = screen.get_monitor_workarea(screen.get_primary_monitor())
+        return wa.width, wa.height, (self.get_scale_factor() or 1)
 
     def _apply_geometry(self, why: str):
+        """铺满屏幕：**用 maximize()，不自己 resize**。
+
+        ★ 这是踩了三轮坑之后的最终方案，改动前务必读完 ★
+
+        旧做法是 `unfullscreen() + resize(显示器尺寸) + move(0,0)`，
+        它引出三个连锁问题，全部在板端实测复现过：
+
+        1) **旋转时窗口会被压成 600x600。**
+           旋转前横屏逻辑 960x600，旋转后竖屏逻辑 600x960。应用请求
+           resize(600,960) 时 Mutter 正处在显示重配置过程中，会拿"新旧矩形
+           的交集"约束窗口：min(960,600) x min(600,960) = **600x600**。
+           日志原样：
+               [17:28:01] 显示器变化(即时)：… resize(600x960)
+               [17:28:02] 尺寸事件: 600x600 (期望 600x960)   <-- 就是这里
+
+        2) **恰好等于显示器尺寸的无边框窗口会被自动置为全屏。**
+           实测：把窗口设成恰好 1920x1200（= 整屏），500ms 内
+           `_NET_WM_STATE_FULLSCREEN` 自动出现；设成 1918x1198 则不出现。
+
+        3) **一旦是全屏窗口，GNOME 的"顶端下滑 = 退出全屏"手势就被启用。**
+           /usr/share/gnome-shell/js/ui/windowManager.js 原文：
+               let topDragAction = new EdgeDragAction(St.Side.TOP, mode);
+               topDragAction.connect('activated', () => {
+                   let currentWindow = global.display.focus_window;
+                   if (currentWindow) currentWindow.unmake_fullscreen();
+               });
+               updateUnfullscreenGesture = () => {
+                   topDragAction.enabled = currentWindow && currentWindow.is_fullscreen();
+               };
+           于是"从顶端往下滑"会调 unmake_fullscreen()，Mutter 把窗口恢复成
+           saved geometry —— 而那份 saved geometry 正是第 1 条里那个 600x600。
+           这就是现场看到的"下滑状态栏后回到没铺满、没旋转的样子"。
+
+        改用 maximize() 之后：
+          - 尺寸由 Mutter 自己算（工作区），客户端不再发那个会被截成
+            600x600 的 resize 请求，旋转时不再经过 600x600；
+          - 窗口状态是 MAXIMIZED 而非 FULLSCREEN（实测 state 只有
+            MAXIMIZED_VERT/HORZ）→ `is_fullscreen()` 为 false →
+            上面那个手势**始终禁用**，下滑再也不能把窗口变小；
+          - 不再有"全屏 → unredirect"的问题，软键盘正常参与合成；
+          - 最大化状态是"粘"的：实测外部请求 1918x1198 也会被拒绝，
+            窗口不会被任何东西敲出满屏。
+        """
         ew, eh, scale = self._expected_size()
-        log("%s：move(0,0) + resize(%dx%d) (scale=%d)" % (why, ew, eh, scale))
-        self.resize(ew, eh)
-        self.move(0, 0)
-        # ★ 不要 set_keep_above(True) ★
-        # 它会给窗口加上 _NET_WM_STATE_ABOVE，把窗口提到 Mutter 的 TOP 层。
-        # 一体机上本来就没有别的窗口要压，不需要它，少一个变量。
-        #
-        # ★ 必须主动取消全屏 ★
-        # 本机 org.gnome.mutter auto-maximize = true，Mutter 会把「比工作区大」
-        # 的窗口自动最大化，并在某些情形下进一步让它带上
-        # _NET_WM_STATE_FULLSCREEN（实测：xprop 里 MAXIMIZED_* 与 FULLSCREEN 同时存在，
-        # 而本文件从未调用过 fullscreen()）。
-        #
-        # 危害是决定性的：全屏窗口会被 Mutter **unredirect**（绕过合成器、
-        # 直接送到扫描输出）。一旦 unredirect，GNOME Shell 画在最上层的软键盘
-        # 就**根本没有机会被合成上去** —— 这正是我们反复观察到的
-        # 「Main.keyboard.visible = true、actor 的 mapped/opacity/几何全部正常，
-        #  屏幕上却什么都看不到」。unredirect 的启停还取决于当时的窗口状况，
-        # 所以这个故障是间歇性的。
-        # 主动取消全屏后窗口走普通合成路径，键盘才会被画出来。
+        log("%s：maximize()（期望工作区 %dx%d, scale=%d）" % (why, ew, eh, scale))
+
+        # 防御性：万一窗口已被谁弄成全屏（那会启用上面那个手势），先清掉。
+        # 正常路径下窗口是 MAXIMIZED，这一句是空操作。
         self.unfullscreen()
+        # ★ 用最大化，不要 resize(显示器尺寸) ★ 理由见 docstring
+        self.maximize()
         self.present()
         # present() 之后 GTK 可能又把焦点给了窗口本身，补一次
         self._grab_focus()
@@ -420,9 +457,9 @@ class ElevatorWindow(Gtk.ApplicationWindow):
         ew, eh, _ = self._expected_size()
         w, h = win.get_width(), win.get_height()
         if (w, h) == (ew, eh):
-            log("铺满生效（几何 %dx%d 与显示器一致）" % (w, h))
+            log("铺满生效（几何 %dx%d 与工作区一致）" % (w, h))
         else:
-            log("铺满未达预期：几何 %dx%d，期望 %dx%d" % (w, h, ew, eh))
+            log("铺满未达预期：几何 %dx%d，期望工作区 %dx%d" % (w, h, ew, eh))
             self._schedule_geometry_sync("初始校验")
         return False
 
@@ -431,7 +468,23 @@ class ElevatorWindow(Gtk.ApplicationWindow):
         ew, eh, scale = self._expected_size()
         log("显示器变化：期望 %dx%d (scale=%d)" % (ew, eh, scale))
         self.set_default_size(ew, eh)     # 兜底尺寸必须跟着新方向走
-        self._tried_maximize = False      # 新方向下允许再试一次最大化
+
+        # ★ 立刻重铺，不要等 GEOMETRY_SETTLE_MS ★
+        #
+        # 原先这里只排一个 600ms 之后的校验，于是"屏幕已经转到新方向"到
+        # "窗口跟着变大"之间有一段真空：窗口仍是旧方向的尺寸，屏幕多出来的
+        # 那一条就露出了桌面。实测旋转后约 0.6~1.0s 才恢复满屏（见
+        # tools/leak_probe.py），现场表现就是"转屏一瞬间桌面闪一下"。
+        #
+        # 现在这里调的是 maximize()：Mutter 自己按新工作区摆放窗口，
+        # 客户端不再发那个会被截成 600x600 的 resize 请求（详见
+        # _apply_geometry 的 docstring）。连发数次 monitors-changed 也只是
+        # 重复几次幂等的最大化，随后那条 600ms 的校验负责最终对齐。
+        #
+        # 只在窗口已映射后做 —— 映射前调用 present() 会把还没准备好的窗口
+        # 推出来，破坏"先出纯色窗口、WebView 稍后再补"的开机过渡。
+        if self._requested:
+            self._apply_geometry("显示器变化(即时)")
         self._schedule_geometry_sync("显示器变化")
         return False
 
@@ -454,25 +507,14 @@ class ElevatorWindow(Gtk.ApplicationWindow):
 
         if self._geometry_tries < GEOMETRY_RETRY_MAX:
             self._geometry_tries += 1
-            log("%s：几何 %dx%d 偏离期望 %dx%d，重新铺满（第 %d 次）"
+            log("%s：几何 %dx%d 偏离工作区 %dx%d，重新最大化（第 %d 次）"
                 % (self._geometry_why, cur[0], cur[1], ew, eh, self._geometry_tries))
             self._apply_geometry(self._geometry_why)
             self._schedule_geometry_sync(self._geometry_why)
             return False
 
-        # 反复 resize 都不认，就换最大化 —— 顶栏若未被扩展隐藏，
-        # 工作区会比屏幕矮一截，此时最大化也拿不到满屏，只能记录后放弃，
-        # 绝不做无限对抗。
-        if not self._tried_maximize:
-            self._tried_maximize = True
-            self._geometry_tries = 0
-            log("%s：resize 无效，改试 maximize()" % self._geometry_why)
-            self.maximize()
-            self._schedule_geometry_sync(self._geometry_why)
-            return False
-
-        log("%s：几何 %dx%d 始终无法达到 %dx%d，停止重试"
-            "（顶栏可能未被 elevator-osk@local 隐藏）"
+        # 反复最大化都不认，只记录后放弃，绝不做无限对抗。
+        log("%s：几何 %dx%d 始终无法达到工作区 %dx%d，停止重试"
             % (self._geometry_why, cur[0], cur[1], ew, eh))
         return False
 

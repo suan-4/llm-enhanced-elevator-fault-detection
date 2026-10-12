@@ -30,13 +30,27 @@
 html{font-size:15px;scroll-behavior:smooth}
 body{font-family:var(--font);background:var(--bg);color:var(--text);line-height:1.6;min-height:100vh}
 
-/* Sidebar */
-.sidebar{width:260px;background:linear-gradient(180deg,#1a2638 0%,#15202f 100%);color:#fff;position:fixed;top:0;left:0;height:100vh;display:flex;flex-direction:column;padding:24px 0;z-index:200}
+/* Sidebar
+   ★ .sidebar 的 width 必须与 .main 的 margin-left 用同样的时长与缓动 ★
+   原来只有 .main 有 transition，.sidebar 的 width 是瞬间跳变的，于是展开时
+   侧边栏先"啪"地铺满、内容区还在 0.3s 地往右挪 —— 中间那段时间侧边栏压住
+   正文最左一列。实测（tools/grab_burst.py 连拍，点击后约 70ms 的一帧）：
+       "基本信息及设备参数" 被盖成 "本信息及设备参数"
+       "委托单位名称"      只剩 "托单位名称"
+   两边同用 .3s ease 后就同步了。
+   overflow:hidden 同样是必需的：变窄的一瞬间不能让里面的文字溢出；
+   再配合各文字的 white-space:nowrap，文字只会被裁切/逐步露出，
+   **绝不会被挤成竖排一列**。 */
+.sidebar{width:260px;background:linear-gradient(180deg,#1a2638 0%,#15202f 100%);color:#fff;position:fixed;top:0;left:0;height:100vh;display:flex;flex-direction:column;padding:24px 0;overflow:hidden;transition:width .3s;z-index:200}
 .sidebar-brand{padding:0 22px 20px;border-bottom:1px solid rgba(255,255,255,0.08);margin-bottom:16px}
-.sidebar-brand h1{font-size:1.05rem;font-weight:700;letter-spacing:.04em}
-.sidebar-brand .sub{font-size:.62rem;color:rgba(255,255,255,0.4);margin-top:2px}
+.sidebar-brand h1{font-size:1.05rem;font-weight:700;letter-spacing:.04em;white-space:nowrap}
+.sidebar-brand .sub{font-size:.62rem;color:rgba(255,255,255,0.4);margin-top:2px;white-space:nowrap}
 .sidebar-nav{list-style:none;padding:0 12px}
-.sidebar-nav li{display:flex;align-items:center;gap:10px;padding:11px 14px;border-radius:var(--radius-sm);cursor:pointer;font-size:.8rem;font-weight:500;color:rgba(255,255,255,0.5);transition:all .2s;border:1px solid transparent}
+/* 过渡里**不要**带 font-size：收起态是靠 font-size:0 把文字藏起来的，
+   若让它参与过渡，收起过程中就会出现"容器已经变窄、文字还没消失"，
+   正是"被压缩成一列"的成因。让它瞬间切换，配合上面的 overflow:hidden
+   与 white-space:nowrap，收起时只剩圆点、展开时文字随宽度逐步露出。 */
+.sidebar-nav li{display:flex;align-items:center;gap:10px;padding:11px 14px;border-radius:var(--radius-sm);cursor:pointer;font-size:.8rem;font-weight:500;color:rgba(255,255,255,0.5);transition:color .2s,background-color .2s,border-color .2s;border:1px solid transparent;white-space:nowrap}
 .sidebar-nav li:hover{color:rgba(255,255,255,0.8);background:rgba(255,255,255,0.04)}
 .sidebar-nav li.active{color:#fff;background:rgba(255,255,255,0.08);border-color:rgba(255,255,255,0.12)}
 .sidebar-nav .dot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,0.25);flex-shrink:0}
@@ -46,11 +60,11 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);line-height:
 .sidebar-tools button:hover{color:#fff;background:rgba(255,255,255,0.1)}
 .sidebar-history{flex:1;overflow-y:auto;padding:0 12px;margin-top:12px;min-height:0}
 .sidebar-history .h-title{font-size:.65rem;color:rgba(255,255,255,0.35);padding:6px 14px;text-transform:uppercase;letter-spacing:.08em}
-.sidebar-history .h-item{padding:8px 14px;font-size:.7rem;color:rgba(255,255,255,0.5);cursor:pointer;border-radius:var(--radius-sm);margin-bottom:2px;transition:all .2s;border:1px solid transparent;display:flex;align-items:center;justify-content:space-between;gap:6px}
+.sidebar-history .h-item{padding:8px 14px;font-size:.7rem;color:rgba(255,255,255,0.5);cursor:pointer;border-radius:var(--radius-sm);margin-bottom:2px;transition:all .2s;border:1px solid transparent;display:flex;align-items:center;justify-content:space-between;gap:6px;white-space:nowrap}
 .sidebar-history .h-item:hover{color:rgba(255,255,255,0.8);background:rgba(255,255,255,0.04)}
 .sidebar-history .h-item .h-del{font-size:.6rem;color:rgba(255,255,255,0.25);padding:2px 5px;border-radius:3px;flex-shrink:0}
 .sidebar-history .h-item .h-del:hover{color:#f55;background:rgba(255,50,50,0.15)}
-.sidebar-footer{padding:10px 22px 0;border-top:1px solid rgba(255,255,255,0.08);font-size:.62rem;color:rgba(255,255,255,0.3)}
+.sidebar-footer{padding:10px 22px 0;border-top:1px solid rgba(255,255,255,0.08);font-size:.62rem;color:rgba(255,255,255,0.3);white-space:nowrap}
 
 /* Main */
 .main{margin-left:260px;padding:32px 40px 80px;max-width:1400px;transition:margin-left .3s}
@@ -174,11 +188,34 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);line-height:
 .toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:#2c2c2c;color:#fff;padding:10px 24px;border-radius:24px;font-size:.78rem;z-index:999;opacity:0;transition:opacity .3s}
 .toast.show{opacity:1}
 
+/* ── 双 logo 联合署名（splash 与登录页共用）──────────────
+   两枚原始图：fslogo.png   (GDSEI 横版 lockup) 620x90  宽高比 6.8889
+               fosulogo.png (佛山大学校徽圆章)   132x136 宽高比 0.9706
+   不写死 height，而是把"原始宽高比"当作 flex-grow、flex-basis 取 0：
+   宽度按宽高比分配 → 两边算出来的高度必然相等；height:auto → 永远跟随宽高比。
+   ⚠ 换 logo 图必须同步改下面两个 flex-grow —— 它们不是"视觉权重"，就是宽高比本身。
+     图换了形状而 grow 没跟着改，两条高度就不再相等：宽度按旧比例分、高度按新比例
+     算，比例差多少就错多少。（换成圆章后如果还用旧值 3.074，圆章会被撑成
+     139 逻辑像素高，而 GDSEI 只有 44。）
+   反面教材：最早一版是"定高 + width:auto"，容器一窄 flex 只压宽度不压高度，
+   图会被横向压扁；而且定高还得手算一个"总宽刚好塞得下"的魔法数字。 */
+.logo-lockup{display:flex;align-items:center;justify-content:center;gap:18px;width:100%}
+/* min-width:0 必须有：img 的 min-width:auto 会解析成固有宽度，那样 flex 根本压不下去 */
+.logo-lockup img{display:block;flex:0 1 0;min-width:0;height:auto}
+.logo-lockup .lg-fs{flex-grow:6.8889}
+.logo-lockup .lg-fosu{flex-grow:0.9706}
+/* 分割线 align-self:stretch —— 高度自动等于这一行里 logo 的高度，
+   不用跟着 logo 尺寸再写一个魔法数字 */
+.logo-lockup .sep{flex:0 0 auto;align-self:stretch;width:1px;background:#d9dee5}
+
 /* ── Splash（启动页）────────────── */
 #splash{position:fixed;top:0;left:0;right:0;bottom:0;z-index:2000;background:linear-gradient(160deg,#10365f 0%,#1b5e7a 55%,#0d2b47 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;transition:opacity .45s ease,visibility .45s}
 #splash.hide{opacity:0;visibility:hidden;pointer-events:none}
-.splash-logo{background:#fff;border-radius:14px;padding:20px 30px;box-shadow:0 12px 36px rgba(0,0,0,0.3)}
-.splash-logo img{display:block;width:min(72vw,430px);height:auto}
+/* 白卡片定"宽"而不是定高：519 = 44(padding) + 36(两个 gap) + 1(分割线) + 438(两个 logo)。
+   438 = 7.8595(两个宽高比之和) x 55.7 —— 55.7 就是这套卡片宽度下算出来的 logo 高度
+   (逻辑像素)。高度不写在这里，由 .logo-lockup 的 flex 分配反推。 */
+.splash-logo{background:#fff;border-radius:14px;padding:18px 22px;box-shadow:0 12px 36px rgba(0,0,0,0.3);
+  width:min(calc(100vw - 32px),519px)}
 .splash-title{color:#fff;font-size:1.16rem;font-weight:700;letter-spacing:.14em}
 .splash-sub{color:rgba(255,255,255,0.55);font-size:.66rem;letter-spacing:.12em;margin-top:-8px}
 .splash-spin{width:26px;height:26px;border:2.5px solid rgba(255,255,255,0.22);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite;margin-top:6px}
@@ -188,8 +225,17 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);line-height:
 body:not(.authed) .sidebar,body:not(.authed) .main{display:none}
 #loginView{display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:900;background:linear-gradient(160deg,#10365f 0%,#1b5e7a 55%,#0d2b47 100%);align-items:center;justify-content:center;padding:20px;overflow:auto}
 #loginView.show{display:flex}
-.login-card{position:relative;width:100%;max-width:400px;background:var(--surface);border-radius:16px;box-shadow:0 18px 50px rgba(0,0,0,0.32);padding:30px}
-.login-logo{display:block;width:100%;max-width:290px;margin:0 auto 20px}
+/* 440px 不是随手定的：卡片顶部是"GDSEI ｜ 佛山大学校徽"联合署名，
+   logo 高度 = (卡宽 - 60 padding - 36 gap - 1 分割线) / 7.8595(两个宽高比之和)。
+   440 代入得 logo 高 43.6 逻辑像素 —— 此时 GDSEI 渲染成 601 物理像素、原生 620，
+   几乎 1:1（最清晰），圆章 84.7 物理像素。 */
+.login-card{position:relative;width:100%;max-width:440px;background:var(--surface);border-radius:16px;box-shadow:0 18px 50px rgba(0,0,0,0.32);padding:30px}
+/* 尺寸/排布全部交给 .logo-lockup（display:flex + width:100%），这里只管外边距。
+   上外边距 16px 不是装饰：登录卡片右上角浮着一个 32x32 的"×"(退出系统)
+   (.login-x top:10px -> 底部在卡片顶下方 42px)，logo 行原本从 padding 30px 开始，
+   两者重叠 12.5x8.5 逻辑像素 —— 而 × 是可点的触控目标，
+   点佛大 logo 右上角会直接退出系统。32+padding 让出这段高度即可。 */
+.login-logo{margin:16px auto 20px}
 .login-h{font-size:1.02rem;font-weight:700;text-align:center}
 .login-sub{font-size:.7rem;color:var(--text-muted);text-align:center;margin:4px 0 20px}
 .login-card .form-group{margin-bottom:14px}
@@ -291,7 +337,10 @@ body:not(.authed) .sidebar,body:not(.authed) .main{display:none}
   .form-grid,.form-grid.cols2{grid-template-columns:1fr}
   .card{padding:18px 16px}
   .section{margin-bottom:28px}
-  .login-card{max-width:340px}
+  /* 这里原本有一条 .login-card{max-width:340px}，已删除。
+     板端竖屏逻辑宽 600，卡片塞得下；而卡片越窄，顶部那两个 logo 就越小 ——
+     340px 时佛山大学圆章只有 27 逻辑像素(54 物理)，圆里的字完全糊掉。
+     真正的窄屏由 .login-card 自带的 width:100% 兜底，不需要这条上限。 */
   .modal-box{max-width:92vw}
 }
 /* ── 让「主内容区」自己滚动，而不是整个文档滚动 ──────────────
@@ -311,7 +360,11 @@ html,body{height:100%;overflow:hidden}
 
 <!-- ── 启动页 ───────────────────── -->
 <div id="splash">
-  <div class="splash-logo"><img src="fslogo.png" alt="广东省特种设备检测研究院佛山检测院"></div>
+  <div class="splash-logo logo-lockup">
+    <img class="lg-fs" src="fslogo.png" alt="广东省特种设备检测研究院佛山检测院">
+    <span class="sep"></span>
+    <img class="lg-fosu" src="fosulogo.png" alt="佛山大学">
+  </div>
   <div class="splash-title">电梯安全评估系统</div>
   <div class="splash-sub">ELEVATOR SAFETY ASSESSMENT SYSTEM</div>
   <div class="splash-spin"></div>
@@ -323,7 +376,11 @@ html,body{height:100%;overflow:hidden}
   <div class="login-card">
     <button id="exitKioskBtnLogin" class="login-x" style="display:none" onclick="doExitKiosk()"
             title="退出系统并返回桌面" aria-label="退出系统">×</button>
-    <img class="login-logo" src="fslogo.png" alt="广东省特种设备检测研究院佛山检测院">
+    <div class="login-logo logo-lockup">
+      <img class="lg-fs" src="fslogo.png" alt="广东省特种设备检测研究院佛山检测院">
+      <span class="sep"></span>
+      <img class="lg-fosu" src="fosulogo.png" alt="佛山大学">
+    </div>
     <div class="login-h">电梯安全评估系统</div>
     <div class="login-sub">请使用您的账号登录</div>
     <div class="login-err" id="loginErr"></div>
@@ -336,7 +393,7 @@ html,body{height:100%;overflow:hidden}
       <input class="form-input" id="loginPass" type="password" autocomplete="current-password" placeholder="请输入口令">
     </div>
     <button class="btn btn-primary login-btn" id="loginBtn" onclick="doLogin()">登 录</button>
-    <div class="login-foot">广东省特种设备检测研究院佛山检测院</div>
+    <div class="login-foot">广东省特种设备检测研究院佛山检测院 · 佛山大学</div>
   </div>
 </div>
 
@@ -884,7 +941,10 @@ async function generateReport(){
       const text=decoder.decode(value,{stream:true});lastUpdate=Date.now();
       for(const line of text.split('\n')){
         if(line.startsWith('data: ')){try{const t=JSON.parse(line.slice(6)).t;if(t==='[DONE]')continue;fullText+=t}catch(e){};
-          const now=Date.now();if(now-lastRender>500&&ph){ph.style.color='';ph.innerHTML=md2html(fullText);lastRender=now}}
+          // 渲染节流：150ms（约 6~7 帧/秒）。
+          // 调小会让报告出字更跟手，但每次都要把全文 md2html 重解析一遍，
+          // 板端 CPU 弱，别再往下调。
+          const now=Date.now();if(now-lastRender>150&&ph){ph.style.color='';ph.innerHTML=md2html(fullText);lastRender=now}}
       }
     }
     if(!fullText){appendAIFail();genBtn.disabled=false;genBtn.textContent='生成 AI 报告 ('+itemIds.length+' 项异常)';loader.style.display='none';return}

@@ -24,6 +24,7 @@ echo [1/5] 推送前端 (web/)...
 adb push web\index.html           %ROOT%/web/
 adb push web\marked.min.js        %ROOT%/web/
 adb push web\fslogo.png           %ROOT%/web/
+adb push web\fosulogo.png         %ROOT%/web/
 adb push web\NotoSansSymbols2.ttf %ROOT%/web/
 
 echo.

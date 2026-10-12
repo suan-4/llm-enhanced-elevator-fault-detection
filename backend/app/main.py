@@ -75,6 +75,15 @@ async def serve_logo():
     return Response(status_code=404)
 
 
+@app.get("/fosulogo.png", response_class=Response)
+async def serve_logo_fosu():
+    # 启动页联合署名里的"佛山大学"logo，与 fslogo.png 一样按白名单单独放行
+    p = WEB_DIR / "fosulogo.png"
+    if p.exists():
+        return Response(content=p.read_bytes(), media_type="image/png")
+    return Response(status_code=404)
+
+
 @app.get("/NotoSansSymbols2.ttf", response_class=Response)
 async def serve_font():
     # 优先 web/，回退项目根目录（历史上字体曾放在仓库根目录）
