@@ -1,0 +1,3 @@
+# 板端 WebKit2GTK 2.44 ≈ Safari 17；开发机用 Chromium
+safari >= 16
+chrome >= 110
