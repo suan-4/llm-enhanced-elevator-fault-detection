@@ -566,7 +566,9 @@ table {
     margin: 4px 0 14px;
   }
 
-  /* 信息表：逐字段堆叠 */
+  /* 信息表：逐字段堆叠，但每一格都保留可见的线。
+     此前这里把单元格 border 置 0、只留 --c-line-soft 的极浅分隔，
+     在白底上基本看不见，表现为"边框线不见了"。 */
   .info,
   .info tbody,
   .info tr,
@@ -576,19 +578,21 @@ table {
     width: auto;
   }
 
-  .info tr {
-    border-bottom: 1px solid var(--c-line-soft);
-  }
-
   .info th {
     border: 0;
-    border-bottom: 1px solid var(--c-line-soft);
+    border-bottom: 1px solid var(--c-line);
     padding: 5px 8px;
   }
 
   .info td {
     border: 0;
+    border-bottom: 1px solid var(--c-line);
     padding: 5px 8px 8px;
+  }
+
+  /* 最后一行贴着外框，不需要再多一条线 */
+  .info tr:last-child td {
+    border-bottom: 0;
   }
 
   /* 评价结果表：窄屏把一行拆成「编号+项目 / 要求 / 结果」三段，
@@ -620,7 +624,7 @@ table {
 
   .items td {
     border: 0;
-    border-top: 1px solid var(--c-line-soft);
+    border-top: 1px solid var(--c-line);
     padding: 8px;
   }
 
@@ -631,8 +635,9 @@ table {
     padding: 8px;
   }
 
+  /* 项目编号与项目之间的竖线 */
   .items td:nth-child(2) {
-    padding-left: 4px;
+    border-left: 1px solid var(--c-line);
   }
 
   .items td:nth-child(3)::before {

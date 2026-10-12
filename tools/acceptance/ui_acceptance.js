@@ -305,6 +305,52 @@ const { chromium } = require(PLAYWRIGHT_MODULE);
     });
     const clippedOk = clipped.length === 0;
 
+    // 边框线：窄屏适配曾把单元格 border 置 0、只留极浅的 --c-line-soft，
+    // 白底上几乎看不见，表现为「线不见了」。这里固化检查线必须存在且用主线色。
+    const borderFacts = await page.evaluate(() => {
+      const hasLine = (el) => {
+        const cs = getComputedStyle(el);
+        return ["Top", "Right", "Bottom", "Left"].some(
+          (s) => parseFloat(cs["border" + s + "Width"]) > 0,
+        );
+      };
+      const infoCells = [...document.querySelectorAll(".info th, .info td")];
+      const itemCells = [...document.querySelectorAll(".items td")];
+      const rows = [...document.querySelectorAll(".items tbody tr")];
+      const boxed = (el) =>
+        ["Top", "Right", "Bottom", "Left"].every(
+          (s) => parseFloat(getComputedStyle(el)["border" + s + "Width"]) > 0,
+        );
+      const faint = [...document.querySelectorAll(".info th, .info td, .items td")]
+        .filter((el) => {
+          const cs = getComputedStyle(el);
+          return ["Top", "Right", "Bottom", "Left"].some(
+            (s) =>
+              parseFloat(cs["border" + s + "Width"]) > 0 &&
+              cs["border" + s + "Color"] === "rgb(224, 234, 239)", // --c-line-soft
+          );
+        }).length;
+      return {
+        infoCells: infoCells.length,
+        infoLines: infoCells.filter(hasLine).length,
+        itemCells: itemCells.length,
+        itemLines: itemCells.filter(hasLine).length,
+        rows: rows.length,
+        boxedRows: rows.filter(boxed).length,
+        faint,
+      };
+    });
+    // 窄屏是"卡片式"布局：行自身成框、单元格有内部线；
+    // 宽屏是真表格：每个单元格四边都有线（与设计稿一致）。
+    const narrow = vp.w <= 900;
+    const borderOk =
+      borderFacts.faint === 0 &&
+      borderFacts.infoLines >= borderFacts.infoCells - 2 &&
+      (narrow
+        ? borderFacts.boxedRows === borderFacts.rows &&
+          borderFacts.itemLines >= Math.ceil(borderFacts.itemCells * 0.7)
+        : borderFacts.itemLines === borderFacts.itemCells);
+
     await page.click(".actionbar .btn-primary");
     await page.locator(".paper").first().waitFor({ state: "visible", timeout: 12000 });
     const papers = await page.locator(".paper").count();
@@ -348,7 +394,7 @@ const { chromium } = require(PLAYWRIGHT_MODULE);
 
     const pass =
       loginPageOk && themeOk && warmOk && rowColorOk && labelFontOk && clauseOk &&
-      reportClauseOk && clippedOk && sidebarOk && actionbarOk &&
+      reportClauseOk && clippedOk && borderOk && sidebarOk && actionbarOk &&
       rows === 66 && overflow <= 0 && alertVisible && alertCount > 0 &&
       focusedId.startsWith("f-") && counters.includes("未填 0 项") &&
       papers === 4 && overflowReport <= 0 && grade4 && score0 &&
@@ -384,6 +430,9 @@ const { chromium } = require(PLAYWRIGHT_MODULE);
     );
     console.log(
       `  窄屏三态按钮    溢出/裁切 ${clipped.length} 处 ${clippedOk ? "✓" : "✗ " + clipped.slice(0, 3).join(" | ")}`,
+    );
+    console.log(
+      `  边框线          信息表 ${borderFacts.infoLines}/${borderFacts.infoCells} · 条目行成框 ${borderFacts.boxedRows}/${borderFacts.rows} · 条目单元格 ${borderFacts.itemLines}/${borderFacts.itemCells} · 极浅线 ${borderFacts.faint} ${borderOk ? "✓" : "✗"}`,
     );
     console.log(
       `  侧边栏          展开=${sidebarExpanded}/${mainMarginExpanded} 折叠=${sidebarCollapsed}/${mainMarginCollapsed} 再展开=${sidebarReopened} ${sidebarOk ? "✓" : "✗"}`,
