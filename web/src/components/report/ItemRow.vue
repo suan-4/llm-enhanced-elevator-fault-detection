@@ -27,7 +27,14 @@ function toggleReason(text: string, checked: boolean): void {
 </script>
 
 <template>
-  <tr :id="rowId" :class="{ 'row-unfit': unfit, 'row-miss': !!problem }">
+  <tr
+    :id="rowId"
+    :class="{
+      'row-unfit': unfit,
+      'row-miss': !!problem,
+      'row-done': state.result === '符合' || state.result === '无此项',
+    }"
+  >
     <td class="item-no">{{ item.no }}</td>
     <td>
       <div class="item-name">

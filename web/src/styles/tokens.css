@@ -20,14 +20,18 @@
   --c-primary-dark: #164b63;
   --c-primary-soft: #e8f0f8;
   --c-danger: #c5343e;
-  /* 浅色填充统一用冷中性色：整体只保留「白 + 蓝青」，红色只出现在文字与细边框上 */
-  --c-danger-soft: #f6f8fa;
+  /* 违规行的红底（沿用旧版 --danger-light），属于语义红，不是暖米色 */
+  --c-danger-soft: #fef0f0;
+  /* 已评且合规（符合 / 无此项）的浅底，用冷中性色 */
+  --c-done-soft: #f6f8fa;
   --c-ok: #2d7d46;
   --c-ok-soft: #eef8f0;
 
   /* 字体 */
   --font-ui: 'Noto Sans SC', 'Source Han Sans CN', 'Noto Sans Symbols2', sans-serif;
   --font-title: 'Noto Sans SC', 'Source Han Sans CN', sans-serif;
+  /* 字段名等强调文字用黑体；板端无黑体时回退到无衬线粗体 */
+  --font-bold: '黑体', 'SimHei', 'Noto Sans SC', 'Source Han Sans CN', sans-serif;
   --font-report: '仿宋_GB2312', 'FangSong', '仿宋', 'SimSun', serif;
 
   /* 形态 */

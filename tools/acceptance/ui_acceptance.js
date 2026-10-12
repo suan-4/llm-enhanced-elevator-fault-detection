@@ -119,6 +119,11 @@ const { chromium } = require(PLAYWRIGHT_MODULE);
 
     const rows = await page.locator(".items tbody tr").count();
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+    // 未填行的底色必须在填表之前取，否则所有行都已被置为「符合」
+    const unfilledBg = await page.evaluate(() => {
+      const el = document.querySelector("#row-1-9 td");
+      return el ? getComputedStyle(el).backgroundColor : "(无)";
+    });
 
     await page.click(".actionbar .btn-primary");
     await page.waitForTimeout(300);
@@ -180,7 +185,8 @@ const { chromium } = require(PLAYWRIGHT_MODULE);
         if (!m) return false;
         const [R, G, B] = [+m[1], +m[2], +m[3]];
         // R ≥ G ≥ B 且 R 与 B 有可感差距 → 暖色；上限排除饱和橙红
-        return R >= G && G >= B && R - B >= 2 && R - Math.min(G, B) <= 70;
+        // 暖色（米 / 褐）的特征是 G > B；粉色的 G≈B 属于语义红，不算暖色
+        return R >= G && G - B >= 2 && R - B >= 4 && R - Math.min(G, B) <= 70;
       };
       const hits = [];
       const props = [
@@ -205,6 +211,34 @@ const { chromium } = require(PLAYWRIGHT_MODULE);
     });
     const warmOk = warmHits.length === 0;
 
+    // 评价结果行底色规则：
+    //   未填 → 白底 ｜ 符合 / 无此项 → 冷浅底 ｜ 不符合 → 红底
+    // 此时 1.9 未填、1.11 为符合、2.1 为不符合（上面的填表步骤已设定）
+    const rowColors = await page.evaluate(() => {
+      const bg = (sel) => {
+        const el = document.querySelector(sel);
+        return el ? getComputedStyle(el).backgroundColor : "(无)";
+      };
+      return {
+        unfilled: "(已在上方取)",
+        done: bg("#row-1-11 td"),
+        unfit: bg("#row-2-1 td"),
+      };
+    });
+    rowColors.unfilled = unfilledBg;
+    const isWhite = (c) => c === "rgba(0, 0, 0, 0)" || c === "rgb(255, 255, 255)";
+    const rowColorOk =
+      isWhite(rowColors.unfilled) &&
+      rowColors.done === "rgb(246, 248, 250)" &&
+      rowColors.unfit === "rgb(254, 240, 240)";
+
+    // 字段名（委托单位名称 等）必须使用黑体
+    const labelFont = await page.evaluate(() => {
+      const el = document.querySelector(".info th");
+      return el ? getComputedStyle(el).fontFamily : "";
+    });
+    const labelFontOk = /黑体|SimHei/.test(labelFont);
+
     await page.click(".actionbar .btn-primary");
     await page.locator(".export-zone").waitFor({ state: "visible", timeout: 12000 });
     const papers = await page.locator(".paper").count();
@@ -228,7 +262,8 @@ const { chromium } = require(PLAYWRIGHT_MODULE);
       : false;
 
     const pass =
-      loginPageOk && themeOk && warmOk && rows === 66 && overflow <= 0 && alertVisible && alertCount > 0 &&
+      loginPageOk && themeOk && warmOk && rowColorOk && labelFontOk &&
+      rows === 66 && overflow <= 0 && alertVisible && alertCount > 0 &&
       focusedId.startsWith("f-") && counters.includes("未填 0 项") &&
       papers === 4 && overflowReport <= 0 && grade4 && score0 &&
       hasAppendix && hasAppendixA && filled &&
@@ -254,6 +289,10 @@ const { chromium } = require(PLAYWRIGHT_MODULE);
     console.log(
       `  暖色(褐/米)残留  ${warmHits.length} 处 ${warmOk ? "✓" : "✗ " + warmHits.slice(0, 3).join(" | ")}`,
     );
+    console.log(
+      `  行底色规则      未填=${rowColors.unfilled} 符合=${rowColors.done} 不符合=${rowColors.unfit} ${rowColorOk ? "✓" : "✗"}`,
+    );
+    console.log(`  字段名字体      ${labelFont.slice(0, 34)} ${labelFontOk ? "✓ 黑体" : "✗ 非黑体"}`);
     console.log(`  横向溢出        主页面 ${overflow} px / 报告页 ${overflowReport} px`);
     console.log(`  必填拦截        ${alertVisible}，清单 ${alertCount} 条`);
     console.log(`  跳转定位        ${focusedId}`);

@@ -10,8 +10,10 @@
   --line:#c9dbe3; --line-soft:#e0eaef;
   --bg:#f4f8fa; --panel:#ffffff; --head:#edf4f7;
   --primary:#1b5e7a; --primary-dark:#164b63; --primary-soft:#e8f0f8;
-  --danger:#c5343e; --danger-soft:#f6f8fa; --ok:#2d7d46; --ok-soft:#eef8f0;
+  --danger:#c5343e; --danger-soft:#fef0f0; --ok:#2d7d46; --ok-soft:#eef8f0;
+  --done-soft:#f6f8fa;
   --font:'Noto Sans SC','Source Han Sans CN','Noto Sans Symbols2',sans-serif;
+  --font-bold:'黑体','SimHei','Noto Sans SC','Source Han Sans CN',sans-serif;
 }
 *{box-sizing:border-box}
 html,body{margin:0;padding:0}
@@ -68,7 +70,8 @@ table{border-collapse:collapse}
 .info{width:100%;border:1px solid var(--line)}
 .info th,.info td{border:1px solid var(--line);padding:5px 8px;vertical-align:middle}
 .info th{
-  background:var(--head);color:var(--ink);font-weight:700;
+  background:var(--head);color:var(--ink);
+  font-family:var(--font-bold);font-weight:700;
   width:118px;text-align:left;white-space:nowrap;
 }
 .info .cell{width:auto}
@@ -106,8 +109,10 @@ table{border-collapse:collapse}
 .item-name .sub{display:block;font-weight:400;color:var(--text);margin-top:2px}
 .item-req{font-size:13px;line-height:1.75;color:var(--text)}
 .item-req div+div{margin-top:1px}
+/* 行底色规则：未填=白底（待办）；符合/无此项=冷浅底（已处理）；不符合=红底+左红条 */
+tr.row-done td{background:var(--done-soft)}
+tr.row-unfit td{background:var(--danger-soft)}
 tr.row-unfit td:first-child{box-shadow:inset 3px 0 0 var(--danger)}
-tr.row-miss td{background:var(--danger-soft)}
 tr.mark{animation:mark 1.5s ease-out}
 @keyframes mark{0%{background:var(--primary-soft)}100%{background:transparent}}
 
@@ -428,6 +433,7 @@ tr.mark{animation:mark 1.5s ease-out}
       if (s.result === '不符合') unfit++;
       if (why) { missing.push({ no: it.no, name: it.name, why: why }); row.classList.add('row-miss'); }
       else { row.classList.remove('row-miss'); }
+      row.classList.toggle('row-done', s.result === '符合' || s.result === '无此项');
       var err = row.querySelector('[data-err]');
       if (err) err.classList.toggle('hide', why !== '选择了「不符合」但未填写具体情形');
     });

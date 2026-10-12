@@ -217,8 +217,10 @@ table {
 
 .info th {
   background: var(--c-head);
-  color: var(--c-secondary);
-  font-weight: 600;
+  color: var(--c-text);
+  /* 字段名用黑体（机构表单惯例） */
+  font-family: var(--font-bold);
+  font-weight: 700;
   width: 122px;
   text-align: left;
   white-space: nowrap;
@@ -273,12 +275,20 @@ table {
   color: var(--c-secondary);
 }
 
-.row-unfit td:first-child {
-  box-shadow: inset 3px 0 0 var(--c-danger);
+/* 评价结果行底色规则：
+   未填 → 白底（不设背景，表示待办）
+   已评且合规（符合 / 无此项）→ 冷中性浅底（表示已处理）
+   不符合 → 红底 + 左侧红条（沿用旧版 item-card.failed 的做法） */
+.row-done td {
+  background: var(--c-done-soft);
 }
 
-.row-miss td {
+.row-unfit td {
   background: var(--c-danger-soft);
+}
+
+.row-unfit td:first-child {
+  box-shadow: inset 3px 0 0 var(--c-danger);
 }
 
 .row-mark {
