@@ -142,5 +142,9 @@ def health_ready():
 # ── 前端构建产物挂载（必须放在所有 /api 路由之后）──
 # Vite 把 JS/CSS 输出到 dist/assets。挂载点只匹配 /assets/*，不会影响 API；
 # 放在最后注册是为了让任何新增的 /assets 前缀路由都能优先匹配。
-if (DIST_DIR / "assets").is_dir():
-    app.mount("/assets", StaticFiles(directory=str(DIST_DIR / "assets")), name="assets")
+#
+# 目录先建出来再挂载：产物尚未构建时若跳过挂载，之后构建完也得重启才生效，
+# 更要紧的是——漏挂载会让所有 JS/CSS 变成 404，页面直接变成一片纯背景色
+# 且没有任何提示（实测已复现），板端上就是"开机白屏"。
+(DIST_DIR / "assets").mkdir(parents=True, exist_ok=True)
+app.mount("/assets", StaticFiles(directory=str(DIST_DIR / "assets")), name="assets")

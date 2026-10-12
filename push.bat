@@ -39,9 +39,14 @@ adb shell "TS=$(date +%%Y%%m%%d_%%H%%M%%S); mkdir -p /userdata/releases/$TS; cp 
 
 echo.
 echo [3/7] 推送前端构建产物到 web/dist ...
-REM 先清掉旧产物，避免弃用的 hash 文件堆积
-adb shell "rm -rf %ROOT%/web/dist"
-adb push web\dist %ROOT%/web/dist
+REM 先推到 dist.new，再原子替换。
+REM   - 不能先 rm -rf 旧产物：一体机界面可能正停在旧 index.html 上，
+REM     它引用的 hash 文件被删掉就会变成整片空白（已复现）。
+REM   - 也不就地覆盖：就地覆盖期间页面可能读到"半份产物"。
+REM 历史 hash 文件由构建脚本按时间清理（web/scripts/prune-dist.mjs）。
+adb shell "rm -rf %ROOT%/web/dist.new"
+adb push web\dist %ROOT%/web/dist.new
+adb shell "cd %ROOT%/web && rm -rf dist.old && if [ -d dist ]; then mv dist dist.old; fi && mv dist.new dist && rm -rf dist.old && echo   已原子替换 dist"
 
 echo.
 echo [4/7] 推送后端 (backend/app/) ...

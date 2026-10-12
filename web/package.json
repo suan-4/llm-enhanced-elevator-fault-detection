@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vue-tsc --noEmit && vite build",
-    "build:only": "vite build",
+    "build": "vue-tsc --noEmit && vite build && node scripts/prune-dist.mjs",
+    "build:only": "vite build && node scripts/prune-dist.mjs",
     "preview": "vite preview",
     "typecheck": "vue-tsc --noEmit",
     "test": "vitest run",

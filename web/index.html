@@ -5,9 +5,139 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <link rel="icon" href="/fslogo.png" />
     <title>在用曳引驱动电梯安全评估系统</title>
+    <!-- 启动兜底样式：必须内联。主样式表加载失败时它仍要生效，
+         否则兜底提示自己也会变成一片空白。 -->
+    <style>
+      #boot-fallback {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        background: #f4f8fa;
+        color: #2c2c2c;
+        font-family: 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
+      }
+      #boot-fallback[hidden] {
+        display: none;
+      }
+      #boot-fallback .bf-card {
+        width: 100%;
+        max-width: 430px;
+        padding: 24px;
+        background: #fff;
+        border: 1px solid #c9dbe3;
+        border-radius: 10px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+      }
+      #boot-fallback h1 {
+        margin: 0 0 12px;
+        font-size: 18px;
+        color: #1b5e7a;
+      }
+      #boot-fallback p {
+        margin: 0 0 12px;
+        font-size: 13.5px;
+        line-height: 1.7;
+      }
+      #boot-fallback button {
+        height: 40px;
+        padding: 0 22px;
+        font: inherit;
+        font-size: 14px;
+        color: #fff;
+        background: #1b5e7a;
+        border: 0;
+        border-radius: 6px;
+        cursor: pointer;
+      }
+      #boot-fallback button:hover {
+        background: #164b63;
+      }
+      #boot-fallback .bf-tip {
+        margin: 12px 0 0;
+        color: #8a959d;
+        font-size: 12.5px;
+      }
+      #boot-fallback pre {
+        margin: 6px 0 0;
+        max-height: 120px;
+        overflow: auto;
+        color: #8a959d;
+        font-size: 11.5px;
+        white-space: pre-wrap;
+        word-break: break-all;
+      }
+    </style>
   </head>
   <body>
     <div id="app"></div>
+
+    <!-- 启动兜底：前端资源没加载出来时，页面会是一片纯背景色（实测如此）。
+         板端没有开发者工具，操作员会彻底卡住且无从判断，所以必须给出
+         可读的提示与「重新加载」出口。 -->
+    <div id="boot-fallback" hidden>
+      <div class="bf-card">
+        <h1>系统未能启动</h1>
+        <p id="boot-reason">前端资源加载失败。</p>
+        <button type="button" onclick="window.location.reload()">重新加载</button>
+        <p class="bf-tip">
+          如果反复出现：多为系统正在更新或服务刚重启，稍候重试即可；仍不行请记录下面的信息并联系维护人员。
+        </p>
+        <pre id="boot-detail"></pre>
+      </div>
+    </div>
+
+    <script>
+      /* 三类"页面变空白"的真实成因都收敛到这里：
+         ① index.html 引用的 JS/CSS 加载失败（服务重启、产物被替换）；
+         ② 路由懒加载块请求失败（页面停留期间系统更新过）；
+         ③ 应用 8 秒内没挂载出来。 */
+      (function () {
+        var shown = false
+        function show(reason, detail, force) {
+          if (shown) return
+          if (!force && window.__APP_MOUNTED__) return
+          var box = document.getElementById('boot-fallback')
+          if (!box) return
+          shown = true
+          box.hidden = false
+          document.getElementById('boot-reason').textContent = reason
+          if (detail) document.getElementById('boot-detail').textContent = String(detail)
+        }
+        window.__BOOT_FAIL__ = show
+
+        window.addEventListener(
+          'error',
+          function (e) {
+            var t = e.target || {}
+            if (t.tagName === 'SCRIPT' || t.tagName === 'LINK') {
+              show(
+                '前端资源加载失败，页面无法启动。',
+                (t.src || t.href || '') + '\n通常发生在系统刚更新或服务刚重启时。',
+              )
+            }
+          },
+          true,
+        )
+
+        window.addEventListener('unhandledrejection', function (e) {
+          var m = String((e.reason && e.reason.message) || e.reason || '')
+          if (/dynamically imported module|Importing a module script|Failed to fetch/i.test(m)) {
+            show('页面资源已更新，需要重新加载。', m)
+          }
+        })
+
+        setTimeout(function () {
+          if (!window.__APP_MOUNTED__) {
+            show('应用未在预期时间内启动。', '若刚做过更新或重启，重新加载通常即可恢复。')
+          }
+        }, 8000)
+      })()
+    </script>
+
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

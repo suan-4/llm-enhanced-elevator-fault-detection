@@ -14,7 +14,10 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
-    emptyOutDir: true,
+    // 必须保留历史产物：浏览器/一体机可能仍停在上一版 index.html 上，
+    // 它引用的 hash 文件若被清掉就会变成"整片空白且无任何提示"。
+    // 过期文件由 scripts/prune-dist.mjs 按时间清理。
+    emptyOutDir: false,
     assetsDir: 'assets',
     // 板端 WebKit2GTK 2.44 支持 ES2020+，无需为旧内核降级
     target: 'es2020',

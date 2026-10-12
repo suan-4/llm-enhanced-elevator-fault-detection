@@ -512,8 +512,37 @@ const { chromium } = require(PLAYWRIGHT_MODULE);
     await page.close();
   }
 
+  // ── 启动兜底回归 ─────────────────────────────────────────────────
+  // 前端资源加载失败时页面曾变成"一片纯背景色、没有任何文字"（实测复现）。
+  // 这里让入口 JS 请求失败，断言必须出现可读的提示面板与「重新加载」出口。
+  {
+    const page = await browser.newPage({ viewport: { width: 1364, height: 653 } });
+    await page.route("**/assets/index-*.js", (r) => r.abort());
+    await page.route("**/assets/LoginView-*.js", (r) => r.abort());
+    await page.route("**/assets/ReportView-*.js", (r) => r.abort());
+    await page.goto(BASE + "/#/login", { waitUntil: "load" });
+    const panelShown = await page
+      .waitForSelector("#boot-fallback:not([hidden])", { timeout: 12000 })
+      .then(() => true)
+      .catch(() => false);
+    const panelText = (await page.locator("#boot-fallback").innerText().catch(() => ""))
+      .replace(/\s+/g, " ")
+      .trim();
+    const bootOk =
+      panelShown &&
+      panelText.includes("系统未能启动") &&
+      panelText.includes("重新加载") &&
+      panelText.length > 20;
+    console.log("══ 启动兜底（入口资源加载失败）══");
+    console.log(`  提示面板        ${panelShown ? "出现" : "未出现"}`);
+    console.log(`  文案            ${panelText.slice(0, 60)}`);
+    console.log(`  结论            ${bootOk ? "通过（不是空白页）" : "未通过"}`);
+    allOk = allOk && bootOk;
+    await page.close();
+  }
+
   await browser.close();
   console.log();
-  console.log(allOk ? "两个视口全部通过" : "存在未通过项");
+  console.log(allOk ? "全部通过（含两个视口与启动兜底）" : "存在未通过项");
   process.exit(allOk ? 0 : 1);
 })();
