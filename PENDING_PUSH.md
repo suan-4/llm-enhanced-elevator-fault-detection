@@ -1,25 +1,26 @@
-# 待推送清单（本机无外网，联网后一起推）
+# 推送状态记录
 
-记录时间：2026-10-12
-远端：https://github.com/suan-4/llm-enhanced-elevator-fault-detection.git （main）
+## 2026-10-12：已全部推送
 
-约定：本机连不上 GitHub，改动一律先本地提交，不再尝试推送。
-联网后一次性 git push origin main 即可。
+网络恢复后已执行 `git push origin main`，本地与远端同步到 `a02b559`。
+`git rev-list --count origin/main..HEAD` = 0。
 
-## 未推送的提交
+本次推送包含 6 个提交：
 
-- 6259a94　style: 业务页对齐设计稿取值；去掉条款编号前缀
-- 本次提交　chore: 记录待推送清单（本文件）
+| 提交 | 说明 |
+| --- | --- |
+| `6259a94` | style: 业务页对齐设计稿取值；去掉条款编号前缀 |
+| `24bb683` | chore: 记录待推送清单 |
+| `c0ee7a1` | docs(prd): 新增主 PRD v1.0；界面口径改回圆角 |
+| `4b8df81` | fix(frontend): 补回窄屏被抹掉的边框线 |
+| `d619c44` | fix(frontend): 圆角裁切把表格边框整条切掉，改用 box-shadow 画外框 |
+| `a02b559` | fix: 前端资源加载失败时不再是一片空白（白屏根因修复） |
 
-以 git log --oneline origin/main..HEAD 的实际结果为准。
+## 历史记录：本机断网期间（同日晚些时候之前的约定）
 
-## 联网后的操作
+当时本机连不上 GitHub（`Failed to connect to github.com port 443`），
+约定改动先本地提交、联网后一次性推送；现已完成。
 
-    git log --oneline origin/main..HEAD    # 看还有哪些没推
-    git push origin main
-    git rev-list --count origin/main..HEAD # 推完应输出 0
+## 板端部署提示
 
-## 备注
-
-- 上次推送失败信息：Failed to connect to github.com port 443，属本机网络问题，与仓库无关。
-- 板端部署用的前端产物仍按 push.bat 的流程走；本次未在板端部署过新版本。
+推送 ≠ 上板。前端产物仍按 `push.bat` 推送到板端；本次未在板端部署过新版本。
