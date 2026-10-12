@@ -49,10 +49,10 @@ table{border-collapse:collapse}
   font:inherit;font-size:13.5px;height:30px;padding:0 14px;background:var(--panel);
   border:1px solid var(--line);color:var(--ink);cursor:pointer;white-space:nowrap;
 }
-.btn:hover{border-color:#cfc6b9}
+.btn:hover{border-color:var(--primary);background:var(--primary-soft)}
 .btn-primary{background:var(--primary);border-color:var(--primary);color:#fff}
 .btn-primary:hover{background:var(--primary-dark);border-color:var(--primary-dark)}
-.btn-lg{height:36px;padding:0 22px;font-size:14px}
+.btn-lg{height:40px;padding:0 22px;font-size:14px}
 .req{color:var(--danger)}
 
 /* ── 文档纸张 ── */
@@ -148,11 +148,12 @@ tr.mark{animation:mark 1.5s ease-out}
 
 /* ── 底部操作条 ── */
 .actionbar{
-  position:sticky;bottom:0;z-index:30;display:flex;align-items:center;gap:12px;
-  background:var(--panel);border-top:1px solid var(--line);padding:10px 16px;
+  position:sticky;bottom:0;z-index:30;display:flex;align-items:center;gap:14px;
+  background:var(--panel);border-top:1px solid var(--line);padding:16px 24px;
 }
-.actionbar .count{color:var(--muted);font-size:12.5px}
-.actionbar .count b{color:var(--ink)}
+/* 悬浮岛加高、计数放大，提高可见性 */
+.actionbar .count{color:var(--secondary);font-size:14px}
+.actionbar .count b{color:var(--ink);font-size:18px;margin:0 2px}
 .actionbar .bad{color:var(--danger)}
 .actionbar .spacer{margin-left:auto}
 
@@ -287,8 +288,8 @@ tr.mark{animation:mark 1.5s ease-out}
 <div class="actionbar">
   <span class="count">共 <b id="cTotal">0</b> 项　已评 <b id="cDone">0</b> 项　不符合 <span class="bad" id="cUnfit">0</span> 项　未填 <span class="bad" id="cMiss">0</span> 项</span>
   <span class="spacer"></span>
-  <button class="btn" type="button" id="btnSave">保存草稿</button>
-  <button class="btn btn-primary" type="button" id="btnGen">校验并生成报告</button>
+  <button class="btn btn-lg" type="button" id="btnSave">保存草稿</button>
+  <button class="btn btn-lg btn-primary" type="button" id="btnGen">校验并生成报告</button>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -317,11 +318,15 @@ tr.mark{animation:mark 1.5s ease-out}
   var tabReport = document.getElementById('tabReport');
   var toastTimer = null;
 
-  function esc(s) {
-    return String(s).replace(/[&<>"]/g, function (c) {
-      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
-    });
-  }
+function esc(s) {
+  return String(s).replace(/[&<>"]/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+  });
+}
+/* 去掉条款编号前缀（a) b) 1) …）：模板正文带编号，界面与报告都不显示 */
+function stripMark(s) {
+  return String(s).replace(/^\s*[A-Za-z0-9]{1,2}[)）]\s*/, '');
+}
   function rid(no) { return 'row-' + String(no).replace('.', '-'); }
   function showToast(m) {
     toast.textContent = m;
@@ -333,9 +338,9 @@ tr.mark{animation:mark 1.5s ease-out}
   /* ── 渲染评价结果表：完全按模板顺序，不分系统 ── */
   var rows = [];
   ITEMS.forEach(function (it) {
-    var req = it.req.map(function (l) { return '<div>' + esc(l) + '</div>'; }).join('');
+    var req = it.req.map(function (l) { return '<div>' + esc(stripMark(l)) + '</div>'; }).join('');
     var opts = it.opts.map(function (o, i) {
-      return '<label class="chk"><input type="checkbox" data-no="' + it.no + '" data-idx="' + i + '"><span>' + esc(o) + '</span></label>';
+      return '<label class="chk"><input type="checkbox" data-no="' + it.no + '" data-idx="' + i + '"><span>' + esc(stripMark(o)) + '</span></label>';
     }).join('');
     rows.push(
       '<tr id="' + rid(it.no) + '" data-no="' + it.no + '">' +
@@ -612,7 +617,7 @@ tr.mark{animation:mark 1.5s ease-out}
       return '<tr>' +
         '<td>' + esc(it.no) + '</td>' +
         '<td>' + esc(it.name) + (it.sub ? '　' + esc(it.sub) : '') + '</td>' +
-        '<td>' + it.req.map(function (l) { return esc(l); }).join('<br>') + '</td>' +
+        '<td>' + it.req.map(function (l) { return esc(stripMark(l)); }).join('<br>') + '</td>' +
         '<td>' + esc(resText) + '</td>' + cells +
       '</tr>';
     }).join('');

@@ -41,7 +41,8 @@
   --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.08);
 
   /* 尺寸 */
-  --h-control: 32px;
+  /* 与设计稿 .btn / .info .input 一致：30px */
+  --h-control: 30px;
   --h-control-lg: 40px;
   --h-touch: 44px;
   --gap: 12px;

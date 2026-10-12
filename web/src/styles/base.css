@@ -105,14 +105,14 @@ table {
 /* ── 按钮 ── */
 .btn {
   font: inherit;
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 13.5px;
+  font-weight: 400;
   height: var(--h-control);
-  padding: 0 16px;
+  padding: 0 14px;
   background: var(--c-panel);
-  border: 1.5px solid var(--c-line);
-  border-radius: var(--radius-sm);
-  color: var(--c-primary);
+  border: 1px solid var(--c-line);
+  border-radius: 0;
+  color: var(--c-text);
   cursor: pointer;
   white-space: nowrap;
   transition: all 0.2s;
@@ -141,7 +141,7 @@ table {
 
 .btn-lg {
   height: var(--h-control-lg);
-  padding: 0 24px;
+  padding: 0 22px;
   font-size: 14px;
 }
 
@@ -155,11 +155,11 @@ table {
 .textarea,
 .select {
   font: inherit;
-  font-size: 13px;
+  font-size: 13.5px;
   width: 100%;
-  padding: 0 12px;
-  border: 1.5px solid var(--c-line);
-  border-radius: var(--radius-sm);
+  padding: 0 6px;
+  border: 1px solid var(--c-line);
+  border-radius: 0;
   background: #fff;
   color: var(--c-text);
 }
@@ -170,8 +170,8 @@ table {
 }
 
 .textarea {
-  min-height: 56px;
-  padding: 8px 12px;
+  min-height: 54px;
+  padding: 6px 8px;
   resize: vertical;
 }
 
@@ -180,7 +180,6 @@ table {
 .select:focus {
   outline: none;
   border-color: var(--c-primary);
-  box-shadow: 0 0 0 3px rgba(27, 94, 122, 0.06);
 }
 
 .input.invalid {
@@ -204,37 +203,34 @@ table {
 /* ── 纸张容器（业务页面）── */
 .sheet {
   width: var(--sheet-max);
-  max-width: calc(100% - 32px);
-  margin: 16px auto;
+  max-width: calc(100% - 24px);
+  margin: 12px auto;
   background: var(--c-panel);
   border: 1px solid var(--c-line);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  padding: 24px 28px 28px;
+  border-radius: 0;
+  padding: 20px 24px 24px;
 }
 
 .doc-title {
-  font-family: var(--font-title);
-  font-size: 20px;
+  font-family: var(--font-bold);
+  font-size: 22px;
   font-weight: 700;
-  color: var(--c-text);
+  color: #000;
   text-align: center;
-  letter-spacing: 0.02em;
-  margin: 4px 0 20px;
+  letter-spacing: 2px;
+  margin: 6px 0 18px;
 }
 
 /* ── 信息表 ── */
 .info {
   width: 100%;
   border: 1px solid var(--c-line);
-  border-radius: var(--radius-sm);
-  overflow: hidden;
 }
 
 .info th,
 .info td {
-  border: 1px solid var(--c-line-soft);
-  padding: 6px 10px;
+  border: 1px solid var(--c-line);
+  padding: 5px 8px;
   vertical-align: middle;
 }
 
@@ -244,7 +240,7 @@ table {
   /* 字段名用黑体（机构表单惯例） */
   font-family: var(--font-bold);
   font-weight: 700;
-  width: 122px;
+  width: 118px;
   text-align: left;
   white-space: nowrap;
 }
@@ -253,29 +249,27 @@ table {
 .items {
   width: 100%;
   border: 1px solid var(--c-line);
-  border-radius: var(--radius-sm);
-  overflow: hidden;
   table-layout: fixed;
 }
 
 .items th {
   background: var(--c-head);
-  color: var(--c-secondary);
+  color: var(--c-text);
   font-weight: 700;
-  border: 1px solid var(--c-line-soft);
-  padding: 8px 10px;
+  border: 1px solid var(--c-line);
+  padding: 7px 8px;
   text-align: left;
   font-size: 13px;
 }
 
 .items td {
-  border: 1px solid var(--c-line-soft);
-  padding: 10px;
+  border: 1px solid var(--c-line);
+  padding: 8px;
   vertical-align: top;
 }
 
 .item-no {
-  color: var(--c-primary);
+  color: var(--c-text);
   font-weight: 700;
 }
 
@@ -293,9 +287,9 @@ table {
 }
 
 .item-req {
-  font-size: 12.8px;
-  line-height: 1.7;
-  color: var(--c-secondary);
+  font-size: 13px;
+  line-height: 1.75;
+  color: var(--c-text);
 }
 
 /* 评价结果行底色规则：
@@ -331,19 +325,17 @@ table {
 .seg {
   display: flex;
   width: 100%;
-  border: 1.5px solid var(--c-line);
-  border-radius: var(--radius-sm);
-  overflow: hidden;
+  border: 1px solid var(--c-line);
 }
 
 .seg label {
   flex: 1;
   text-align: center;
-  padding: 8px 0;
+  padding: 7px 0;
   cursor: pointer;
   font-size: 13px;
-  font-weight: 600;
-  color: var(--c-secondary);
+  font-weight: 400;
+  color: var(--c-text);
   background: #fff;
   border-right: 1px solid var(--c-line);
   user-select: none;
@@ -376,11 +368,10 @@ table {
 
 /* ── 不符合情形 ── */
 .reasons {
-  margin-top: 10px;
+  margin-top: 8px;
   border: 1px solid var(--c-line);
-  border-radius: var(--radius-sm);
   background: #f7f9fa;
-  padding: 10px;
+  padding: 8px;
 }
 
 .reasons-head {
@@ -420,12 +411,12 @@ table {
 /* ── 校验提示条 ── */
 .alert {
   width: var(--sheet-max);
-  max-width: calc(100% - 32px);
-  margin: 16px auto 0;
+  max-width: calc(100% - 24px);
+  margin: 12px auto 0;
   border: 1px solid #f3c9cc;
-  border-radius: var(--radius);
+  border-left: 3px solid var(--c-danger);
   background: var(--c-danger-soft);
-  padding: 12px 16px;
+  padding: 8px 12px;
 }
 
 .alert-head {
@@ -485,9 +476,9 @@ table {
   transform: translateX(-50%);
   background: #2c2c2c;
   color: #fff;
-  padding: 10px 24px;
-  border-radius: 24px;
-  font-size: 12.5px;
+  padding: 9px 14px;
+  border-radius: 0;
+  font-size: 13px;
   z-index: 999;
 }
 
@@ -558,11 +549,12 @@ table {
   .sheet {
     max-width: calc(100% - 16px);
     margin: 10px auto;
-    padding: 16px 14px 18px;
+    /* 内边距与设计稿一致，窄屏只换更贴边的外边距 */
+    padding: 20px 24px 24px;
   }
 
+  /* 标题字号不再缩小：与设计稿一致保持 22px，窄屏只收紧外边距 */
   .doc-title {
-    font-size: 17px;
     margin: 4px 0 14px;
   }
 
@@ -583,15 +575,16 @@ table {
   .info th {
     border: 0;
     border-bottom: 1px solid var(--c-line-soft);
-    padding: 8px 10px 4px;
+    padding: 5px 8px;
   }
 
   .info td {
     border: 0;
-    padding: 2px 10px 8px;
+    padding: 5px 8px 8px;
   }
 
-  /* 评价结果表：降级为卡片式纵向排列 */
+  /* 评价结果表：窄屏把一行拆成「编号+项目 / 要求 / 结果」三段，
+     但保留表格观感——直角、行与行相接，不用圆角卡片。 */
   .items,
   .items tbody,
   .items tr,
@@ -611,8 +604,9 @@ table {
 
   .items tr {
     border: 1px solid var(--c-line);
-    border-radius: var(--radius-sm);
-    margin-bottom: 10px;
+    border-radius: 0;
+    /* 行与行共用一条边框，视觉上是一张连续的表而不是一叠卡片 */
+    margin-bottom: -1px;
     background: #fff;
     overflow: hidden;
   }
@@ -620,18 +614,18 @@ table {
   .items td {
     border: 0;
     border-top: 1px solid var(--c-line-soft);
-    padding: 10px 12px;
+    padding: 8px;
   }
 
   .items td:nth-child(1),
   .items td:nth-child(2) {
     display: inline-block;
     border-top: 0;
-    padding: 8px 4px 8px 12px;
+    padding: 8px;
   }
 
   .items td:nth-child(2) {
-    padding-left: 6px;
+    padding-left: 4px;
   }
 
   .items td:nth-child(3)::before {
@@ -652,24 +646,24 @@ table {
 
   /* 三态按钮加大触摸目标 */
   .seg label {
-    padding: 12px 0;
-    font-size: 14px;
+    padding: 10px 0;
+    font-size: 13px;
   }
 
   /* 底部操作条分两行 */
   .actionbar {
     flex-wrap: wrap;
     gap: 8px;
-    padding: 12px 14px;
+    padding: 16px 24px;
   }
 
   .count {
     width: 100%;
-    font-size: 13px;
+    font-size: 14px;
   }
 
   .count b {
-    font-size: 16px;
+    font-size: 18px;
   }
 
   .spacer {

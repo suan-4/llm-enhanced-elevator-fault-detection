@@ -203,8 +203,9 @@ const { chromium } = require(PLAYWRIGHT_MODULE);
     });
     const themeOk =
       theme.bg === "rgb(244, 248, 250)" &&
-      theme.sheetRadius === "10px" &&
-      theme.btnRadius === "6px" &&
+      // 与设计稿一致：直角（radius 0）
+      theme.sheetRadius === "0px" &&
+      theme.btnRadius === "0px" &&
       theme.font.includes("Noto Sans SC");
 
     // 暖色检查：全站不得出现暖色（米 / 褐 / 粉底）。
@@ -270,6 +271,40 @@ const { chromium } = require(PLAYWRIGHT_MODULE);
     });
     const labelFontOk = /黑体|SimHei/.test(labelFont);
 
+    // 条款编号（a) b) 1) …）只在模板里存在，录入页与报告里都不该出现。
+    // 数据源保持原文，归一化在前端，所以这里必须按渲染结果断言。
+    const clauseLeak = await page.evaluate(() => {
+      const marked = (s) => /^\s*[A-Za-z0-9]{1,2}[)）]/.test(s || "");
+      const bad = [];
+      document.querySelectorAll(".items tbody tr .item-req div").forEach((d) => {
+        if (marked(d.textContent)) bad.push(d.textContent.trim().slice(0, 30));
+      });
+      // 不符合情形的选项文字同样不能带编号
+      document.querySelectorAll(".items tbody tr .reasons .chk span").forEach((s) => {
+        if (marked(s.textContent)) bad.push(s.textContent.trim().slice(0, 30));
+      });
+      return [...new Set(bad)];
+    });
+    const clauseOk = clauseLeak.length === 0;
+
+    // 窄屏把一行拆成三段后，三态按钮最容易溢出/被裁切，这里固化检查。
+    const clipped = await page.evaluate(() => {
+      const bad = [];
+      document.querySelectorAll(".items tbody tr").forEach((tr) => {
+        const seg = tr.querySelector(".seg");
+        const cell = tr.querySelector("td:nth-child(4)");
+        if (!seg || !cell) return;
+        if (seg.getBoundingClientRect().width > cell.clientWidth + 1) {
+          bad.push(`${tr.id} 的 seg 超出单元格`);
+        }
+        seg.querySelectorAll("label").forEach((l) => {
+          if (l.scrollWidth > l.clientWidth + 1) bad.push(`${tr.id} 的「${l.textContent}」被裁切`);
+        });
+      });
+      return [...new Set(bad)];
+    });
+    const clippedOk = clipped.length === 0;
+
     await page.click(".actionbar .btn-primary");
     await page.locator(".paper").first().waitFor({ state: "visible", timeout: 12000 });
     const papers = await page.locator(".paper").count();
@@ -277,6 +312,18 @@ const { chromium } = require(PLAYWRIGHT_MODULE);
     const overflowReport = await page.evaluate(
       () => document.documentElement.scrollWidth - window.innerWidth,
     );
+    // 报告预览里的「评价内容与要求」列也不能带编号
+    const reportClauseLeak = await page.evaluate(() => {
+      const marked = (s) => /^\s*[A-Za-z0-9]{1,2}[)）]/.test(s || "");
+      const bad = [];
+      document.querySelectorAll(".paper table td").forEach((td) => {
+        td.querySelectorAll("div").forEach((d) => {
+          if (marked(d.textContent)) bad.push(d.textContent.trim().slice(0, 30));
+        });
+      });
+      return [...new Set(bad)];
+    });
+    const reportClauseOk = reportClauseLeak.length === 0;
     const grade4 = bodyText.includes("四级");
     const score0 = bodyText.includes("综合安全状况得分：0");
     const hasAppendix = bodyText.includes("降低风险措施");
@@ -300,7 +347,8 @@ const { chromium } = require(PLAYWRIGHT_MODULE);
       exportBtnText.includes("导出 PDF") && !generateBtnGone && exportBtnBg === "rgb(27, 94, 122)";
 
     const pass =
-      loginPageOk && themeOk && warmOk && rowColorOk && labelFontOk && sidebarOk && actionbarOk &&
+      loginPageOk && themeOk && warmOk && rowColorOk && labelFontOk && clauseOk &&
+      reportClauseOk && clippedOk && sidebarOk && actionbarOk &&
       rows === 66 && overflow <= 0 && alertVisible && alertCount > 0 &&
       focusedId.startsWith("f-") && counters.includes("未填 0 项") &&
       papers === 4 && overflowReport <= 0 && grade4 && score0 &&
@@ -331,6 +379,12 @@ const { chromium } = require(PLAYWRIGHT_MODULE);
       `  行底色规则      未填=${rowColors.unfilled} 符合=${rowColors.done} 不符合=${rowColors.unfit} ${rowColorOk ? "✓" : "✗"}`,
     );
     console.log(`  字段名字体      ${labelFont.slice(0, 34)} ${labelFontOk ? "✓ 黑体" : "✗ 非黑体"}`);
+    console.log(
+      `  条款编号清理    录入页 ${clauseLeak.length} 处 / 报告页 ${reportClauseLeak.length} 处 ${clauseOk && reportClauseOk ? "✓" : "✗ " + [...clauseLeak, ...reportClauseLeak].slice(0, 3).join(" | ")}`,
+    );
+    console.log(
+      `  窄屏三态按钮    溢出/裁切 ${clipped.length} 处 ${clippedOk ? "✓" : "✗ " + clipped.slice(0, 3).join(" | ")}`,
+    );
     console.log(
       `  侧边栏          展开=${sidebarExpanded}/${mainMarginExpanded} 折叠=${sidebarCollapsed}/${mainMarginCollapsed} 再展开=${sidebarReopened} ${sidebarOk ? "✓" : "✗"}`,
     );

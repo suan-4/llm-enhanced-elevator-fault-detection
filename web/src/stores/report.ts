@@ -2,7 +2,17 @@ import { defineStore } from 'pinia'
 import { computed, reactive, ref } from 'vue'
 import * as reportApi from '@/api/report'
 import { collectMissing, countItems, createItemState, type ItemState } from '@/domain/validation'
+import { stripClauseMarker } from '@/domain/format'
 import type { JteItem } from '@/types/api'
+
+/** 载入时去掉条款编号（a) b) 1) …），数据文件本身保持与模板一致 */
+function normalize(items: JteItem[]): JteItem[] {
+  return items.map((item) => ({
+    ...item,
+    req: item.req.map(stripClauseMarker),
+    opts: item.opts.map(stripClauseMarker),
+  }))
+}
 
 /** 抬头信息表默认值：四项必填留空，其余预填「/」 */
 function createForm(): Record<string, string> {
@@ -52,7 +62,7 @@ export const useReportStore = defineStore('report', () => {
     itemsError.value = ''
     try {
       const res = await reportApi.fetchJteItems()
-      items.value = res.items
+      items.value = normalize(res.items)
       resetItemStates()
     } catch (err) {
       itemsError.value = err instanceof Error ? err.message : '条目加载失败'
