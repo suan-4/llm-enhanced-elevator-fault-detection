@@ -52,23 +52,45 @@ const { chromium } = require(PLAYWRIGHT_MODULE);
       .then(() => true)
       .catch(() => false);
     await page.waitForSelector(".login-card", { timeout: 10000 });
-    const logoCount = await page.locator(".login-card .lockup img").count();
-    const logoAlts = await page.locator(".login-card .lockup img").evaluateAll((els) =>
+    const logoCount = await page.locator(".login-card .logo-lockup img").count();
+    const logoAlts = await page.locator(".login-card .logo-lockup img").evaluateAll((els) =>
       els.map((e) => e.getAttribute("alt") || ""),
     );
     const hasFsLogo = logoAlts.some((a) => a.includes("特种设备"));
     const hasFosuLogo = logoAlts.some((a) => a.includes("佛山大学"));
-    const loginTitle = (await page.locator(".login-title").innerText()).trim();
+    const loginTitle = (await page.locator(".login-h").innerText()).trim();
     const loginSub = (await page.locator(".login-sub").innerText()).trim();
     const loginFoot = (await page.locator(".login-foot").innerText()).trim();
     const placeholders = await page
-      .locator(".login-field input")
+      .locator(".login-card .form-input")
       .evaluateAll((els) => els.map((e) => e.placeholder));
     // 退出系统按钮：非一体机环境下不应出现（kiosk 未运行）
     const exitBtnCount = await page.locator(".login-x").count();
 
+    // 计算样式断言：确认登录页样式与旧版一致，而不是"看起来差不多"
+    const styleFacts = await page.evaluate(() => {
+      const card = document.querySelector(".login-card");
+      const view = document.querySelector(".login-view");
+      const cs = getComputedStyle(card);
+      const vs = getComputedStyle(view);
+      return {
+        radius: cs.borderRadius,
+        maxWidth: cs.maxWidth,
+        cardBg: cs.backgroundColor,
+        viewBg: vs.backgroundImage.slice(0, 40),
+        font: cs.fontFamily.slice(0, 16),
+      };
+    });
+    const styleOk =
+      styleFacts.radius === "16px" &&
+      styleFacts.maxWidth === "340px" &&
+      styleFacts.cardBg === "rgb(255, 255, 255)" &&
+      styleFacts.viewBg.includes("linear-gradient") &&
+      styleFacts.font.includes("Noto Sans SC");
+
     const loginPageOk =
       splashSeen &&
+      styleOk &&
       logoCount === 2 &&
       hasFsLogo &&
       hasFosuLogo &&
@@ -80,8 +102,8 @@ const { chromium } = require(PLAYWRIGHT_MODULE);
       placeholders.includes("请输入口令") &&
       exitBtnCount === 0;
 
-    await page.fill(".login-field input[type=text]", USERNAME);
-    await page.fill(".login-field input[type=password]", PASSWORD);
+    await page.fill(".login-card .form-input[type=text]", USERNAME);
+    await page.fill(".login-card .form-input[type=password]", PASSWORD);
     await page.click("button[type=submit]");
     await page.waitForSelector(".items tbody tr", { timeout: 20000 });
 
@@ -157,6 +179,9 @@ const { chromium } = require(PLAYWRIGHT_MODULE);
     console.log(`                     标题「${loginTitle}」/「${loginSub}」`);
     console.log(`                     页脚含机构署名=${loginFoot.includes("广东省特种设备检测研究院佛山检测院")}`);
     console.log(`                     退出按钮（非一体机应无）=${exitBtnCount}`);
+    console.log(
+      `  样式还原            圆角${styleFacts.radius} 最大宽${styleFacts.maxWidth} 卡片底色=${styleFacts.cardBg} 背景=渐变:${styleFacts.viewBg.includes("linear-gradient")} 字体=${styleFacts.font}`,
+    );
     console.log(`  条目行数        ${rows}`);
     console.log(`  横向溢出        主页面 ${overflow} px / 报告页 ${overflowReport} px`);
     console.log(`  必填拦截        ${alertVisible}，清单 ${alertCount} 条`);

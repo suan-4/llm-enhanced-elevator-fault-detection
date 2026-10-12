@@ -1,11 +1,10 @@
 <script setup lang="ts">
 /* 联合署名：广东省特种设备检测研究院佛山检测院 · 佛山大学
-   启动页与登录页共用，保持机构标识一致（原版首页即为此布局）。 */
-withDefaults(defineProps<{ size?: 'normal' | 'large' }>(), { size: 'normal' })
+   样式与旧版单文件前端逐值一致（flex 比例 6.8889 : 0.9706）。 */
 </script>
 
 <template>
-  <div class="lockup" :class="size">
+  <div class="logo-lockup">
     <img class="lg-fs" src="/fslogo.png" alt="广东省特种设备检测研究院佛山检测院" />
     <span class="sep" />
     <img class="lg-fosu" src="/fosulogo.png" alt="佛山大学" />
@@ -13,60 +12,33 @@ withDefaults(defineProps<{ size?: 'normal' | 'large' }>(), { size: 'normal' })
 </template>
 
 <style scoped>
-.lockup {
+.logo-lockup {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 16px;
+  gap: 18px;
   width: 100%;
 }
 
-.lockup img {
+.logo-lockup img {
   display: block;
-  height: auto;
+  flex: 0 1 0;
   min-width: 0;
+  height: auto;
 }
 
-.lockup .lg-fs {
-  max-width: 62%;
-  max-height: 38px;
+.lg-fs {
+  flex-grow: 6.8889;
 }
 
-.lockup .lg-fosu {
-  max-width: 22%;
-  max-height: 34px;
+.lg-fosu {
+  flex-grow: 0.9706;
 }
 
-.lockup .sep {
-  width: 1px;
-  height: 26px;
-  background: var(--c-line);
+.logo-lockup .sep {
   flex: 0 0 auto;
-}
-
-.lockup.large .lg-fs {
-  max-height: 52px;
-}
-
-.lockup.large .lg-fosu {
-  max-height: 46px;
-}
-
-.lockup.large .sep {
-  height: 36px;
-}
-
-@media (max-width: 900px) {
-  .lockup {
-    gap: 12px;
-  }
-
-  .lockup .lg-fs {
-    max-height: 32px;
-  }
-
-  .lockup .lg-fosu {
-    max-height: 28px;
-  }
+  align-self: stretch;
+  width: 1px;
+  background: #d9dee5;
 }
 </style>

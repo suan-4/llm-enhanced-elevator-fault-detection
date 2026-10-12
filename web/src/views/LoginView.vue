@@ -1,4 +1,6 @@
 <script setup lang="ts">
+/* 登录页：结构、文案与样式均与旧版单文件前端一致（不重新设计）。
+   字号按旧版 html{font-size:15px} 换算为 px，保证渲染尺寸相同。 */
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import BrandLockup from '@/components/BrandLockup.vue'
@@ -31,9 +33,7 @@ async function submit(): Promise<void> {
   }
 }
 
-/* 退出系统：登录页也必须可用。
-   kiosk/README.md 有明确论证——否则「进不去系统时想退回桌面」这条
-   最需要出口的路径就断了。 */
+/* 退出系统：登录页也必须可用（kiosk 模式下进不去系统时的唯一出口） */
 async function exitSystem(): Promise<void> {
   try {
     await kiosk.exit()
@@ -42,16 +42,10 @@ async function exitSystem(): Promise<void> {
     show(err instanceof Error ? err.message : '退出失败')
   }
 }
-
-/* 输入法中英切换：登录页需要。
-   用户名/口令是 ASCII，但用户可能先在别处切到了中文。 */
-async function switchIme(): Promise<void> {
-  await kiosk.setIme()
-}
 </script>
 
 <template>
-  <div class="login-page">
+  <div class="login-view">
     <form class="login-card" @submit.prevent="submit">
       <button
         v-if="kiosk.showExit()"
@@ -64,45 +58,40 @@ async function switchIme(): Promise<void> {
         ×
       </button>
 
-      <BrandLockup />
+      <div class="login-logo">
+        <BrandLockup />
+      </div>
 
-      <h1 class="login-title">电梯安全评估系统</h1>
-      <p class="login-sub">请使用您的账号登录</p>
+      <div class="login-h">电梯安全评估系统</div>
+      <div class="login-sub">请使用您的账号登录</div>
 
       <div v-if="error" class="login-err">{{ error }}</div>
 
-      <label class="login-field">
-        <span>用户名</span>
+      <div class="form-group">
+        <label class="form-label">用户名</label>
         <input
           v-model="username"
-          class="input"
+          class="form-input"
           type="text"
           autocomplete="username"
           placeholder="请输入用户名"
         />
-      </label>
+      </div>
 
-      <label class="login-field">
-        <span>口令</span>
+      <div class="form-group">
+        <label class="form-label">口令</label>
         <input
           v-model="password"
-          class="input"
+          class="form-input"
           type="password"
           autocomplete="current-password"
           placeholder="请输入口令"
         />
-      </label>
+      </div>
 
-      <button class="btn btn-primary btn-lg btn-block login-btn" type="submit" :disabled="auth.loading">
+      <button class="btn btn-primary login-btn" type="submit" :disabled="auth.loading">
         {{ auth.loading ? '登录中…' : '登 录' }}
       </button>
-
-      <div v-if="kiosk.imeAvailable.value" class="login-tools">
-        <button class="btn" type="button" @mousedown.prevent @click="switchIme">
-          {{ kiosk.imeLabel.value }}
-        </button>
-        <span class="login-tools-tip">点击切换中 / 英输入</span>
-      </div>
 
       <div class="login-foot">广东省特种设备检测研究院佛山检测院 · 佛山大学</div>
     </form>
@@ -110,125 +99,155 @@ async function switchIme(): Promise<void> {
 </template>
 
 <style scoped>
-.login-page {
-  min-height: 100vh;
+.login-view {
   display: flex;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 900;
+  background: linear-gradient(160deg, #10365f 0%, #1b5e7a 55%, #0d2b47 100%);
   align-items: center;
   justify-content: center;
-  background: var(--c-bg);
-  padding: 24px;
+  padding: 20px;
+  overflow: auto;
+  font-family: 'Noto Sans SC', 'Source Han Sans CN', 'Noto Sans Symbols2', sans-serif;
 }
 
 .login-card {
   position: relative;
-  width: 420px;
-  max-width: 100%;
-  background: var(--c-panel);
-  border: 1px solid var(--c-line);
-  border-top: 3px solid var(--c-primary);
-  box-shadow: 0 2px 10px rgba(23, 35, 61, 0.08);
-  padding: 26px 26px 20px;
+  width: 100%;
+  max-width: 340px;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.32);
+  padding: 30px;
 }
 
 .login-x {
   position: absolute;
-  top: 8px;
-  right: 10px;
-  width: 30px;
-  height: 30px;
+  top: 10px;
+  right: 12px;
+  width: 32px;
+  height: 32px;
   line-height: 1;
   display: flex;
   align-items: center;
   justify-content: center;
   background: none;
   border: 0;
-  color: var(--c-muted);
-  font-size: 20px;
-  font-family: var(--font-ui);
+  border-radius: 50%;
+  color: #99948e;
+  font-size: 22px;
+  font-family: inherit;
   cursor: pointer;
+  transition: all 0.18s;
 }
 
 .login-x:hover {
-  color: var(--c-danger);
-  background: var(--c-danger-soft);
+  background: #fef0f0;
+  color: #c5343e;
 }
 
-.login-title {
-  margin: 18px 0 0;
-  font-size: 17px;
+.login-logo {
+  margin: 16px auto 20px;
+}
+
+.login-h {
+  font-size: 15.3px;
   font-weight: 700;
   text-align: center;
-  color: var(--c-ink);
+  color: #2c2c2c;
 }
 
 .login-sub {
-  margin: 5px 0 18px;
-  font-size: 12.5px;
+  font-size: 10.5px;
+  color: #99948e;
   text-align: center;
-  color: var(--c-muted);
+  margin: 4px 0 20px;
 }
 
 .login-err {
-  background: var(--c-danger-soft);
-  color: var(--c-danger);
+  background: #fef0f0;
+  color: #c5343e;
   border: 1px solid #f3c9cc;
-  padding: 8px 11px;
-  font-size: 12.5px;
-  margin-bottom: 12px;
+  border-radius: 6px;
+  padding: 9px 12px;
+  font-size: 11.1px;
+  margin-bottom: 14px;
 }
 
-.login-field {
-  display: block;
-  margin-bottom: 13px;
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 14px;
 }
 
-.login-field span {
-  display: block;
-  font-size: 13px;
-  color: var(--c-ink);
-  margin-bottom: 5px;
+.form-label {
+  font-size: 11.4px;
+  font-weight: 600;
+  color: #6b6560;
 }
 
-.login-field .input {
-  height: var(--h-control-lg);
+.form-input {
+  border: 1.5px solid #e4ded4;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 12.9px;
+  font-family: inherit;
+  color: #2c2c2c;
+  outline: none;
+  width: 100%;
+  background: #fff;
+}
+
+.form-input:focus {
+  border-color: #2d8ab5;
+  box-shadow: 0 0 0 3px rgba(27, 94, 122, 0.06);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 22px;
+  border-radius: 6px;
+  font-size: 12.3px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  border: 1.5px solid transparent;
+  transition: all 0.2s;
+}
+
+.btn-primary {
+  background: #1b5e7a;
+  color: #fff;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #164b63;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .login-btn {
-  margin-top: 6px;
-}
-
-.login-tools {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 12px;
-}
-
-.login-tools-tip {
-  font-size: 12px;
-  color: var(--c-muted);
+  width: 100%;
+  justify-content: center;
+  padding: 11px;
+  font-size: 12.75px;
+  margin-top: 8px;
 }
 
 .login-foot {
   margin-top: 16px;
   text-align: center;
-  font-size: 11.5px;
-  color: var(--c-muted);
-}
-
-@media (max-width: 900px) {
-  .login-page {
-    padding: 12px;
-  }
-
-  .login-card {
-    padding: 22px 16px 16px;
-  }
-
-  .login-field .input,
-  .login-btn {
-    height: var(--h-touch);
-    font-size: 15px;
-  }
+  font-size: 9.6px;
+  color: #99948e;
 }
 </style>
