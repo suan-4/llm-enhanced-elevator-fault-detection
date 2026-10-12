@@ -1,5 +1,6 @@
-/* 基础样式：重置、布局、通用控件
-   视觉规范来自机构自有系统，令牌见 tokens.css */
+/* 基础样式：重置、布局、通用控件。
+   视觉语言与旧版单文件前端一致（见 tokens.css），
+   以保证登录页、启动页与业务页面风格统一。 */
 
 * {
   box-sizing: border-box;
@@ -14,7 +15,7 @@ body {
 body {
   background: var(--c-bg);
   color: var(--c-text);
-  font: 13.5px/1.5 var(--font-ui);
+  font: 13.5px/1.6 var(--font-ui);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -27,11 +28,10 @@ table {
   display: flex;
   align-items: center;
   gap: 16px;
-  height: 48px;
-  padding: 0 16px;
+  height: 52px;
+  padding: 0 20px;
   background: var(--c-panel);
   border-bottom: 1px solid var(--c-line);
-  border-top: 3px solid var(--c-primary);
   position: sticky;
   top: 0;
   z-index: 30;
@@ -47,13 +47,14 @@ table {
   font: 700 12px/1 var(--font-ui);
   color: #fff;
   background: var(--c-primary);
-  padding: 5px 7px;
+  border-radius: var(--radius-sm);
+  padding: 6px 8px;
 }
 
 .brand-text {
   font-size: 15.5px;
   font-weight: 700;
-  color: var(--c-ink);
+  color: var(--c-text);
   white-space: nowrap;
 }
 
@@ -81,18 +82,22 @@ table {
 /* ── 按钮 ── */
 .btn {
   font: inherit;
-  font-size: 13.5px;
+  font-size: 13px;
+  font-weight: 600;
   height: var(--h-control);
-  padding: 0 14px;
+  padding: 0 16px;
   background: var(--c-panel);
-  border: 1px solid var(--c-line);
-  color: var(--c-ink);
+  border: 1.5px solid var(--c-line);
+  border-radius: var(--radius-sm);
+  color: var(--c-primary);
   cursor: pointer;
   white-space: nowrap;
+  transition: all 0.2s;
 }
 
 .btn:hover:not(:disabled) {
-  border-color: #c5cdd8;
+  border-color: var(--c-primary);
+  background: var(--c-primary-soft);
 }
 
 .btn:disabled {
@@ -113,7 +118,7 @@ table {
 
 .btn-lg {
   height: var(--h-control-lg);
-  padding: 0 22px;
+  padding: 0 24px;
   font-size: 14px;
 }
 
@@ -127,10 +132,11 @@ table {
 .textarea,
 .select {
   font: inherit;
-  font-size: 13.5px;
+  font-size: 13px;
   width: 100%;
-  padding: 0 8px;
-  border: 1px solid var(--c-line);
+  padding: 0 12px;
+  border: 1.5px solid var(--c-line);
+  border-radius: var(--radius-sm);
   background: #fff;
   color: var(--c-text);
 }
@@ -141,8 +147,8 @@ table {
 }
 
 .textarea {
-  min-height: 54px;
-  padding: 6px 8px;
+  min-height: 56px;
+  padding: 8px 12px;
   resize: vertical;
 }
 
@@ -151,6 +157,7 @@ table {
 .select:focus {
   outline: none;
   border-color: var(--c-primary);
+  box-shadow: 0 0 0 3px rgba(27, 94, 122, 0.06);
 }
 
 .input.invalid {
@@ -164,51 +171,55 @@ table {
 }
 
 .input-plain:hover {
-  border-color: var(--c-line-soft);
+  border-color: var(--c-line);
 }
 
 .req {
   color: var(--c-danger);
 }
 
-/* ── 纸张容器 ── */
+/* ── 纸张容器（业务页面）── */
 .sheet {
   width: var(--sheet-max);
-  max-width: calc(100% - 24px);
-  margin: 12px auto;
+  max-width: calc(100% - 32px);
+  margin: 16px auto;
   background: var(--c-panel);
   border: 1px solid var(--c-line);
-  padding: 20px 24px 24px;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 24px 28px 28px;
 }
 
 .doc-title {
   font-family: var(--font-title);
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 700;
-  color: #000;
+  color: var(--c-text);
   text-align: center;
-  letter-spacing: 2px;
-  margin: 6px 0 18px;
+  letter-spacing: 0.02em;
+  margin: 4px 0 20px;
 }
 
 /* ── 信息表 ── */
 .info {
   width: 100%;
   border: 1px solid var(--c-line);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
 }
 
 .info th,
 .info td {
-  border: 1px solid var(--c-line);
-  padding: 5px 8px;
+  border: 1px solid var(--c-line-soft);
+  padding: 6px 10px;
   vertical-align: middle;
 }
 
 .info th {
   background: var(--c-head);
-  color: var(--c-ink);
-  font-weight: 700;
-  width: 118px;
+  color: var(--c-secondary);
+  font-weight: 600;
+  width: 122px;
   text-align: left;
   white-space: nowrap;
 }
@@ -217,32 +228,34 @@ table {
 .items {
   width: 100%;
   border: 1px solid var(--c-line);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
   table-layout: fixed;
 }
 
 .items th {
   background: var(--c-head);
-  color: var(--c-ink);
+  color: var(--c-secondary);
   font-weight: 700;
-  border: 1px solid var(--c-line);
-  padding: 7px 8px;
+  border: 1px solid var(--c-line-soft);
+  padding: 8px 10px;
   text-align: left;
   font-size: 13px;
 }
 
 .items td {
-  border: 1px solid var(--c-line);
-  padding: 8px;
+  border: 1px solid var(--c-line-soft);
+  padding: 10px;
   vertical-align: top;
 }
 
 .item-no {
-  color: var(--c-ink);
+  color: var(--c-primary);
   font-weight: 700;
 }
 
 .item-name {
-  color: var(--c-ink);
+  color: var(--c-text);
   font-weight: 700;
   line-height: 1.45;
 }
@@ -250,14 +263,14 @@ table {
 .item-name .sub {
   display: block;
   font-weight: 400;
-  color: var(--c-text);
+  color: var(--c-secondary);
   margin-top: 2px;
 }
 
 .item-req {
-  font-size: 13px;
-  line-height: 1.75;
-  color: var(--c-text);
+  font-size: 12.8px;
+  line-height: 1.7;
+  color: var(--c-secondary);
 }
 
 .row-unfit td:first-child {
@@ -265,7 +278,7 @@ table {
 }
 
 .row-miss td {
-  background: #fffaf9;
+  background: var(--c-danger-soft);
 }
 
 .row-mark {
@@ -274,7 +287,7 @@ table {
 
 @keyframes row-highlight {
   0% {
-    background: #fff5d6;
+    background: #fff3d9;
   }
   100% {
     background: transparent;
@@ -285,19 +298,23 @@ table {
 .seg {
   display: flex;
   width: 100%;
-  border: 1px solid var(--c-line);
+  border: 1.5px solid var(--c-line);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
 }
 
 .seg label {
   flex: 1;
   text-align: center;
-  padding: 7px 0;
+  padding: 8px 0;
   cursor: pointer;
   font-size: 13px;
-  color: var(--c-ink);
+  font-weight: 600;
+  color: var(--c-secondary);
   background: #fff;
   border-right: 1px solid var(--c-line);
   user-select: none;
+  transition: all 0.18s;
 }
 
 .seg label:last-child {
@@ -306,6 +323,7 @@ table {
 
 .seg label:hover {
   background: var(--c-primary-soft);
+  color: var(--c-primary);
 }
 
 .seg label.on {
@@ -325,10 +343,11 @@ table {
 
 /* ── 不符合情形 ── */
 .reasons {
-  margin-top: 8px;
+  margin-top: 10px;
   border: 1px solid var(--c-line);
-  background: #fafbfc;
-  padding: 8px;
+  border-radius: var(--radius-sm);
+  background: #fbf9f6;
+  padding: 10px;
 }
 
 .reasons-head {
@@ -368,18 +387,18 @@ table {
 /* ── 校验提示条 ── */
 .alert {
   width: var(--sheet-max);
-  max-width: calc(100% - 24px);
-  margin: 12px auto 0;
-  border: 1px solid #f3c6bb;
-  border-left: 3px solid var(--c-danger);
+  max-width: calc(100% - 32px);
+  margin: 16px auto 0;
+  border: 1px solid #f3c9cc;
+  border-radius: var(--radius);
   background: var(--c-danger-soft);
-  padding: 8px 12px;
+  padding: 12px 16px;
 }
 
 .alert-head {
   font-weight: 700;
   color: var(--c-danger);
-  margin-bottom: 4px;
+  margin-bottom: 6px;
 }
 
 .alert-list {
@@ -401,18 +420,18 @@ table {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 10px 16px;
+  padding: 12px 20px;
   background: var(--c-panel);
   border-top: 1px solid var(--c-line);
 }
 
 .count {
-  color: var(--c-muted);
+  color: var(--c-secondary);
   font-size: 12.5px;
 }
 
 .count b {
-  color: var(--c-ink);
+  color: var(--c-text);
 }
 
 .count .bad {
@@ -426,59 +445,62 @@ table {
 /* ── 提示条 ── */
 .toast {
   position: fixed;
+  bottom: 30px;
   left: 50%;
-  bottom: 24px;
   transform: translateX(-50%);
-  background: #2b3a4a;
+  background: #2c2c2c;
   color: #fff;
-  font-size: 13px;
-  padding: 9px 14px;
-  z-index: 60;
+  padding: 10px 24px;
+  border-radius: 24px;
+  font-size: 12.5px;
+  z-index: 999;
 }
 
 /* ── 页面内自绘弹窗（不用原生 confirm：板端 WebKit 会弹英文系统框并阻塞页面） ── */
 .dialog-mask {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.35);
+  background: rgba(18, 24, 34, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 70;
+  padding: 20px;
+  z-index: 1200;
 }
 
 .dialog {
-  width: 380px;
-  max-width: calc(100% - 32px);
+  width: 400px;
+  max-width: 100%;
   background: var(--c-panel);
-  border: 1px solid var(--c-line);
+  border-radius: 14px;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
 }
 
 .dialog-head {
-  padding: 10px 14px;
-  background: var(--c-head);
+  padding: 16px 20px;
   border-bottom: 1px solid var(--c-line);
   font-weight: 700;
-  color: var(--c-ink);
+  color: var(--c-primary);
 }
 
 .dialog-body {
-  padding: 16px 14px;
+  padding: 18px 20px;
 }
 
 .dialog-foot {
-  padding: 10px 14px;
+  padding: 14px 20px;
   border-top: 1px solid var(--c-line);
   display: flex;
   justify-content: flex-end;
-  gap: 8px;
+  gap: 10px;
 }
 
 /* ══ 竖屏适配：板端逻辑视口 600×960（竖）/ 960×600（横），断点 900px ══ */
 @media (max-width: 900px) {
   .topbar {
     gap: 8px;
-    padding: 0 10px;
+    padding: 0 12px;
   }
 
   .topbar-meta,
@@ -491,15 +513,14 @@ table {
   }
 
   .sheet {
-    max-width: calc(100% - 12px);
-    margin: 6px auto;
-    padding: 14px 10px 16px;
+    max-width: calc(100% - 16px);
+    margin: 10px auto;
+    padding: 16px 14px 18px;
   }
 
   .doc-title {
-    font-size: 18px;
-    letter-spacing: 1px;
-    margin: 4px 0 12px;
+    font-size: 17px;
+    margin: 4px 0 14px;
   }
 
   /* 信息表：逐字段堆叠 */
@@ -519,12 +540,12 @@ table {
   .info th {
     border: 0;
     border-bottom: 1px solid var(--c-line-soft);
-    padding: 6px 8px 4px;
+    padding: 8px 10px 4px;
   }
 
   .info td {
     border: 0;
-    padding: 2px 8px 6px;
+    padding: 2px 10px 8px;
   }
 
   /* 评价结果表：降级为卡片式纵向排列 */
@@ -538,6 +559,7 @@ table {
 
   .items {
     border: 0;
+    overflow: visible;
   }
 
   .items thead {
@@ -546,21 +568,23 @@ table {
 
   .items tr {
     border: 1px solid var(--c-line);
+    border-radius: var(--radius-sm);
     margin-bottom: 10px;
     background: #fff;
+    overflow: hidden;
   }
 
   .items td {
     border: 0;
     border-top: 1px solid var(--c-line-soft);
-    padding: 8px 10px;
+    padding: 10px 12px;
   }
 
   .items td:nth-child(1),
   .items td:nth-child(2) {
     display: inline-block;
     border-top: 0;
-    padding: 6px 4px 6px 10px;
+    padding: 8px 4px 8px 12px;
   }
 
   .items td:nth-child(2) {
@@ -580,12 +604,12 @@ table {
     display: block;
     color: var(--c-muted);
     font-size: 12px;
-    margin-bottom: 5px;
+    margin-bottom: 6px;
   }
 
   /* 三态按钮加大触摸目标 */
   .seg label {
-    padding: 11px 0;
+    padding: 12px 0;
     font-size: 14px;
   }
 
@@ -593,7 +617,7 @@ table {
   .actionbar {
     flex-wrap: wrap;
     gap: 8px;
-    padding: 8px 10px;
+    padding: 10px 12px;
   }
 
   .count {

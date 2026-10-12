@@ -6,9 +6,7 @@ import BrandLockup from './BrandLockup.vue'
 
 <template>
   <div class="splash">
-    <div class="splash-logo">
-      <BrandLockup />
-    </div>
+    <BrandLockup class="splash-logo" />
     <div class="splash-title">电梯安全评估系统</div>
     <div class="splash-sub">ELEVATOR SAFETY ASSESSMENT SYSTEM</div>
     <div class="splash-spin" />
@@ -32,7 +30,9 @@ import BrandLockup from './BrandLockup.vue'
   gap: 20px;
 }
 
-.splash-logo {
+/* 同时是 .logo-lockup（flex + width:100%），这里提高特异性写死宽度，
+   避免两条同特异性的 width 规则因编译顺序不同而互相覆盖 */
+.splash-logo.logo-lockup {
   background: #fff;
   border-radius: 14px;
   padding: 18px 22px;

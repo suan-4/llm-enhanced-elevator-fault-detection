@@ -58,9 +58,7 @@ async function exitSystem(): Promise<void> {
         ×
       </button>
 
-      <div class="login-logo">
-        <BrandLockup />
-      </div>
+      <BrandLockup class="login-logo" />
 
       <div class="login-h">电梯安全评估系统</div>
       <div class="login-sub">请使用您的账号登录</div>
@@ -151,6 +149,9 @@ async function exitSystem(): Promise<void> {
 }
 
 .login-logo {
+  /* 上外边距 16px 不是装饰：卡片右上角浮着 32×32 的「×」（top:10px，底部在卡片顶下方 42px），
+     logo 行若从 padding 30px 开始会与其重叠 12.5×8.5 逻辑像素 ——
+     而「×」是可点的触控目标，点佛大 logo 右上角会直接退出系统。 */
   margin: 16px auto 20px;
 }
 

@@ -1,38 +1,45 @@
-/* 设计令牌
-   取自实测的机构自有系统：正文 Microsoft YaHei 13.5px、边框 #dcdee2、
-   主色 #0C86D8、直角、深色文字 #17233d。改动此文件即改动全站观感。 */
+/* 设计令牌 —— 取自旧版单文件前端的 :root，全站统一使用这一套语言。
+   登录页与启动页已是原版样式，这里保证其余页面与它们一致：
+   暖白底、白卡 + 圆角 + 轻投影、深青主色、Noto Sans SC。 */
 :root {
   /* 文字 */
-  --c-ink: #17233d;
-  --c-text: #353535;
-  --c-muted: #808695;
+  --c-text: #2c2c2c;
+  --c-ink: #2c2c2c;
+  --c-secondary: #6b6560;
+  --c-muted: #99948e;
 
   /* 结构 */
-  --c-line: #dcdee2;
-  --c-line-soft: #e8eaec;
-  --c-bg: #f0f2f5;
+  --c-bg: #f6f3ee;
   --c-panel: #ffffff;
-  --c-head: #f1f4f8;
+  --c-line: #e4ded4;
+  --c-line-soft: #efeae2;
+  --c-head: #f7f4ef;
 
   /* 语义 */
-  --c-primary: #0c86d8;
-  --c-primary-dark: #0a6cb0;
-  --c-primary-soft: #e8f3fb;
-  --c-danger: #ed4014;
-  --c-danger-soft: #fdecea;
-  --c-ok: #19be6b;
-  --c-warn: #ff9900;
+  --c-primary: #1b5e7a;
+  --c-primary-dark: #164b63;
+  --c-primary-soft: #e8f0f8;
+  --c-danger: #c5343e;
+  --c-danger-soft: #fef0f0;
+  --c-ok: #2d7d46;
+  --c-ok-soft: #eef8f0;
+  --c-warn: #c47f20;
 
   /* 字体 */
-  --font-ui: "Microsoft YaHei", "SimSun", sans-serif;
-  --font-title: "黑体", "Microsoft YaHei", sans-serif;
-  --font-report: "仿宋_GB2312", "FangSong", "仿宋", "SimSun", serif;
+  --font-ui: 'Noto Sans SC', 'Source Han Sans CN', 'Noto Sans Symbols2', sans-serif;
+  --font-title: 'Noto Sans SC', 'Source Han Sans CN', sans-serif;
+  --font-report: '仿宋_GB2312', 'FangSong', '仿宋', 'SimSun', serif;
+
+  /* 形态 */
+  --radius: 10px;
+  --radius-sm: 6px;
+  --shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.08);
 
   /* 尺寸 */
-  --h-control: 30px;
-  --h-control-lg: 36px;
+  --h-control: 32px;
+  --h-control-lg: 40px;
   --h-touch: 44px;
-  --radius: 0;
   --gap: 12px;
 
   /* 布局 */
@@ -40,7 +47,7 @@
   --paper-width: 210mm;
   --paper-height: 297mm;
 
-  /* 报告排版（模板实测值） */
+  /* 报告排版（模板实测值，属于文档而非界面，保持原样） */
   --report-font-size: 10.5pt;
   --report-line-height: 1.35;
   --report-table-font-size: 9pt;

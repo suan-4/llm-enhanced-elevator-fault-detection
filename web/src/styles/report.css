@@ -1,6 +1,6 @@
-/* 报告预览样式
-   版式依据 JTE-09-R02-3.00 模板实测：正文仿宋_GB2312、主力字号 10.5pt、
-   表格线为黑色单实线。竖屏下不重排，整体等比缩放（见 .paper-holder）。 */
+/* 报告预览与导出区样式。
+   .paper 是文档（仿宋、黑框、A4），不随界面风格变化；
+   导出区属于界面，统一使用当前设计语言。 */
 
 .report-wrap {
   padding: 12px;
@@ -16,7 +16,7 @@
   min-height: var(--paper-height);
   padding: 18mm 16mm;
   background: #fff;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--shadow-lg);
   font-family: var(--font-report);
   font-size: var(--report-font-size);
   line-height: var(--report-line-height);
@@ -74,23 +74,26 @@
 .export-zone {
   background: var(--c-panel);
   border: 1px solid var(--c-line);
-  padding: 12px;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 20px 22px;
   max-width: var(--paper-width);
   margin: 0 auto 24px;
 }
 
 .export-zone .zt {
   font-weight: 700;
-  color: var(--c-ink);
-  margin-bottom: 10px;
+  color: var(--c-primary);
+  margin-bottom: 12px;
 }
 
 .export-result {
-  margin-top: 10px;
+  margin-top: 12px;
   border: 1px solid var(--c-line-soft);
   border-left: 3px solid var(--c-ok);
-  background: #f6fdf9;
-  padding: 8px 10px;
+  background: var(--c-ok-soft);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
 }
 
 @media (max-width: 900px) {

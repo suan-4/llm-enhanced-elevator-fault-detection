@@ -56,6 +56,15 @@ const { chromium } = require(PLAYWRIGHT_MODULE);
     const logoAlts = await page.locator(".login-card .logo-lockup img").evaluateAll((els) =>
       els.map((e) => e.getAttribute("alt") || ""),
     );
+    // 只数元素个数会漏掉「元素存在但尺寸为 0」的情况（曾因此漏掉 logo 不可见的缺陷），
+    // 所以这里必须断言真实渲染尺寸。
+    const logoBoxes = await page.locator(".login-card .logo-lockup img").evaluateAll((els) =>
+      els.map((e) => {
+        const r = e.getBoundingClientRect();
+        return { w: Math.round(r.width), h: Math.round(r.height) };
+      }),
+    );
+    const logosRendered = logoBoxes.length === 2 && logoBoxes.every((b) => b.w > 20 && b.h > 10);
     const hasFsLogo = logoAlts.some((a) => a.includes("特种设备"));
     const hasFosuLogo = logoAlts.some((a) => a.includes("佛山大学"));
     const loginTitle = (await page.locator(".login-h").innerText()).trim();
@@ -91,6 +100,7 @@ const { chromium } = require(PLAYWRIGHT_MODULE);
     const loginPageOk =
       splashSeen &&
       styleOk &&
+      logosRendered &&
       logoCount === 2 &&
       hasFsLogo &&
       hasFosuLogo &&
@@ -143,6 +153,24 @@ const { chromium } = require(PLAYWRIGHT_MODULE);
     await page.waitForTimeout(300);
     const counters = (await page.locator(".actionbar .count").innerText()).replace(/\s+/g, " ");
 
+    // 主题统一性：业务页面的令牌必须与登录页同源（旧版 :root）
+    const theme = await page.evaluate(() => {
+      const body = getComputedStyle(document.body);
+      const sheet = getComputedStyle(document.querySelector(".sheet"));
+      const btn = getComputedStyle(document.querySelector(".actionbar .btn"));
+      return {
+        bg: body.backgroundColor,
+        font: body.fontFamily.slice(0, 13),
+        sheetRadius: sheet.borderRadius,
+        btnRadius: btn.borderRadius,
+      };
+    });
+    const themeOk =
+      theme.bg === "rgb(246, 243, 238)" &&
+      theme.sheetRadius === "10px" &&
+      theme.btnRadius === "6px" &&
+      theme.font.includes("Noto Sans SC");
+
     await page.click(".actionbar .btn-primary");
     await page.locator(".export-zone").waitFor({ state: "visible", timeout: 12000 });
     const papers = await page.locator(".paper").count();
@@ -166,7 +194,7 @@ const { chromium } = require(PLAYWRIGHT_MODULE);
       : false;
 
     const pass =
-      loginPageOk && rows === 66 && overflow <= 0 && alertVisible && alertCount > 0 &&
+      loginPageOk && themeOk && rows === 66 && overflow <= 0 && alertVisible && alertCount > 0 &&
       focusedId.startsWith("f-") && counters.includes("未填 0 项") &&
       papers === 4 && overflowReport <= 0 && grade4 && score0 &&
       hasAppendix && hasAppendixA && filled &&
@@ -176,6 +204,9 @@ const { chromium } = require(PLAYWRIGHT_MODULE);
     console.log(`══ ${vp.label} ══`);
     console.log(`  启动页              ${splashSeen ? "出现" : "未捕获"}`);
     console.log(`  登录页要素          联合logo=${logoCount}（特检院=${hasFsLogo} 佛山大学=${hasFosuLogo}）`);
+    console.log(
+      `  logo 实际渲染尺寸   ${logoBoxes.map((b) => `${b.w}x${b.h}`).join(" / ")}  ${logosRendered ? "✓ 可见" : "✗ 尺寸异常"}`,
+    );
     console.log(`                     标题「${loginTitle}」/「${loginSub}」`);
     console.log(`                     页脚含机构署名=${loginFoot.includes("广东省特种设备检测研究院佛山检测院")}`);
     console.log(`                     退出按钮（非一体机应无）=${exitBtnCount}`);
@@ -183,6 +214,9 @@ const { chromium } = require(PLAYWRIGHT_MODULE);
       `  样式还原            圆角${styleFacts.radius} 最大宽${styleFacts.maxWidth} 卡片底色=${styleFacts.cardBg} 背景=渐变:${styleFacts.viewBg.includes("linear-gradient")} 字体=${styleFacts.font}`,
     );
     console.log(`  条目行数        ${rows}`);
+    console.log(
+      `  主题统一        底色=${theme.bg} 卡片圆角=${theme.sheetRadius} 按钮圆角=${theme.btnRadius} 字体=${theme.font} ${themeOk ? "✓" : "✗"}`,
+    );
     console.log(`  横向溢出        主页面 ${overflow} px / 报告页 ${overflowReport} px`);
     console.log(`  必填拦截        ${alertVisible}，清单 ${alertCount} 条`);
     console.log(`  跳转定位        ${focusedId}`);

@@ -211,10 +211,16 @@ async function signOut(): Promise<void> {
   margin-left: -1px;
   color: var(--c-ink);
   cursor: pointer;
+  border-radius: 0;
 }
 
 .view-tabs button:first-child {
   margin-left: 0;
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+}
+
+.view-tabs button:last-child {
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
 }
 
 .view-tabs button.active {

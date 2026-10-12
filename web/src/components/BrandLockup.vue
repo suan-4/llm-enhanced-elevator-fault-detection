@@ -1,6 +1,11 @@
 <script setup lang="ts">
 /* 联合署名：广东省特种设备检测研究院佛山检测院 · 佛山大学
-   样式与旧版单文件前端逐值一致（flex 比例 6.8889 : 0.9706）。 */
+   与旧版单文件前端逐值一致（flex 比例 6.8889 : 0.9706）。
+
+   ⚠ 选择器必须写成 `.logo-lockup .lg-fs`：
+   `.logo-lockup img { flex: 0 1 0 }` 的特异性是 (0,1,1)，
+   若只写 `.lg-fs { flex-grow }` (0,1,0) 会被它压掉，
+   flex-grow 退回 0，配合 basis 0 会让 logo 渲染成 0×0 —— 完全看不见。 */
 </script>
 
 <template>
@@ -27,11 +32,11 @@
   height: auto;
 }
 
-.lg-fs {
+.logo-lockup .lg-fs {
   flex-grow: 6.8889;
 }
 
-.lg-fosu {
+.logo-lockup .lg-fosu {
   flex-grow: 0.9706;
 }
 
