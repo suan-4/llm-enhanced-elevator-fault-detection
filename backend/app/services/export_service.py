@@ -76,6 +76,16 @@ def _safe_stem(stem: str) -> str:
 def ensure_export_dir() -> None:
     try:
         EXPORT_DIR.mkdir(parents=True, exist_ok=True)
+    except OSError as e:
+        # 目录建不出来，后续必然失败（转换完无处落盘）。
+        # 必须立刻抛出：静默继续只会把错误推迟到更难定位的位置。
+        # 只取 e.strerror（如「拒绝访问」），不带 [WinError N] 之类的平台噪音。
+        raise RuntimeError(
+            "导出目录不可用（%s）：%s。请检查该路径是否存在、磁盘是否可写。"
+            % (EXPORT_DIR, (e.strerror or str(e)).rstrip("。."))
+        ) from e
+    # 属主与权限是给桌面用户取文件用的；改不动不影响导出本身，可以容忍。
+    try:
         os.chown(EXPORT_DIR, EXPORT_UID, EXPORT_GID)
         os.chmod(EXPORT_DIR, 0o755)
     except OSError:
@@ -165,6 +175,14 @@ def export(html_str: str, fmt: str, stem: str) -> dict:
             proc = subprocess.run(cmd, capture_output=True, timeout=CONVERT_TIMEOUT)
         except subprocess.TimeoutExpired:
             raise RuntimeError("转换超时（%d 秒），请重试" % CONVERT_TIMEOUT)
+        except OSError as e:
+            # 常见于板端未安装 LibreOffice 或路径不可执行。
+            # 必须转成可执行提示：原始 OSError 只会显示 "系统找不到指定的文件"，
+            # 用户无法据此判断问题所在。
+            raise RuntimeError(
+                "导出失败：无法启动 LibreOffice（%s）。"
+                "请确认板端已安装 LibreOffice，且该路径存在且可执行。" % SOFFICE
+            ) from e
 
         out = work / (clean_stem + "." + fmt)
         if not out.exists():
