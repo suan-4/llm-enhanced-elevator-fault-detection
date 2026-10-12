@@ -97,13 +97,14 @@
          ③ 应用 8 秒内没挂载出来。 */
       (function () {
         var shown = false
-        function show(reason, detail, force) {
+        function show(reason, detail, force, kind) {
           if (shown) return
           if (!force && window.__APP_MOUNTED__) return
           var box = document.getElementById('boot-fallback')
           if (!box) return
           shown = true
           box.hidden = false
+          if (kind) box.dataset.kind = kind
           document.getElementById('boot-reason').textContent = reason
           if (detail) document.getElementById('boot-detail').textContent = String(detail)
         }
@@ -132,7 +133,9 @@
 
         setTimeout(function () {
           if (!window.__APP_MOUNTED__) {
-            show('应用未在预期时间内启动。', '若刚做过更新或重启，重新加载通常即可恢复。')
+            // kind=timeout：只是"没在预期时间内起来"，应用若随后正常挂载，
+            // 由 main.ts 撤掉这个面板，避免误挡可用界面。
+            show('应用未在预期时间内启动。', '若刚做过更新或重启，重新加载通常即可恢复。', false, 'timeout')
           }
         }, 8000)
       })()

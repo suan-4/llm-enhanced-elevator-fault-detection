@@ -23,3 +23,11 @@ app.use(createPinia()).use(router).mount('#app')
 
 /* 供 index.html 的启动兜底脚本判断"应用是否真的起来了" */
 ;(window as unknown as { __APP_MOUNTED__?: boolean }).__APP_MOUNTED__ = true
+
+/* 兜底面板若只是"启动超时"误报（应用其实起来了），撤掉它，
+   否则会把已经可用的界面盖住。资源加载类错误不撤 —— 那种情况
+   应用确实没起来，面板必须留着。 */
+const bootFallback = document.getElementById('boot-fallback')
+if (bootFallback && !bootFallback.hidden && bootFallback.dataset.kind === 'timeout') {
+  bootFallback.hidden = true
+}
