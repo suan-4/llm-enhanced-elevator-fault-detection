@@ -10,6 +10,10 @@ html,
 body {
   margin: 0;
   padding: 0;
+  height: 100%;
+  /* 滚动容器是 .main（与旧版一致）：window 不滚动，
+     这样软键盘的候选窗坐标与文档坐标一致，不会错位。 */
+  overflow: hidden;
 }
 
 body {
@@ -21,6 +25,25 @@ body {
 
 table {
   border-collapse: collapse;
+}
+
+/* ── 应用外壳：左侧固定侧边栏 + 右侧主区 ── */
+.app-shell {
+  height: 100vh;
+  overflow: hidden;
+}
+
+.main {
+  margin-left: 260px;
+  height: 100vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  /* 时长与缓动必须与 .sidebar 的 width 一致，否则展开时侧边栏会压住正文 */
+  transition: margin-left 0.3s ease;
+}
+
+.main.expanded {
+  margin-left: 50px;
 }
 
 /* ── 顶栏 ── */
@@ -429,19 +452,21 @@ table {
   z-index: 30;
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 20px;
+  gap: 14px;
+  padding: 16px 24px;
   background: var(--c-panel);
   border-top: 1px solid var(--c-line);
 }
 
 .count {
   color: var(--c-secondary);
-  font-size: 12.5px;
+  font-size: 14px;
 }
 
 .count b {
   color: var(--c-text);
+  font-size: 18px;
+  margin: 0 2px;
 }
 
 .count .bad {
@@ -508,6 +533,14 @@ table {
 
 /* ══ 竖屏适配：板端逻辑视口 600×960（竖）/ 960×600（横），断点 900px ══ */
 @media (max-width: 900px) {
+  .main {
+    margin-left: 186px;
+  }
+
+  .main.expanded {
+    margin-left: 50px;
+  }
+
   .topbar {
     gap: 8px;
     padding: 0 12px;
@@ -627,11 +660,16 @@ table {
   .actionbar {
     flex-wrap: wrap;
     gap: 8px;
-    padding: 10px 12px;
+    padding: 12px 14px;
   }
 
   .count {
     width: 100%;
+    font-size: 13px;
+  }
+
+  .count b {
+    font-size: 16px;
   }
 
   .spacer {

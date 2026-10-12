@@ -44,14 +44,25 @@ def _is_local(request: Request) -> bool:
     return bool(client) and client.host in LOCAL_HOSTS
 
 
-def _kiosk_running() -> bool:
-    """Chromium 方案或 GTK 原生方案，任一在运行即视为 kiosk 模式。"""
+def _kiosk_running() -> tuple[bool, bool]:
+    """返回 (是否运行在 kiosk 模式, 探针是否可用)。
+
+    pgrep 是 Linux 专有命令。在非 Linux 环境（例如开发机直连）或板端缺少
+    procps 时，这里会抛 FileNotFoundError；若不处理会变成 500，
+    而前端拿不到状态就只能隐藏「退出系统」按钮 —— 那等于让操作员失去出口。
+    因此探针不可用时如实上报 probe_ok=False，由前端决定如何保守处理。
+    """
     for pattern in (PROFILE_PATTERN, NATIVE_APP_PATTERN):
-        result = subprocess.run(["pgrep", "-f", pattern],
-                                capture_output=True, text=True)
+        try:
+            result = subprocess.run(["pgrep", "-f", pattern],
+                                    capture_output=True, text=True, timeout=10)
+        except OSError:
+            return False, False
+        except subprocess.TimeoutExpired:
+            return False, False
         if result.returncode == 0:
-            return True
-    return False
+            return True, True
+    return False, True
 
 
 @router.get("/status")
@@ -62,12 +73,15 @@ def kiosk_status(request: Request):
     """
     if not _is_local(request):
         return {"success": True, "kiosk_running": False,
-                "exit_enabled": False, "local": False}
+                "exit_enabled": False, "local": False, "probe_ok": False}
+    running, probe_ok = _kiosk_running()
     return {
         "success": True,
-        "kiosk_running": _kiosk_running(),
+        "kiosk_running": running,
         "exit_enabled": settings.kiosk_exit_enabled,
         "local": True,
+        # 探针失败时前端会把「退出系统」保守地显示出来
+        "probe_ok": probe_ok,
     }
 
 

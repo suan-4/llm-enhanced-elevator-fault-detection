@@ -106,7 +106,13 @@ async def serve_frontend():
     # 优先伺服前端构建产物；未构建时回退到旧版单文件前端
     for index_path in (DIST_DIR / "index.html", WEB_DIR / "index.html"):
         if index_path.exists():
-            return index_path.read_text(encoding="utf-8")
+            # 必须禁缓存：部署新版本后，一体机若沿用缓存的 index.html
+            # 会继续加载旧的 assets，表现为「改了没生效」。
+            # assets 带内容哈希，可以长缓存；入口 HTML 不能。
+            return HTMLResponse(
+                content=index_path.read_text(encoding="utf-8"),
+                headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
+            )
     return "<h1>Frontend not found</h1>"
 
 

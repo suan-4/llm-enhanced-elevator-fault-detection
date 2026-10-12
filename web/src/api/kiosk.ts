@@ -6,6 +6,8 @@ export interface KioskStatus {
   kiosk_running: boolean
   exit_enabled: boolean
   local: boolean
+  /** 探针（pgrep）是否可用；不可用时前端保守显示退出入口 */
+  probe_ok: boolean
 }
 
 export function kioskStatus(): Promise<KioskStatus> {

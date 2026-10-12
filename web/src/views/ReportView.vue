@@ -1,27 +1,38 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import AppSidebar, { type NavItem } from '@/components/AppSidebar.vue'
 import InfoTable from '@/components/report/InfoTable.vue'
 import ItemTable from '@/components/report/ItemTable.vue'
 import MissingList from '@/components/report/MissingList.vue'
 import ReportDocument from '@/components/report/ReportDocument.vue'
-import ExportPanel from '@/components/report/ExportPanel.vue'
+import ExportResult from '@/components/report/ExportResult.vue'
 import type { AppendixRow } from '@/types/report'
 import { assignRiskDemo, type RiskValue } from '@/domain/riskAssign'
 import { computeG, gradeOf, overviewText } from '@/domain/riskScore'
 import { reasonsText } from '@/domain/validation'
 import { useAuthStore } from '@/stores/auth'
 import { useReportStore } from '@/stores/report'
+import { useExport } from '@/utils/export'
+import { useKiosk } from '@/utils/kiosk'
 import { useToast } from '@/utils/toast'
 
 const router = useRouter()
 const auth = useAuthStore()
 const store = useReportStore()
+const kiosk = useKiosk()
+const exp = useExport()
 const { show } = useToast()
 
 const view = ref<'input' | 'report'>('input')
+const collapsed = ref(false)
 const showAlert = ref(false)
 const reportWrap = ref<HTMLElement | null>(null)
+
+const NAV: NavItem[] = [
+  { key: 'input', label: '评估报告录入' },
+  { key: 'report', label: '报告预览' },
+]
 
 /** A4 宽度（210mm @96dpi），用于按视口等比缩放报告页 */
 const PAPER_WIDTH = 793.7
@@ -58,16 +69,38 @@ const appendixRows = computed<AppendixRow[]>(() =>
 )
 
 /* ── 交互 ── */
+/** 滚动容器是 .main（body 不滚动），因此回到顶部要滚它而不是 window */
+function scrollToTop(): void {
+  const main = document.querySelector('.main')
+  if (main) main.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
 function generate(): void {
   if (store.missing.length) {
     showAlert.value = true
     show(`有 ${store.missing.length} 项未填写，请见页面顶部清单`)
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    scrollToTop()
     return
   }
   showAlert.value = false
   view.value = 'report'
   nextTick(fitPapers)
+}
+
+function navigate(key: string): void {
+  if (key === view.value) return
+  if (key === 'report') {
+    generate()
+  } else {
+    view.value = 'input'
+  }
+}
+
+/** 与旧版一致：点击右侧内容区自动收起侧边栏，把宽度让给正文 */
+function onMainClick(e: MouseEvent): void {
+  if (!collapsed.value && !(e.target as HTMLElement).closest('.sidebar-toggle')) {
+    collapsed.value = true
+  }
 }
 
 function jump(key: string, kind: 'field' | 'item'): void {
@@ -84,18 +117,15 @@ function jump(key: string, kind: 'field' | 'item'): void {
   if (focusable instanceof HTMLElement) focusable.focus({ preventScroll: true })
 }
 
-/** 报告页整体等比缩放：竖屏 600 逻辑像素下也完整可见，不重排 */
+/** 报告页整体等比缩放：竖屏下也完整可见，不重排 */
 function fitPapers(): void {
   const host = reportWrap.value
   if (!host) return
-  // 注意：clientWidth 含 padding，必须减掉才是真正的可用宽度，
-  // 否则竖屏下会让报告页比容器宽出 padding 的宽度，出现横向滚动条。
   const style = getComputedStyle(host)
   const padding = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight)
-  const available = host.clientWidth - padding - 1 // 再留 1px 余量，吸收缩放取整误差
+  const available = host.clientWidth - padding - 1
   const scale = Math.min(1, Math.max(available, 0) / PAPER_WIDTH)
-  const papers = host.querySelectorAll<HTMLElement>('.paper')
-  papers.forEach((paper) => {
+  host.querySelectorAll<HTMLElement>('.paper').forEach((paper) => {
     const holder = paper.parentElement
     paper.style.transform = scale === 1 ? '' : `scale(${scale})`
     if (holder) {
@@ -109,131 +139,130 @@ async function signOut(): Promise<void> {
   await auth.signOut()
   await router.replace({ name: 'login' })
 }
+
+async function exitSystem(): Promise<void> {
+  try {
+    await kiosk.exit()
+    show('已退出系统，正在返回桌面')
+  } catch (err) {
+    show(err instanceof Error ? err.message : '退出失败')
+  }
+}
 </script>
 
 <template>
-  <div>
-    <header class="topbar">
-      <div class="brand">
-        <span class="brand-mark">GDSEI</span>
-        <span class="brand-text">在用曳引驱动电梯安全评估系统</span>
-      </div>
-      <span class="topbar-sep" />
-      <div class="topbar-meta">质量体系文件编号：GDSEI/JTE-09-R02-3.00</div>
-      <div class="topbar-right">
-        <div class="view-tabs">
-          <button :class="{ active: view === 'input' }" type="button" @click="view = 'input'">
-            评估报告录入
-          </button>
-          <button :class="{ active: view === 'report' }" type="button" @click="generate">
-            报告预览
-          </button>
+  <div class="app-shell">
+    <AppSidebar
+      :collapsed="collapsed"
+      :items="NAV"
+      :active="view"
+      :user-name="auth.user?.display_name || auth.user?.username || ''"
+      :user-role="auth.user?.role === 'admin' ? '管理员' : '检验员'"
+      :show-exit="kiosk.showExit()"
+      @toggle="collapsed = !collapsed"
+      @navigate="navigate"
+      @logout="signOut"
+      @exit-system="exitSystem"
+    />
+
+    <div class="main" :class="{ expanded: collapsed }" @click="onMainClick">
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand-mark">GDSEI</span>
+          <span class="brand-text">在用曳引驱动电梯安全评估系统</span>
         </div>
-        <span class="topbar-user">{{ auth.user?.display_name || auth.user?.username }}</span>
-        <button class="btn" type="button" @click="signOut">注销</button>
-      </div>
-    </header>
+        <span class="topbar-sep" />
+        <div class="topbar-meta">质量体系文件编号：GDSEI/JTE-09-R02-3.00</div>
+      </header>
 
-    <MissingList v-if="showAlert && store.missing.length" @jump="jump" />
+      <MissingList v-if="showAlert && store.missing.length" @jump="jump" />
 
-    <section v-show="view === 'input'">
-      <div class="sheet">
-        <h1 class="doc-title">在用曳引驱动电梯安全评估报告</h1>
+      <section v-show="view === 'input'">
+        <div class="sheet">
+          <h1 class="doc-title">在用曳引驱动电梯安全评估报告</h1>
 
-        <div v-if="store.itemsLoading" class="state-tip">正在加载评价条目…</div>
-        <div v-else-if="store.itemsError" class="state-tip">
-          {{ store.itemsError }}
-          <button class="btn" type="button" style="margin-left: 10px" @click="store.loadItems()">
-            重试
-          </button>
-        </div>
-
-        <template v-else>
-          <InfoTable />
-          <div style="margin-top: 14px">
-            <ItemTable />
+          <div v-if="store.itemsLoading" class="state-tip">正在加载评价条目…</div>
+          <div v-else-if="store.itemsError" class="state-tip">
+            {{ store.itemsError }}
+            <button class="btn" type="button" style="margin-left: 10px" @click="store.loadItems()">
+              重试
+            </button>
           </div>
+
+          <template v-else>
+            <InfoTable />
+            <div style="margin-top: 14px">
+              <ItemTable />
+            </div>
+          </template>
+        </div>
+      </section>
+
+      <section v-show="view === 'report'">
+        <div ref="reportWrap" class="report-wrap">
+          <div class="sheet report-toolbar">
+            <div style="display: flex; align-items: center; gap: 12px">
+              <b style="color: var(--c-text)">报告预览</b>
+              <span class="report-meta">
+                JTE-09-R02-3.00　不符合 {{ riskRows.length }} 项　综合安全状况等级 {{ grade }}
+              </span>
+            </div>
+          </div>
+
+          <ReportDocument
+            :overview="overview"
+            :conclusion="conclusion"
+            :risk-by-no="riskByNo"
+            :appendix-rows="appendixRows"
+            :categories="categories"
+            :g="g"
+            :grade="grade"
+          />
+        </div>
+      </section>
+
+      <div class="actionbar">
+        <span class="count">
+          共 <b>{{ store.counters.total }}</b> 项　已评 <b>{{ store.counters.done }}</b> 项　不符合
+          <span class="bad">{{ store.counters.unfit }}</span> 项　未填
+          <span class="bad">{{ store.counters.miss }}</span> 项
+        </span>
+        <span class="spacer" />
+        <button class="btn btn-lg" type="button" @click="show('草稿已保存')">保存草稿</button>
+        <button
+          v-if="view === 'input'"
+          class="btn btn-lg btn-primary"
+          type="button"
+          @click="generate"
+        >
+          校验并生成报告
+        </button>
+        <template v-else>
+          <button
+            class="btn btn-lg btn-primary"
+            type="button"
+            :disabled="exp.busy.value"
+            @click="exp.run('pdf')"
+          >
+            {{ exp.busy.value ? '导出中…' : '导出 PDF' }}
+          </button>
+          <button
+            class="btn btn-lg btn-primary"
+            type="button"
+            :disabled="exp.busy.value"
+            @click="exp.run('docx')"
+          >
+            导出 Word
+          </button>
         </template>
       </div>
-    </section>
-
-    <section v-show="view === 'report'">
-      <div ref="reportWrap" class="report-wrap">
-        <div class="sheet report-toolbar">
-          <div style="display: flex; align-items: center; gap: 12px">
-            <b style="color: var(--c-ink)">报告预览</b>
-            <span class="report-meta">
-              JTE-09-R02-3.00　不符合 {{ riskRows.length }} 项　综合安全状况等级 {{ grade }}
-            </span>
-            <button class="btn spacer" type="button" @click="view = 'input'">返回修改</button>
-          </div>
-        </div>
-
-        <ReportDocument
-          :overview="overview"
-          :conclusion="conclusion"
-          :risk-by-no="riskByNo"
-          :appendix-rows="appendixRows"
-          :categories="categories"
-          :g="g"
-          :grade="grade"
-        />
-
-        <ExportPanel />
-      </div>
-    </section>
-
-    <div class="actionbar">
-      <span class="count">
-        共 <b>{{ store.counters.total }}</b> 项　已评 <b>{{ store.counters.done }}</b> 项　不符合
-        <span class="bad">{{ store.counters.unfit }}</span> 项　未填
-        <span class="bad">{{ store.counters.miss }}</span> 项
-      </span>
-      <span class="spacer" />
-      <button class="btn" type="button" @click="show('草稿已保存')">保存草稿</button>
-      <button class="btn btn-primary" type="button" @click="generate">校验并生成报告</button>
     </div>
+
+    <ExportResult />
   </div>
 </template>
 
 <style scoped>
-.view-tabs {
-  display: flex;
-}
-
-.view-tabs button {
-  font: inherit;
-  font-size: 13.5px;
-  height: var(--h-control);
-  padding: 0 16px;
-  background: var(--c-panel);
-  border: 1px solid var(--c-line);
-  margin-left: -1px;
-  color: var(--c-ink);
-  cursor: pointer;
-  border-radius: 0;
-}
-
-.view-tabs button:first-child {
-  margin-left: 0;
-  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
-}
-
-.view-tabs button:last-child {
-  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-}
-
-.view-tabs button.active {
-  background: var(--c-primary);
-  border-color: var(--c-primary);
-  color: #fff;
-}
-
-.topbar-user {
-  font-size: 12.5px;
-  color: var(--c-muted);
-}
-
 .state-tip {
   padding: 20px 0;
   color: var(--c-muted);
@@ -253,13 +282,7 @@ async function signOut(): Promise<void> {
 }
 
 @media (max-width: 900px) {
-  .view-tabs button {
-    height: var(--h-touch);
-    padding: 0 10px;
-    font-size: 13px;
-  }
-
-  .topbar-user {
+  .report-meta {
     display: none;
   }
 }

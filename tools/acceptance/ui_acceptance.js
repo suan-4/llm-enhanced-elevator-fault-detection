@@ -73,7 +73,8 @@ const { chromium } = require(PLAYWRIGHT_MODULE);
     const placeholders = await page
       .locator(".login-card .form-input")
       .evaluateAll((els) => els.map((e) => e.placeholder));
-    // 退出系统按钮：非一体机环境下不应出现（kiosk 未运行）
+    // 退出系统按钮：保守策略——探针不可用时（本机无 pgrep）仍然显示，
+    // 宁可多一个按钮，也不能让操作员被锁在系统里
     const exitBtnCount = await page.locator(".login-x").count();
 
     // 计算样式断言：确认登录页样式与旧版一致，而不是"看起来差不多"
@@ -110,7 +111,8 @@ const { chromium } = require(PLAYWRIGHT_MODULE);
       loginFoot.includes("佛山大学") &&
       placeholders.includes("请输入用户名") &&
       placeholders.includes("请输入口令") &&
-      exitBtnCount === 0;
+      // 保守策略：探针不可用时显示退出入口（本机无 pgrep，故为 1）
+      exitBtnCount === 1;
 
     await page.fill(".login-card .form-input[type=text]", USERNAME);
     await page.fill(".login-card .form-input[type=password]", PASSWORD);
@@ -124,6 +126,35 @@ const { chromium } = require(PLAYWRIGHT_MODULE);
       const el = document.querySelector("#row-1-9 td");
       return el ? getComputedStyle(el).backgroundColor : "(无)";
     });
+
+    // 左侧可折叠导航：默认 260px，点折叠按钮收成 50px，再点展开
+    const sidebarWidth = () =>
+      page.evaluate(() => {
+        const el = document.querySelector(".sidebar");
+        return el ? Math.round(el.getBoundingClientRect().width) : -1;
+      });
+    const mainMargin = () =>
+      page.evaluate(() => {
+        const el = document.querySelector(".main");
+        return el ? Math.round(parseFloat(getComputedStyle(el).marginLeft)) : -1;
+      });
+    // 窄屏（≤900px）侧边栏为 186px，宽屏为 260px
+    const sidebarExpandedWidth = vp.w <= 900 ? 186 : 260;
+    const sidebarExpanded = await sidebarWidth();
+    const mainMarginExpanded = await mainMargin();
+    await page.click(".sidebar-toggle");
+    await page.waitForTimeout(450);
+    const sidebarCollapsed = await sidebarWidth();
+    const mainMarginCollapsed = await mainMargin();
+    await page.click(".sidebar-toggle");
+    await page.waitForTimeout(450);
+    const sidebarReopened = await sidebarWidth();
+    const sidebarOk =
+      sidebarExpanded === sidebarExpandedWidth &&
+      mainMarginExpanded === sidebarExpandedWidth &&
+      sidebarCollapsed === 50 &&
+      mainMarginCollapsed === 50 &&
+      sidebarReopened === sidebarExpandedWidth;
 
     await page.click(".actionbar .btn-primary");
     await page.waitForTimeout(300);
@@ -240,7 +271,7 @@ const { chromium } = require(PLAYWRIGHT_MODULE);
     const labelFontOk = /黑体|SimHei/.test(labelFont);
 
     await page.click(".actionbar .btn-primary");
-    await page.locator(".export-zone").waitFor({ state: "visible", timeout: 12000 });
+    await page.locator(".paper").first().waitFor({ state: "visible", timeout: 12000 });
     const papers = await page.locator(".paper").count();
     const bodyText = await page.locator(".report-wrap").innerText();
     const overflowReport = await page.evaluate(
@@ -252,17 +283,24 @@ const { chromium } = require(PLAYWRIGHT_MODULE);
     const hasAppendixA = bodyText.includes("附录A");
     const filled = bodyText.includes("44786091");
 
-    await page.click(".export-zone .btn-primary");
+    // 报告页的导出按钮已移到悬浮岛（底部操作条）
+    const exportBtn = page.locator(".actionbar .btn-primary").first();
+    const exportBtnText = (await exportBtn.innerText()).trim();
+    const exportBtnBg = await exportBtn.evaluate((el) => getComputedStyle(el).backgroundColor);
+    const generateBtnGone = (await page.locator(".actionbar").innerText()).includes("校验并生成报告");
+    await exportBtn.click();
     await page.waitForTimeout(2500);
     const toast = (await page.locator(".toast").count())
       ? await page.locator(".toast").innerText()
       : "";
-    const exportOk = await page.locator(".export-result").count()
-      ? await page.locator(".export-result").isVisible().catch(() => false)
+    const exportOk = await page.locator(".export-float").count()
+      ? await page.locator(".export-float").isVisible().catch(() => false)
       : false;
+    const actionbarOk =
+      exportBtnText.includes("导出 PDF") && !generateBtnGone && exportBtnBg === "rgb(27, 94, 122)";
 
     const pass =
-      loginPageOk && themeOk && warmOk && rowColorOk && labelFontOk &&
+      loginPageOk && themeOk && warmOk && rowColorOk && labelFontOk && sidebarOk && actionbarOk &&
       rows === 66 && overflow <= 0 && alertVisible && alertCount > 0 &&
       focusedId.startsWith("f-") && counters.includes("未填 0 项") &&
       papers === 4 && overflowReport <= 0 && grade4 && score0 &&
@@ -293,6 +331,9 @@ const { chromium } = require(PLAYWRIGHT_MODULE);
       `  行底色规则      未填=${rowColors.unfilled} 符合=${rowColors.done} 不符合=${rowColors.unfit} ${rowColorOk ? "✓" : "✗"}`,
     );
     console.log(`  字段名字体      ${labelFont.slice(0, 34)} ${labelFontOk ? "✓ 黑体" : "✗ 非黑体"}`);
+    console.log(
+      `  侧边栏          展开=${sidebarExpanded}/${mainMarginExpanded} 折叠=${sidebarCollapsed}/${mainMarginCollapsed} 再展开=${sidebarReopened} ${sidebarOk ? "✓" : "✗"}`,
+    );
     console.log(`  横向溢出        主页面 ${overflow} px / 报告页 ${overflowReport} px`);
     console.log(`  必填拦截        ${alertVisible}，清单 ${alertCount} 条`);
     console.log(`  跳转定位        ${focusedId}`);
@@ -300,6 +341,9 @@ const { chromium } = require(PLAYWRIGHT_MODULE);
     console.log(`  报告页数        ${papers}`);
     console.log(`  内容校验        四级=${grade4} 得分0=${score0} 附页=${hasAppendix} 附录A=${hasAppendixA} 抬头=${filled}`);
     console.log(`  导出            ${exportOk ? "成功" : "失败可见 → " + toast.slice(0, 70)}`);
+    console.log(
+      `  悬浮岛按钮      「${exportBtnText}」底色=${exportBtnBg} 已移除校验并生成报告=${!generateBtnGone} ${actionbarOk ? "✓" : "✗"}`,
+    );
     console.log(`  页面错误        ${errs.length}${errs.length ? " " + errs.slice(0, 3).join(" | ") : ""}`);
     console.log(`  结论            ${pass ? "通过" : "未通过"}`);
     await page.close();

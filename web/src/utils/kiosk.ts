@@ -9,6 +9,7 @@ import * as api from '@/api/kiosk'
 const kioskRunning = ref(false)
 const exitEnabled = ref(false)
 const isLocal = ref(false)
+const probeOk = ref(false)
 const imeLabel = ref('英')
 const imeAvailable = ref(false)
 
@@ -19,6 +20,7 @@ export function useKiosk() {
       kioskRunning.value = !!s.kiosk_running
       exitEnabled.value = !!s.exit_enabled
       isLocal.value = !!s.local
+      probeOk.value = !!s.probe_ok
     } catch {
       // 非板端环境（如开发机直连）拿不到状态属正常，保持默认
     }
@@ -44,10 +46,23 @@ export function useKiosk() {
     await api.exitKiosk()
   }
 
-  /** 一体机模式下才显示退出入口 */
+  /** 一体机模式下显示退出入口。
+      探针不可用时（板端缺 pgrep 等）保守显示：宁可多一个按钮，
+      也不能让操作员被锁在系统里出不来。 */
   function showExit(): boolean {
-    return isLocal.value && exitEnabled.value && kioskRunning.value
+    return isLocal.value && exitEnabled.value && (kioskRunning.value || !probeOk.value)
   }
 
-  return { kioskRunning, exitEnabled, isLocal, imeLabel, imeAvailable, load, setIme, exit, showExit }
+  return {
+    kioskRunning,
+    exitEnabled,
+    isLocal,
+    probeOk,
+    imeLabel,
+    imeAvailable,
+    load,
+    setIme,
+    exit,
+    showExit,
+  }
 }
