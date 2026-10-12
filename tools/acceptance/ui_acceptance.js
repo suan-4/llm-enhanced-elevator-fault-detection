@@ -203,9 +203,9 @@ const { chromium } = require(PLAYWRIGHT_MODULE);
     });
     const themeOk =
       theme.bg === "rgb(244, 248, 250)" &&
-      // 与设计稿一致：直角（radius 0）
-      theme.sheetRadius === "0px" &&
-      theme.btnRadius === "0px" &&
+      // 与设计稿一致：白卡 10px、控件 6px（直角风格已否决）
+      theme.sheetRadius === "10px" &&
+      theme.btnRadius === "6px" &&
       theme.font.includes("Noto Sans SC");
 
     // 暖色检查：全站不得出现暖色（米 / 褐 / 粉底）。

@@ -111,7 +111,7 @@ table {
   padding: 0 14px;
   background: var(--c-panel);
   border: 1px solid var(--c-line);
-  border-radius: 0;
+  border-radius: var(--radius-sm);
   color: var(--c-text);
   cursor: pointer;
   white-space: nowrap;
@@ -159,7 +159,7 @@ table {
   width: 100%;
   padding: 0 6px;
   border: 1px solid var(--c-line);
-  border-radius: 0;
+  border-radius: var(--radius-sm);
   background: #fff;
   color: var(--c-text);
 }
@@ -207,7 +207,7 @@ table {
   margin: 12px auto;
   background: var(--c-panel);
   border: 1px solid var(--c-line);
-  border-radius: 0;
+  border-radius: var(--radius);
   padding: 20px 24px 24px;
 }
 
@@ -225,6 +225,8 @@ table {
 .info {
   width: 100%;
   border: 1px solid var(--c-line);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
 }
 
 .info th,
@@ -249,6 +251,8 @@ table {
 .items {
   width: 100%;
   border: 1px solid var(--c-line);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
   table-layout: fixed;
 }
 
@@ -326,6 +330,8 @@ table {
   display: flex;
   width: 100%;
   border: 1px solid var(--c-line);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
 }
 
 .seg label {
@@ -370,6 +376,7 @@ table {
 .reasons {
   margin-top: 8px;
   border: 1px solid var(--c-line);
+  border-radius: var(--radius-sm);
   background: #f7f9fa;
   padding: 8px;
 }
@@ -415,6 +422,7 @@ table {
   margin: 12px auto 0;
   border: 1px solid #f3c9cc;
   border-left: 3px solid var(--c-danger);
+  border-radius: var(--radius);
   background: var(--c-danger-soft);
   padding: 8px 12px;
 }
@@ -477,7 +485,7 @@ table {
   background: #2c2c2c;
   color: #fff;
   padding: 9px 14px;
-  border-radius: 0;
+  border-radius: 24px;
   font-size: 13px;
   z-index: 999;
 }
@@ -604,9 +612,8 @@ table {
 
   .items tr {
     border: 1px solid var(--c-line);
-    border-radius: 0;
-    /* 行与行共用一条边框，视觉上是一张连续的表而不是一叠卡片 */
-    margin-bottom: -1px;
+    border-radius: var(--radius-sm);
+    margin-bottom: 10px;
     background: #fff;
     overflow: hidden;
   }

@@ -12,6 +12,8 @@
   --primary:#1b5e7a; --primary-dark:#164b63; --primary-soft:#e8f0f8;
   --danger:#c5343e; --danger-soft:#fef0f0; --ok:#2d7d46; --ok-soft:#eef8f0;
   --done-soft:#f6f8fa;
+  /* 圆角：与真实应用 base.css 保持一致（白卡 10px、控件 6px） */
+  --radius:10px; --radius-sm:6px;
   --font:'Noto Sans SC','Source Han Sans CN','Noto Sans Symbols2',sans-serif;
   --font-bold:'黑体','SimHei','Noto Sans SC','Source Han Sans CN',sans-serif;
 }
@@ -47,7 +49,8 @@ table{border-collapse:collapse}
 /* ── 控件 ── */
 .btn{
   font:inherit;font-size:13.5px;height:30px;padding:0 14px;background:var(--panel);
-  border:1px solid var(--line);color:var(--ink);cursor:pointer;white-space:nowrap;
+  border:1px solid var(--line);border-radius:var(--radius-sm);color:var(--ink);
+  cursor:pointer;white-space:nowrap;
 }
 .btn:hover{border-color:var(--primary);background:var(--primary-soft)}
 .btn-primary{background:var(--primary);border-color:var(--primary);color:#fff}
@@ -58,7 +61,8 @@ table{border-collapse:collapse}
 /* ── 文档纸张 ── */
 .sheet{
   width:1240px;max-width:calc(100% - 24px);margin:12px auto;
-  background:var(--panel);border:1px solid var(--line);padding:20px 24px 24px;
+  background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+  padding:20px 24px 24px;
 }
 .doc-title{
   font-family:"黑体","Microsoft YaHei",sans-serif;
@@ -67,7 +71,7 @@ table{border-collapse:collapse}
 }
 
 /* ── 信息表 ── */
-.info{width:100%;border:1px solid var(--line)}
+.info{width:100%;border:1px solid var(--line);border-radius:var(--radius-sm);overflow:hidden}
 .info th,.info td{border:1px solid var(--line);padding:5px 8px;vertical-align:middle}
 .info th{
   background:var(--head);color:var(--ink);
@@ -77,7 +81,8 @@ table{border-collapse:collapse}
 .info .cell{width:auto}
 .info .input{
   font:inherit;font-size:13.5px;height:30px;width:100%;padding:0 6px;
-  border:1px solid transparent;background:transparent;color:var(--text);
+  border:1px solid transparent;border-radius:var(--radius-sm);background:transparent;
+  color:var(--text);
 }
 .info .input:hover{border-color:var(--line-soft)}
 .info .input:focus{outline:none;border-color:var(--primary);background:#fff}
@@ -86,6 +91,7 @@ table{border-collapse:collapse}
 /* ── 校验提示 ── */
 .alert{
   display:none;border:1px solid #f3c9cc;border-left:3px solid var(--danger);
+  border-radius:var(--radius);
   background:var(--danger-soft);padding:8px 12px;margin:12px auto 0;
   width:1240px;max-width:calc(100% - 24px);
 }
@@ -95,7 +101,7 @@ table{border-collapse:collapse}
 .alert-list a{color:var(--danger);text-decoration:underline;cursor:pointer}
 
 /* ── 评价结果表 ── */
-.items{width:100%;border:1px solid var(--line);table-layout:fixed}
+.items{width:100%;border:1px solid var(--line);border-radius:var(--radius-sm);overflow:hidden;table-layout:fixed}
 .items th{
   background:var(--head);color:var(--ink);font-weight:700;
   border:1px solid var(--line);padding:7px 8px;text-align:left;font-size:13px;
@@ -117,7 +123,7 @@ tr.mark{animation:mark 1.5s ease-out}
 @keyframes mark{0%{background:var(--primary-soft)}100%{background:transparent}}
 
 /* ── 三态选择 ── */
-.seg{display:flex;border:1px solid var(--line);width:100%}
+.seg{display:flex;border:1px solid var(--line);border-radius:var(--radius-sm);overflow:hidden;width:100%}
 .seg label{
   flex:1;text-align:center;padding:7px 0;cursor:pointer;font-size:13px;
   color:var(--ink);background:#fff;border-right:1px solid var(--line);user-select:none;
@@ -131,7 +137,7 @@ tr.mark{animation:mark 1.5s ease-out}
 .seg label.on.unfit:hover{background:#a82a33}
 
 /* ── 不符合情形 ── */
-.reasons{margin-top:8px;border:1px solid var(--line);background:#f7f9fa;padding:8px}
+.reasons{margin-top:8px;border:1px solid var(--line);border-radius:var(--radius-sm);background:#f7f9fa;padding:8px}
 .reasons.hide{display:none}
 .reasons-head{font-size:12.5px;color:var(--muted);margin-bottom:6px}
 .chk{display:flex;align-items:flex-start;gap:6px;font-size:12.5px;line-height:1.55;cursor:pointer;padding:2px 0}
@@ -141,7 +147,7 @@ tr.mark{animation:mark 1.5s ease-out}
 .other-box.hide{display:none}
 .textarea{
   font:inherit;font-size:13px;width:100%;min-height:54px;padding:6px 8px;
-  border:1px solid var(--line);background:#fff;resize:vertical;
+  border:1px solid var(--line);border-radius:var(--radius-sm);background:#fff;resize:vertical;
 }
 .textarea:focus{outline:none;border-color:var(--primary)}
 .reasons-err{margin-top:6px;color:var(--danger);font-size:12.5px}
@@ -191,7 +197,7 @@ tr.mark{animation:mark 1.5s ease-out}
 /* ── 提示条 ── */
 .toast{
   position:fixed;left:50%;bottom:30px;transform:translateX(-50%);background:#2c2c2c;
-  color:#fff;font-size:13px;padding:9px 14px;display:none;z-index:60;
+  color:#fff;font-size:13px;padding:9px 14px;border-radius:24px;display:none;z-index:60;
 }
 .toast.show{display:block}
 </style>
