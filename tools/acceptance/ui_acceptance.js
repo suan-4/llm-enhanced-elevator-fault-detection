@@ -351,6 +351,63 @@ const { chromium } = require(PLAYWRIGHT_MODULE);
           borderFacts.itemLines >= Math.ceil(borderFacts.itemCells * 0.7)
         : borderFacts.itemLines === borderFacts.itemCells);
 
+    // 像素级外框检查：表格 + border + overflow:hidden + border-radius 时，
+    // 浏览器会把表格自身的边框整条裁掉 —— 计算样式完全看不出来（border 仍是 1px），
+    // 只有看像素才发现。这里截一条上边缘，统计"没画线"的比例。
+    const edgeGap = async (selector) => {
+      const loc = page.locator(selector).first();
+      await loc.evaluate((e) => {
+        e.scrollIntoView({ block: "start" });
+        const sc = e.closest(".main") || document.scrollingElement;
+        if (sc) sc.scrollTop -= 80; // 让开 52px 吸顶栏
+      });
+      await page.waitForTimeout(200);
+      const box = await loc.boundingBox();
+      if (!box) return 1;
+      const clipX = Math.max(0, Math.floor(box.x) - 4);
+      const clipY = Math.max(0, Math.floor(box.y) - 4);
+      const clipW = Math.min(500, Math.ceil(box.width) + 8);
+      const clipH = Math.min(60, Math.ceil(box.height) + 8);
+      const b64 = (
+        await page.screenshot({ clip: { x: clipX, y: clipY, width: clipW, height: clipH } })
+      ).toString("base64");
+      return page.evaluate(
+        async ({ b64, rect }) => {
+          const img = new Image();
+          img.src = "data:image/png;base64," + b64;
+          await img.decode();
+          const cv = document.createElement("canvas");
+          cv.width = img.width;
+          cv.height = img.height;
+          const ctx = cv.getContext("2d");
+          ctx.drawImage(img, 0, 0);
+          const d = ctx.getImageData(0, 0, cv.width, cv.height).data;
+          const W = cv.width;
+          const y = Math.round(rect.y);
+          let blank = 0;
+          let total = 0;
+          for (let x = Math.round(rect.x) + 10; x <= Math.round(rect.x + rect.width) - 10; x++) {
+            if (x < 0 || x >= cv.width || y < 0 || y >= cv.height) continue;
+            const i = (y * W + x) * 4;
+            total++;
+            if (d[i] > 246 && d[i + 1] > 246 && d[i + 2] > 246) blank++;
+          }
+          return total ? blank / total : 1;
+        },
+        {
+          b64,
+          rect: {
+            x: box.x - clipX,
+            y: box.y - clipY,
+            width: Math.min(box.width, clipW - 8),
+          },
+        },
+      );
+    };
+    const infoEdgeGap = await edgeGap(".info");
+    const itemsEdgeGap = narrow ? 0 : await edgeGap(".items");
+    const outlineOk = infoEdgeGap < 0.05 && itemsEdgeGap < 0.05;
+
     await page.click(".actionbar .btn-primary");
     await page.locator(".paper").first().waitFor({ state: "visible", timeout: 12000 });
     const papers = await page.locator(".paper").count();
@@ -394,7 +451,7 @@ const { chromium } = require(PLAYWRIGHT_MODULE);
 
     const pass =
       loginPageOk && themeOk && warmOk && rowColorOk && labelFontOk && clauseOk &&
-      reportClauseOk && clippedOk && borderOk && sidebarOk && actionbarOk &&
+      reportClauseOk && clippedOk && borderOk && outlineOk && sidebarOk && actionbarOk &&
       rows === 66 && overflow <= 0 && alertVisible && alertCount > 0 &&
       focusedId.startsWith("f-") && counters.includes("未填 0 项") &&
       papers === 4 && overflowReport <= 0 && grade4 && score0 &&
@@ -433,6 +490,9 @@ const { chromium } = require(PLAYWRIGHT_MODULE);
     );
     console.log(
       `  边框线          信息表 ${borderFacts.infoLines}/${borderFacts.infoCells} · 条目行成框 ${borderFacts.boxedRows}/${borderFacts.rows} · 条目单元格 ${borderFacts.itemLines}/${borderFacts.itemCells} · 极浅线 ${borderFacts.faint} ${borderOk ? "✓" : "✗"}`,
+    );
+    console.log(
+      `  外框像素        上边缘缺线 信息表 ${(infoEdgeGap * 100).toFixed(1)}% · 条目表 ${narrow ? "(窄屏无整表外框)" : (itemsEdgeGap * 100).toFixed(1) + "%"} ${outlineOk ? "✓" : "✗"}`,
     );
     console.log(
       `  侧边栏          展开=${sidebarExpanded}/${mainMarginExpanded} 折叠=${sidebarCollapsed}/${mainMarginCollapsed} 再展开=${sidebarReopened} ${sidebarOk ? "✓" : "✗"}`,

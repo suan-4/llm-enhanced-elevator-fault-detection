@@ -224,7 +224,12 @@ table {
 /* ── 信息表 ── */
 .info {
   width: 100%;
-  border: 1px solid var(--c-line);
+  /* 外框用 box-shadow 画，不用 border：
+     表格 + border + overflow:hidden + border-radius 时，浏览器会把表格自身
+     的边框连同首行/首列的线一起裁掉（像素实测：上边缘 1107px 整条消失）。
+     box-shadow 跟随圆角，且不受元素自身 overflow 裁切。 */
+  border: 0;
+  box-shadow: 0 0 0 1px var(--c-line);
   border-radius: var(--radius-sm);
   overflow: hidden;
 }
@@ -250,7 +255,9 @@ table {
 /* ── 评价结果表 ── */
 .items {
   width: 100%;
-  border: 1px solid var(--c-line);
+  /* 同 .info：外框用 box-shadow，避免圆角裁切把表格线切掉 */
+  border: 0;
+  box-shadow: 0 0 0 1px var(--c-line);
   border-radius: var(--radius-sm);
   overflow: hidden;
   table-layout: fixed;
@@ -607,6 +614,8 @@ table {
 
   .items {
     border: 0;
+    /* 窄屏每行自成卡片，外层不再需要整表外框 */
+    box-shadow: none;
     overflow: visible;
   }
 

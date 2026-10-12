@@ -71,7 +71,8 @@ table{border-collapse:collapse}
 }
 
 /* ── 信息表 ── */
-.info{width:100%;border:1px solid var(--line);border-radius:var(--radius-sm);overflow:hidden}
+/* 外框用 box-shadow：表格 + border + overflow:hidden + 圆角会把表格线一起裁掉 */
+.info{width:100%;border:0;box-shadow:0 0 0 1px var(--line);border-radius:var(--radius-sm);overflow:hidden}
 .info th,.info td{border:1px solid var(--line);padding:5px 8px;vertical-align:middle}
 .info th{
   background:var(--head);color:var(--ink);
@@ -101,7 +102,7 @@ table{border-collapse:collapse}
 .alert-list a{color:var(--danger);text-decoration:underline;cursor:pointer}
 
 /* ── 评价结果表 ── */
-.items{width:100%;border:1px solid var(--line);border-radius:var(--radius-sm);overflow:hidden;table-layout:fixed}
+.items{width:100%;border:0;box-shadow:0 0 0 1px var(--line);border-radius:var(--radius-sm);overflow:hidden;table-layout:fixed}
 .items th{
   background:var(--head);color:var(--ink);font-weight:700;
   border:1px solid var(--line);padding:7px 8px;text-align:left;font-size:13px;
