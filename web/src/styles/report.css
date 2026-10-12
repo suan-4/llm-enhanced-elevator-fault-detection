@@ -1,0 +1,108 @@
+/* 报告预览样式
+   版式依据 JTE-09-R02-3.00 模板实测：正文仿宋_GB2312、主力字号 10.5pt、
+   表格线为黑色单实线。竖屏下不重排，整体等比缩放（见 .paper-holder）。 */
+
+.report-wrap {
+  padding: 12px;
+}
+
+.paper-holder {
+  overflow: hidden;
+  margin: 0 auto 12px;
+}
+
+.paper {
+  width: var(--paper-width);
+  min-height: var(--paper-height);
+  padding: 18mm 16mm;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+  font-family: var(--font-report);
+  font-size: var(--report-font-size);
+  line-height: var(--report-line-height);
+  color: #000;
+  transform-origin: top left;
+}
+
+.paper h1 {
+  font-family: var(--font-title);
+  font-size: 16pt;
+  text-align: center;
+  margin: 0 0 4mm;
+}
+
+.paper table {
+  width: 100%;
+  border: 1px solid #000;
+}
+
+.paper th,
+.paper td {
+  border: 1px solid #000;
+  padding: 1.5mm 2mm;
+  vertical-align: top;
+  font-size: var(--report-table-font-size);
+}
+
+.paper th {
+  background: #f2f2f2;
+  font-weight: 400;
+  text-align: left;
+}
+
+.paper .lbl {
+  width: 26mm;
+}
+
+.paper .ctr {
+  text-align: center;
+}
+
+.paper .notes {
+  margin-top: 2mm;
+  font-size: 9pt;
+}
+
+.paper .sec-title {
+  text-align: center;
+  font-family: var(--font-title);
+  font-size: 12pt;
+  margin: 6mm 0 3mm;
+}
+
+/* ── 导出区：位于报告预览内容下方 ── */
+.export-zone {
+  background: var(--c-panel);
+  border: 1px solid var(--c-line);
+  padding: 12px;
+  max-width: var(--paper-width);
+  margin: 0 auto 24px;
+}
+
+.export-zone .zt {
+  font-weight: 700;
+  color: var(--c-ink);
+  margin-bottom: 10px;
+}
+
+.export-result {
+  margin-top: 10px;
+  border: 1px solid var(--c-line-soft);
+  border-left: 3px solid var(--c-ok);
+  background: #f6fdf9;
+  padding: 8px 10px;
+}
+
+@media (max-width: 900px) {
+  .report-wrap {
+    padding: 6px;
+  }
+
+  .export-zone {
+    margin-bottom: 16px;
+  }
+
+  .export-zone .btn {
+    height: var(--h-touch);
+  }
+}

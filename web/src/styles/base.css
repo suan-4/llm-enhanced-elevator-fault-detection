@@ -1,0 +1,611 @@
+/* 基础样式：重置、布局、通用控件
+   视觉规范来自机构自有系统，令牌见 tokens.css */
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--c-bg);
+  color: var(--c-text);
+  font: 13.5px/1.5 var(--font-ui);
+  -webkit-font-smoothing: antialiased;
+}
+
+table {
+  border-collapse: collapse;
+}
+
+/* ── 顶栏 ── */
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  height: 48px;
+  padding: 0 16px;
+  background: var(--c-panel);
+  border-bottom: 1px solid var(--c-line);
+  border-top: 3px solid var(--c-primary);
+  position: sticky;
+  top: 0;
+  z-index: 30;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.brand-mark {
+  font: 700 12px/1 var(--font-ui);
+  color: #fff;
+  background: var(--c-primary);
+  padding: 5px 7px;
+}
+
+.brand-text {
+  font-size: 15.5px;
+  font-weight: 700;
+  color: var(--c-ink);
+  white-space: nowrap;
+}
+
+.topbar-sep {
+  width: 1px;
+  height: 18px;
+  background: var(--c-line);
+}
+
+.topbar-meta {
+  color: var(--c-muted);
+  font-size: 12.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.topbar-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* ── 按钮 ── */
+.btn {
+  font: inherit;
+  font-size: 13.5px;
+  height: var(--h-control);
+  padding: 0 14px;
+  background: var(--c-panel);
+  border: 1px solid var(--c-line);
+  color: var(--c-ink);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn:hover:not(:disabled) {
+  border-color: #c5cdd8;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--c-primary);
+  border-color: var(--c-primary);
+  color: #fff;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--c-primary-dark);
+  border-color: var(--c-primary-dark);
+}
+
+.btn-lg {
+  height: var(--h-control-lg);
+  padding: 0 22px;
+  font-size: 14px;
+}
+
+.btn-block {
+  display: block;
+  width: 100%;
+}
+
+/* ── 输入 ── */
+.input,
+.textarea,
+.select {
+  font: inherit;
+  font-size: 13.5px;
+  width: 100%;
+  padding: 0 8px;
+  border: 1px solid var(--c-line);
+  background: #fff;
+  color: var(--c-text);
+}
+
+.input,
+.select {
+  height: var(--h-control);
+}
+
+.textarea {
+  min-height: 54px;
+  padding: 6px 8px;
+  resize: vertical;
+}
+
+.input:focus,
+.textarea:focus,
+.select:focus {
+  outline: none;
+  border-color: var(--c-primary);
+}
+
+.input.invalid {
+  border-color: var(--c-danger);
+  background: var(--c-danger-soft);
+}
+
+.input-plain {
+  border-color: transparent;
+  background: transparent;
+}
+
+.input-plain:hover {
+  border-color: var(--c-line-soft);
+}
+
+.req {
+  color: var(--c-danger);
+}
+
+/* ── 纸张容器 ── */
+.sheet {
+  width: var(--sheet-max);
+  max-width: calc(100% - 24px);
+  margin: 12px auto;
+  background: var(--c-panel);
+  border: 1px solid var(--c-line);
+  padding: 20px 24px 24px;
+}
+
+.doc-title {
+  font-family: var(--font-title);
+  font-size: 22px;
+  font-weight: 700;
+  color: #000;
+  text-align: center;
+  letter-spacing: 2px;
+  margin: 6px 0 18px;
+}
+
+/* ── 信息表 ── */
+.info {
+  width: 100%;
+  border: 1px solid var(--c-line);
+}
+
+.info th,
+.info td {
+  border: 1px solid var(--c-line);
+  padding: 5px 8px;
+  vertical-align: middle;
+}
+
+.info th {
+  background: var(--c-head);
+  color: var(--c-ink);
+  font-weight: 700;
+  width: 118px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+/* ── 评价结果表 ── */
+.items {
+  width: 100%;
+  border: 1px solid var(--c-line);
+  table-layout: fixed;
+}
+
+.items th {
+  background: var(--c-head);
+  color: var(--c-ink);
+  font-weight: 700;
+  border: 1px solid var(--c-line);
+  padding: 7px 8px;
+  text-align: left;
+  font-size: 13px;
+}
+
+.items td {
+  border: 1px solid var(--c-line);
+  padding: 8px;
+  vertical-align: top;
+}
+
+.item-no {
+  color: var(--c-ink);
+  font-weight: 700;
+}
+
+.item-name {
+  color: var(--c-ink);
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.item-name .sub {
+  display: block;
+  font-weight: 400;
+  color: var(--c-text);
+  margin-top: 2px;
+}
+
+.item-req {
+  font-size: 13px;
+  line-height: 1.75;
+  color: var(--c-text);
+}
+
+.row-unfit td:first-child {
+  box-shadow: inset 3px 0 0 var(--c-danger);
+}
+
+.row-miss td {
+  background: #fffaf9;
+}
+
+.row-mark {
+  animation: row-highlight 1.5s ease-out;
+}
+
+@keyframes row-highlight {
+  0% {
+    background: #fff5d6;
+  }
+  100% {
+    background: transparent;
+  }
+}
+
+/* ── 三态选择 ── */
+.seg {
+  display: flex;
+  width: 100%;
+  border: 1px solid var(--c-line);
+}
+
+.seg label {
+  flex: 1;
+  text-align: center;
+  padding: 7px 0;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--c-ink);
+  background: #fff;
+  border-right: 1px solid var(--c-line);
+  user-select: none;
+}
+
+.seg label:last-child {
+  border-right: 0;
+}
+
+.seg label:hover {
+  background: var(--c-primary-soft);
+}
+
+.seg label.on {
+  background: var(--c-primary);
+  color: #fff;
+}
+
+.seg label.on.unfit {
+  background: var(--c-danger);
+}
+
+.seg input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ── 不符合情形 ── */
+.reasons {
+  margin-top: 8px;
+  border: 1px solid var(--c-line);
+  background: #fafbfc;
+  padding: 8px;
+}
+
+.reasons-head {
+  font-size: 12.5px;
+  color: var(--c-muted);
+  margin-bottom: 6px;
+}
+
+.chk {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 12.5px;
+  line-height: 1.55;
+  cursor: pointer;
+  padding: 2px 0;
+}
+
+.chk input {
+  margin: 3px 0 0;
+  flex: 0 0 auto;
+}
+
+.chk.is-other {
+  margin-top: 4px;
+  border-top: 1px solid var(--c-line-soft);
+  padding-top: 6px;
+  font-weight: 700;
+}
+
+.reasons-err {
+  margin-top: 6px;
+  color: var(--c-danger);
+  font-size: 12.5px;
+}
+
+/* ── 校验提示条 ── */
+.alert {
+  width: var(--sheet-max);
+  max-width: calc(100% - 24px);
+  margin: 12px auto 0;
+  border: 1px solid #f3c6bb;
+  border-left: 3px solid var(--c-danger);
+  background: var(--c-danger-soft);
+  padding: 8px 12px;
+}
+
+.alert-head {
+  font-weight: 700;
+  color: var(--c-danger);
+  margin-bottom: 4px;
+}
+
+.alert-list {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.alert-list a {
+  color: var(--c-danger);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* ── 底部操作条 ── */
+.actionbar {
+  position: sticky;
+  bottom: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background: var(--c-panel);
+  border-top: 1px solid var(--c-line);
+}
+
+.count {
+  color: var(--c-muted);
+  font-size: 12.5px;
+}
+
+.count b {
+  color: var(--c-ink);
+}
+
+.count .bad {
+  color: var(--c-danger);
+}
+
+.spacer {
+  margin-left: auto;
+}
+
+/* ── 提示条 ── */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  background: #2b3a4a;
+  color: #fff;
+  font-size: 13px;
+  padding: 9px 14px;
+  z-index: 60;
+}
+
+/* ── 页面内自绘弹窗（不用原生 confirm：板端 WebKit 会弹英文系统框并阻塞页面） ── */
+.dialog-mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 70;
+}
+
+.dialog {
+  width: 380px;
+  max-width: calc(100% - 32px);
+  background: var(--c-panel);
+  border: 1px solid var(--c-line);
+}
+
+.dialog-head {
+  padding: 10px 14px;
+  background: var(--c-head);
+  border-bottom: 1px solid var(--c-line);
+  font-weight: 700;
+  color: var(--c-ink);
+}
+
+.dialog-body {
+  padding: 16px 14px;
+}
+
+.dialog-foot {
+  padding: 10px 14px;
+  border-top: 1px solid var(--c-line);
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* ══ 竖屏适配：板端逻辑视口 600×960（竖）/ 960×600（横），断点 900px ══ */
+@media (max-width: 900px) {
+  .topbar {
+    gap: 8px;
+    padding: 0 10px;
+  }
+
+  .topbar-meta,
+  .topbar-sep {
+    display: none;
+  }
+
+  .brand-text {
+    font-size: 14px;
+  }
+
+  .sheet {
+    max-width: calc(100% - 12px);
+    margin: 6px auto;
+    padding: 14px 10px 16px;
+  }
+
+  .doc-title {
+    font-size: 18px;
+    letter-spacing: 1px;
+    margin: 4px 0 12px;
+  }
+
+  /* 信息表：逐字段堆叠 */
+  .info,
+  .info tbody,
+  .info tr,
+  .info th,
+  .info td {
+    display: block;
+    width: auto;
+  }
+
+  .info tr {
+    border-bottom: 1px solid var(--c-line-soft);
+  }
+
+  .info th {
+    border: 0;
+    border-bottom: 1px solid var(--c-line-soft);
+    padding: 6px 8px 4px;
+  }
+
+  .info td {
+    border: 0;
+    padding: 2px 8px 6px;
+  }
+
+  /* 评价结果表：降级为卡片式纵向排列 */
+  .items,
+  .items tbody,
+  .items tr,
+  .items td {
+    display: block;
+    width: auto;
+  }
+
+  .items {
+    border: 0;
+  }
+
+  .items thead {
+    display: none;
+  }
+
+  .items tr {
+    border: 1px solid var(--c-line);
+    margin-bottom: 10px;
+    background: #fff;
+  }
+
+  .items td {
+    border: 0;
+    border-top: 1px solid var(--c-line-soft);
+    padding: 8px 10px;
+  }
+
+  .items td:nth-child(1),
+  .items td:nth-child(2) {
+    display: inline-block;
+    border-top: 0;
+    padding: 6px 4px 6px 10px;
+  }
+
+  .items td:nth-child(2) {
+    padding-left: 6px;
+  }
+
+  .items td:nth-child(3)::before {
+    content: '评价内容与要求';
+    display: block;
+    color: var(--c-muted);
+    font-size: 12px;
+    margin-bottom: 3px;
+  }
+
+  .items td:nth-child(4)::before {
+    content: '评价结果';
+    display: block;
+    color: var(--c-muted);
+    font-size: 12px;
+    margin-bottom: 5px;
+  }
+
+  /* 三态按钮加大触摸目标 */
+  .seg label {
+    padding: 11px 0;
+    font-size: 14px;
+  }
+
+  /* 底部操作条分两行 */
+  .actionbar {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 8px 10px;
+  }
+
+  .count {
+    width: 100%;
+  }
+
+  .spacer {
+    display: none;
+  }
+
+  .actionbar .btn {
+    flex: 1;
+    height: var(--h-touch);
+  }
+}

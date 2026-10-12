@@ -4,6 +4,7 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse, Response
+from fastapi.staticfiles import StaticFiles
 
 from app.api.auth import router as auth_router
 from app.api.export import router as export_router
@@ -18,6 +19,8 @@ from app.services.llm_service import llm_service
 
 ROOT_DIR = Path(__file__).parent.parent.parent
 WEB_DIR = ROOT_DIR / "web"
+# 前端构建产物目录（Vite 输出）。未构建时回退到 WEB_DIR 下的旧版平铺文件。
+DIST_DIR = WEB_DIR / "dist"
 
 
 @asynccontextmanager
@@ -61,33 +64,38 @@ app.include_router(ime_router)
 
 @app.get("/marked.min.js", response_class=Response)
 async def serve_marked():
-    p = WEB_DIR / "marked.min.js"
-    if p.exists():
-        return Response(content=p.read_bytes(), media_type="application/javascript")
+    for p in (DIST_DIR / "marked.min.js", WEB_DIR / "marked.min.js"):
+        if p.exists():
+            return Response(content=p.read_bytes(), media_type="application/javascript")
     return Response(status_code=404)
 
 
 @app.get("/fslogo.png", response_class=Response)
 async def serve_logo():
-    p = WEB_DIR / "fslogo.png"
-    if p.exists():
-        return Response(content=p.read_bytes(), media_type="image/png")
+    for p in (DIST_DIR / "fslogo.png", WEB_DIR / "fslogo.png"):
+        if p.exists():
+            return Response(content=p.read_bytes(), media_type="image/png")
     return Response(status_code=404)
 
 
 @app.get("/fosulogo.png", response_class=Response)
 async def serve_logo_fosu():
     # 启动页联合署名里的"佛山大学"logo，与 fslogo.png 一样按白名单单独放行
-    p = WEB_DIR / "fosulogo.png"
-    if p.exists():
-        return Response(content=p.read_bytes(), media_type="image/png")
+    for p in (DIST_DIR / "fosulogo.png", WEB_DIR / "fosulogo.png"):
+        if p.exists():
+            return Response(content=p.read_bytes(), media_type="image/png")
     return Response(status_code=404)
 
 
 @app.get("/NotoSansSymbols2.ttf", response_class=Response)
 async def serve_font():
-    # 优先 web/，回退项目根目录（历史上字体曾放在仓库根目录）
-    for p in (WEB_DIR / "NotoSansSymbols2.ttf", ROOT_DIR / "NotoSansSymbols2.ttf"):
+    # 依次尝试：构建产物 → web/ → 项目根目录（历史上字体曾放在仓库根目录）
+    for p in (
+        DIST_DIR / "NotoSansSymbols2.ttf",
+        WEB_DIR / "NotoSansSymbols2.ttf",
+        WEB_DIR / "public" / "NotoSansSymbols2.ttf",
+        ROOT_DIR / "NotoSansSymbols2.ttf",
+    ):
         if p.exists():
             return Response(content=p.read_bytes(), media_type="font/ttf")
     return Response(status_code=404)
@@ -95,9 +103,10 @@ async def serve_font():
 
 @app.get("/", response_class=HTMLResponse)
 async def serve_frontend():
-    index_path = WEB_DIR / "index.html"
-    if index_path.exists():
-        return index_path.read_text(encoding="utf-8")
+    # 优先伺服前端构建产物；未构建时回退到旧版单文件前端
+    for index_path in (DIST_DIR / "index.html", WEB_DIR / "index.html"):
+        if index_path.exists():
+            return index_path.read_text(encoding="utf-8")
     return "<h1>Frontend not found</h1>"
 
 
@@ -122,3 +131,10 @@ def health_ready():
             content={"ready": False, "neo4j": "down", "detail": type(e).__name__},
         )
     return {"ready": True, "neo4j": "up", "service": "elevator-report-api"}
+
+
+# ── 前端构建产物挂载（必须放在所有 /api 路由之后）──
+# Vite 把 JS/CSS 输出到 dist/assets。挂载点只匹配 /assets/*，不会影响 API；
+# 放在最后注册是为了让任何新增的 /assets 前缀路由都能优先匹配。
+if (DIST_DIR / "assets").is_dir():
+    app.mount("/assets", StaticFiles(directory=str(DIST_DIR / "assets")), name="assets")

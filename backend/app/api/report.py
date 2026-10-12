@@ -1,5 +1,6 @@
 import json
 import traceback
+from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
@@ -11,6 +12,26 @@ from app.services.kg_service import kg_service
 from app.services.llm_service import llm_service
 
 router = APIRouter(prefix="/api/report", tags=["报告生成"])
+
+# JTE-09-R02-3.00 模板条目目录，由 tools/gen_jte_items.py 从模板 docx 抽取生成。
+# 条目是模板结构，不来自知识图谱，因此单独存 JSON 而不查 Neo4j。
+JTE_ITEMS_PATH = Path(__file__).resolve().parent.parent / "data" / "jte_items.json"
+
+
+@router.get("/jte-items")
+async def list_jte_items(user: dict = Depends(get_current_user)):
+    """返回模板的评价条目目录（66 条，顺序与模板评价结果表一致）。"""
+    if not JTE_ITEMS_PATH.is_file():
+        raise HTTPException(
+            status_code=503,
+            detail="条目目录未生成，请在仓库根目录执行 tools/gen_jte_items.py",
+        )
+    try:
+        payload = json.loads(JTE_ITEMS_PATH.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as e:
+        raise HTTPException(status_code=500, detail=f"条目目录读取失败：{e}")
+    items = payload.get("items", [])
+    return {"success": True, "count": len(items), "items": items}
 
 
 @router.get("/inspection-items")

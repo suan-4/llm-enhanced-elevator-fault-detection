@@ -5,11 +5,19 @@
 """
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
+import shlex
+import subprocess
+from pathlib import Path
 
 from app.deps import get_current_user
 from app.services import export_service
 
 router = APIRouter(prefix="/api/report", tags=["报告导出"])
+
+# 桌面用户，与 app/api/ime.py 的 KIOSK_USER 一致。
+# 服务以 root 运行，桌面会话属于该用户，所以打开文件必须 su 过去。
+DESKTOP_USER = "user"
+DESKTOP_UID = 1002
 
 
 class ExportRequest(BaseModel):
@@ -20,6 +28,48 @@ class ExportRequest(BaseModel):
     body_html: str = Field(default="", description="报告正文 HTML（前端已渲染，避免后端重复实现 markdown）")
     footer: str = Field(default="", max_length=200)
     filename: str = Field(default="", max_length=80, description="不带扩展名的文件名，留空则用标题")
+
+
+class OpenRequest(BaseModel):
+    target: str = Field(..., max_length=500, description="要打开的路径，必须位于导出目录内")
+
+
+@router.post("/open")
+def open_export(req: OpenRequest, user: dict = Depends(get_current_user)):
+    """在板端用系统默认程序打开导出产物（文件或所在目录）。
+
+    安全边界：只允许打开导出目录内的路径，避免被用作任意文件读取/执行入口。
+    """
+    export_dir = Path(export_service.EXPORT_DIR).resolve()
+    try:
+        target = Path(req.target).resolve()
+    except (OSError, ValueError):
+        raise HTTPException(status_code=400, detail="路径无效")
+
+    if target != export_dir and export_dir not in target.parents:
+        raise HTTPException(status_code=400, detail="只允许打开导出目录内的文件")
+    if not target.exists():
+        raise HTTPException(status_code=404, detail="文件不存在")
+
+    cmd = (
+        "DISPLAY=:0 "
+        "DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/{uid}/bus "
+        "XDG_RUNTIME_DIR=/run/user/{uid} "
+        "xdg-open {path}"
+    ).format(uid=DESKTOP_UID, path=shlex.quote(str(target)))
+
+    try:
+        # 不等待：某些查看器会一直占用进程
+        subprocess.Popen(
+            ["su", DESKTOP_USER, "-c", cmd],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True,
+        )
+    except OSError as e:
+        raise HTTPException(status_code=500, detail=f"无法打开：{e}")
+
+    return {"success": True, "target": str(target)}
 
 
 @router.post("/export")
