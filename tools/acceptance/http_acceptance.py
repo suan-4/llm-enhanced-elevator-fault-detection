@@ -196,6 +196,82 @@ def main() -> int:
         check(7, "删除当前登录账号 → 400",
               c.delete(f"/api/accounts/{my_id}?confirm=true", headers=H).status_code == 400)
 
+        print("═══ 第 8 层：报告作业（草稿 → 生成 → 作废）═══")
+        created = c.post("/api/reports", headers=H, json={})
+        check(8, "新建草稿 → 200", created.status_code == 200)
+        report = created.json().get("report", {}) if created.status_code == 200 else {}
+        rid = report.get("id")
+        check(8, "草稿 id 是字符串", isinstance(rid, str), str(rid))
+        check(8, "草稿无编号", report.get("report_no") is None)
+
+        if rid:
+            items = [
+                {"no": f"1.{i}", "result": "fit", "reasons": [], "other_text": ""}
+                for i in range(1, 67)
+            ]
+            items[0] = {"no": "1.1", "result": "unfit", "reasons": ["箱体出现裂纹"],
+                        "other_text": ""}
+            saved = c.put(
+                f"/api/reports/{rid}",
+                headers=H,
+                json={
+                    "form": {"clientName": "验收委托单位", "userName": "验收使用单位",
+                             "deviceCategory": "曳引驱动电梯", "productNo": "ACC-001",
+                             "installSite": "验收楼", "assessDate": "2026-10-13"},
+                    "items": items,
+                },
+            )
+            check(8, "保存填写内容 → 200", saved.status_code == 200,
+                  str(saved.json().get("detail", ""))[:80])
+            counters = saved.json().get("counters", {})
+            check(8, "计数正确（66/已评66/不符合1）",
+                  counters.get("total") == 66 and counters.get("unfit") == 1
+                  and counters.get("missing") == 0, str(counters))
+
+            draft = c.get(f"/api/reports/{rid}/draft", headers=H)
+            check(8, "续录接口回填抬头",
+                  draft.status_code == 200
+                  and draft.json().get("form", {}).get("clientName") == "验收委托单位")
+
+            generated = c.post(f"/api/reports/{rid}/generate", headers=H, json={})
+            check(8, "生成报告 → 200", generated.status_code == 200,
+                  str(generated.json().get("detail", ""))[:80])
+            rep = generated.json().get("report", {}) if generated.status_code == 200 else {}
+            check(8, "生成后分配编号",
+                  str(rep.get("report_no", "")).startswith("GDSEI-JTE-"), str(rep.get("report_no")))
+            check(8, "状态改为已生成", rep.get("status") == "generated")
+            # 第 1 条不符合按占位规则给 Ⅰ类 → 一票否决 → 0 分 / 四级
+            check(8, "得分与等级按附录A", rep.get("score") == 0 and rep.get("grade") == "四级",
+                  f"score={rep.get('score')} grade={rep.get('grade')}")
+            check(8, "风险评定值覆盖不符合项", "1.1" in (rep.get("risks") or {}))
+            check(8, "叙述文字非空", bool(rep.get("narrative")))
+
+            listed = c.get("/api/reports?status=generated", headers=H)
+            check(8, "按状态检索到该报告",
+                  any(i["id"] == rid for i in listed.json().get("items", [])))
+
+            cloned = c.post(f"/api/reports/{rid}/clone", headers=H)
+            clone_body = cloned.json().get("report", {}) if cloned.status_code == 200 else {}
+            check(8, "复制为新建：只带抬头",
+                  cloned.status_code == 200 and clone_body.get("items") == []
+                  and clone_body.get("form", {}).get("clientName") == "验收委托单位")
+
+            check(8, "已生成不可直接删除 → 400",
+                  c.delete(f"/api/reports/{rid}?confirm=true", headers=H).status_code == 400)
+            voided = c.post(f"/api/reports/{rid}/void", headers=H,
+                            json={"reason": "验收用，作废", "confirm": True})
+            check(8, "作废 → 200 且保留编号",
+                  voided.status_code == 200
+                  and voided.json()["report"]["report_no"] == rep.get("report_no"))
+            check(8, "作废后可删除 → 200",
+                  c.delete(f"/api/reports/{rid}?confirm=true", headers=H).status_code == 200)
+            if clone_body.get("id"):
+                c.delete(f"/api/reports/{clone_body['id']}?confirm=true", headers=H)
+
+        missing = c.put("/api/reports/999999999999", headers=H,
+                        json={"form": {}, "items": []})
+        check(8, "不存在的报告 → 404", missing.status_code == 404)
+
         c.post("/api/auth/logout", headers=H)
     return summarize()
 

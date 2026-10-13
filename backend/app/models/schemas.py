@@ -104,6 +104,32 @@ class ResetPasswordRequest(BaseModel):
     confirm: bool = Field(default=False)
 
 
-# 说明：旧的 /api/history 与 /api/draft 已随 v1 结构下线
-#（它们对应的 report_history / form_draft 表在迁移中已改名保留）。
-# 报告相关的接口在批 4 以 /api/reports 的形态重建。
+# ── 报告作业（/api/reports）────────────────────────────────
+class ItemAnswer(BaseModel):
+    """一条评价结果。result 取值见《数据库设计 v1》§7.2。"""
+
+    no: str = Field(..., max_length=16)
+    result: str = Field(default="", description="fit / unfit / na / 空=未填")
+    reasons: list[str] = Field(default_factory=list)
+    other_text: str = Field(default="", max_length=500)
+
+
+class ReportCreateRequest(BaseModel):
+    form: Optional[dict] = Field(default=None, description="仅在“复制为新建”时预填抬头")
+    client_token: Optional[str] = Field(default=None, max_length=64)
+
+
+class ReportSaveRequest(BaseModel):
+    form: dict = Field(default_factory=dict)
+    items: list[ItemAnswer] = Field(default_factory=list)
+    version: Optional[int] = Field(default=None, description="乐观锁：与库里不一致则 409")
+
+
+class ReportGenerateRequest(BaseModel):
+    use_llm: bool = Field(default=False, description="是否调用大模型生成叙述文字")
+    client_token: Optional[str] = Field(default=None, max_length=64)
+
+
+class ReportVoidRequest(BaseModel):
+    reason: str = Field(..., min_length=1, max_length=200, description="作废原因，必填")
+    confirm: bool = False

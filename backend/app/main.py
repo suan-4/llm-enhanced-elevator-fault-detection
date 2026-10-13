@@ -12,6 +12,7 @@ from app.api.export import router as export_router
 from app.api.ime import router as ime_router
 from app.api.kiosk import router as kiosk_router
 from app.api.report import router as report_router
+from app.api.reports import router as reports_router
 from app.api.setup import router as setup_router
 from app.config import settings
 from app.db import get_conn, init_db, max_business_id
@@ -63,6 +64,7 @@ app.add_middleware(
 app.include_router(auth_router)
 app.include_router(accounts_router)
 app.include_router(setup_router)
+app.include_router(reports_router)
 app.include_router(kiosk_router)
 app.include_router(report_router)
 app.include_router(export_router)
