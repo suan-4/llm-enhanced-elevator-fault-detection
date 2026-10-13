@@ -16,6 +16,7 @@ import { useToast } from '@/utils/toast'
 const NAV: NavItem[] = [
   { key: 'input', label: '评估报告录入' },
   { key: 'report', label: '报告预览' },
+  { key: 'reports', label: '报告管理' },
   { key: 'accounts', label: '账号管理' },
 ]
 
@@ -26,10 +27,18 @@ const shell = useShell()
 const kiosk = useKiosk()
 const { show } = useToast()
 
-/** 账号页由路由决定高亮；录入/预览由页面自己回报 */
-const active = computed(() => (route.name === 'accounts' ? 'accounts' : shell.active))
+/** 列表类页面由路由决定高亮；录入/预览由页面自己回报 */
+const active = computed(() => {
+  if (route.name === 'accounts') return 'accounts'
+  if (route.name === 'reports') return 'reports'
+  return shell.active
+})
 
 function onNavigate(key: string): void {
+  if (key === 'reports') {
+    void router.push('/reports')
+    return
+  }
   if (key === 'accounts') {
     void router.push('/accounts')
     return

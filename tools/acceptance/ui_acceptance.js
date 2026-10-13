@@ -24,6 +24,25 @@ const PASSWORD = process.env.ELEVATOR_PASSWORD || "admin123";
 
 const { chromium } = require(PLAYWRIGHT_MODULE);
 
+/** 用接口种一份**全新空白草稿**再打开界面。
+    应用改成"续录上次未完成的草稿"之后，不先清干净的话，
+    「漏填拦截」「三态按钮」这类断言会因为草稿已被填满而失效。 */
+async function seedEmptyDraft(browser) {
+  const ctx = await browser.newContext();
+  try {
+    const login = await ctx.request.post(BASE + "/api/auth/login", {
+      data: { username: USERNAME, password: PASSWORD },
+    });
+    const { token } = await login.json();
+    await ctx.request.post(BASE + "/api/reports", {
+      headers: { Authorization: `Bearer ${token}` },
+      data: {},
+    });
+  } finally {
+    await ctx.close();
+  }
+}
+
 (async () => {
   const browser = await chromium.launch({ executablePath: CHROMIUM_EXE });
   let allOk = true;
@@ -35,6 +54,7 @@ const { chromium } = require(PLAYWRIGHT_MODULE);
 
   for (const vp of viewports) {
     const page = await browser.newPage({ viewport: { width: vp.w, height: vp.h } });
+    await seedEmptyDraft(browser);
     const errs = [];
     page.on("pageerror", (e) => errs.push("pageerror: " + String(e.message).split("\n")[0]));
     page.on("response", (r) => {

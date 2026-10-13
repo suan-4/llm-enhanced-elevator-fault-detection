@@ -52,7 +52,10 @@ export function useExport() {
         title: '在用曳引驱动电梯安全评估报告',
         meta: metaRows(),
         body_html: papersHtml(),
-        filename: '电梯安全评估报告',
+        // 有编号就用编号命名（现场对号入座），否则退回通用名
+        filename: store.generated?.report_no
+          ? `${store.generated.report_no}_${store.form.clientName || '电梯安全评估报告'}`
+          : '电梯安全评估报告',
       })
       result.value = { filename: res.filename, path: res.path, size: formatSize(res.size) }
       show('导出成功，可点击「打开文件」直接查看')

@@ -20,6 +20,7 @@ const { show } = useToast()
 
 const view = ref<'input' | 'report'>('input')
 const showAlert = ref(false)
+const generating = ref(false)
 const reportWrap = ref<HTMLElement | null>(null)
 
 /* 侧栏 / 顶栏已上移到 AppShell，本页只管内容。
@@ -46,19 +47,54 @@ const PAPER_WIDTH = 793.7
 
 onMounted(async () => {
   await store.loadItems()
+  await startDraft()
   window.addEventListener('resize', fitPapers)
   consumeShellRequest()
 })
 
-onBeforeUnmount(() => {
-  window.removeEventListener('resize', fitPapers)
+/** 准备当前评估（没有就新建、有草稿就续录）；失败时页面给重试入口 */
+async function startDraft(): Promise<void> {
+  try {
+    await store.ensureDraft()
+  } catch (err) {
+    show(err instanceof Error ? err.message : '无法开始新的评估')
+  }
+}
+
+/* 改动后防抖自动保存：现场最怕录了半天，一刷新或一掉电全没了。
+   store.ready 之前不保存 —— 否则刚读回来的内容会被立刻写回去。 */
+watch([() => store.form, () => store.states], () => store.scheduleSave(), { deep: true })
+
+/* 页面切到后台/被关闭时，尽量把防抖里还压着的改动写下去。
+   防抖窗口（800ms）内掉电仍可能丢最后一次改动，所以悬浮岛会显示保存状态。 */
+function flushOnHide(): void {
+  if (document.visibilityState === 'hidden') void store.flush()
+}
+document.addEventListener('visibilitychange', flushOnHide)
+window.addEventListener('pagehide', () => void store.flush())
+
+const saveHint = computed(() => {
+  if (store.saveState === 'saving') return '保存中…'
+  if (store.saveState === 'error') return '保存失败'
+  return store.savedAt ? `已保存 ${store.savedAt.slice(11, 16)}` : ''
 })
 
-/* ── 风险评定值（占位：规则待确认，见 domain/riskAssign.ts） ── */
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', fitPapers)
+  document.removeEventListener('visibilitychange', flushOnHide)
+})
+
+/* ── 风险评定值与得分：以**服务端生成结果**为准 ──
+   还没生成过时用本地占位值（domain/riskAssign）保证预览不空；
+   生成之后一律用后端返回的值 —— 报告上的数字必须与服务端一致。 */
 const riskRows = computed(() =>
   store.items
     .filter((item) => store.stateOf(item.no).result === '不符合')
-    .map((item, index) => ({ item, state: store.stateOf(item.no), risk: assignRiskDemo(index) })),
+    .map((item, index) => ({
+      item,
+      state: store.stateOf(item.no),
+      risk: store.generated?.risks?.[item.no] ?? assignRiskDemo(index),
+    })),
 )
 
 const riskByNo = computed(() => {
@@ -68,8 +104,8 @@ const riskByNo = computed(() => {
 })
 
 const categories = computed(() => riskRows.value.map((row) => row.risk.category))
-const g = computed(() => computeG(categories.value))
-const grade = computed(() => gradeOf(g.value))
+const g = computed(() => store.generated?.score ?? computeG(categories.value))
+const grade = computed(() => store.generated?.grade ?? gradeOf(g.value))
 const overview = computed(() => overviewText(categories.value, g.value))
 const conclusion = computed(() => `综合安全状况等级：${grade.value}`)
 const appendixRows = computed<AppendixRow[]>(() =>
@@ -83,7 +119,16 @@ function scrollToTop(): void {
   if (main) main.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
-function generate(): void {
+async function saveNow(): Promise<void> {
+  try {
+    await store.save()
+    show('草稿已保存')
+  } catch (err) {
+    show(err instanceof Error ? err.message : '保存失败')
+  }
+}
+
+async function generate(): Promise<void> {
   if (store.missing.length) {
     showAlert.value = true
     show(`有 ${store.missing.length} 项未填写，请见页面顶部清单`)
@@ -91,8 +136,17 @@ function generate(): void {
     return
   }
   showAlert.value = false
-  view.value = 'report'
-  nextTick(fitPapers)
+  if (generating.value) return
+  generating.value = true
+  try {
+    await store.generate()
+    view.value = 'report'
+    nextTick(fitPapers)
+  } catch (err) {
+    show(err instanceof Error ? err.message : '生成失败')
+  } finally {
+    generating.value = false
+  }
 }
 
 function jump(key: string, kind: 'field' | 'item'): void {
@@ -143,6 +197,19 @@ function fitPapers(): void {
               重试
             </button>
           </div>
+          <!-- 草稿没读完之前不给录入：否则读回来的内容会把刚输入的东西冲掉 -->
+          <div v-else-if="store.draftError" class="state-tip">
+            {{ store.draftError }}
+            <button
+              class="btn"
+              type="button"
+              style="margin-left: 10px"
+              @click="startDraft"
+            >
+              重试
+            </button>
+          </div>
+          <div v-else-if="!store.ready" class="state-tip">正在准备评估…</div>
 
           <template v-else>
             <InfoTable />
@@ -159,6 +226,9 @@ function fitPapers(): void {
             <div style="display: flex; align-items: center; gap: 12px">
               <b style="color: var(--c-text)">报告预览</b>
               <span class="report-meta">
+                <template v-if="store.generated?.report_no">
+                  报告编号 {{ store.generated.report_no }}　
+                </template>
                 JTE-09-R02-3.00　不符合 {{ riskRows.length }} 项　综合安全状况等级 {{ grade }}
               </span>
             </div>
@@ -182,15 +252,24 @@ function fitPapers(): void {
           <span class="bad">{{ store.counters.unfit }}</span> 项　未填
           <span class="bad">{{ store.counters.miss }}</span> 项
         </span>
+        <span v-if="saveHint" class="save-hint">{{ saveHint }}</span>
         <span class="spacer" />
-        <button class="btn btn-lg" type="button" @click="show('草稿已保存')">保存草稿</button>
+        <button
+          class="btn btn-lg"
+          type="button"
+          :disabled="store.saveState === 'saving'"
+          @click="saveNow"
+        >
+          保存草稿
+        </button>
         <button
           v-if="view === 'input'"
           class="btn btn-lg btn-primary"
           type="button"
+          :disabled="generating"
           @click="generate"
         >
-          校验并生成报告
+          {{ generating ? '生成中…' : '校验并生成报告' }}
         </button>
         <template v-else>
           <button
