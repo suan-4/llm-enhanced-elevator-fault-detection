@@ -160,21 +160,69 @@ async function seedEmptyDraft(browser) {
       });
     // 窄屏（≤900px）侧边栏为 186px，宽屏为 260px
     const sidebarExpandedWidth = vp.w <= 900 ? 186 : 260;
-    const sidebarExpanded = await sidebarWidth();
-    const mainMarginExpanded = await mainMargin();
-    await page.click(".sidebar-toggle");
-    await page.waitForTimeout(450);
-    const sidebarCollapsed = await sidebarWidth();
-    const mainMarginCollapsed = await mainMargin();
-    await page.click(".sidebar-toggle");
-    await page.waitForTimeout(450);
-    const sidebarReopened = await sidebarWidth();
+    const compactSidebar = vp.w <= 900;
+    // 板端（窄屏）一进来侧栏就该是收起的：展开的菜单会挡住正文；宽屏保持旧版默认展开。
+    const sidebarInitial = await sidebarWidth();
+    const mainMarginInitial = await mainMargin();
+    let sidebarExpanded;
+    let mainMarginExpanded;
+    let sidebarCollapsed;
+    let mainMarginCollapsed;
+    let sidebarReopened;
+    if (compactSidebar) {
+      await page.click(".sidebar-toggle");
+      await page.waitForTimeout(450);
+      sidebarExpanded = await sidebarWidth();
+      mainMarginExpanded = await mainMargin();
+      await page.click(".sidebar-toggle");
+      await page.waitForTimeout(450);
+      sidebarCollapsed = await sidebarWidth();
+      mainMarginCollapsed = await mainMargin();
+      await page.click(".sidebar-toggle");
+      await page.waitForTimeout(450);
+      sidebarReopened = await sidebarWidth();
+    } else {
+      sidebarExpanded = sidebarInitial;
+      mainMarginExpanded = mainMarginInitial;
+      await page.click(".sidebar-toggle");
+      await page.waitForTimeout(450);
+      sidebarCollapsed = await sidebarWidth();
+      mainMarginCollapsed = await mainMargin();
+      await page.click(".sidebar-toggle");
+      await page.waitForTimeout(450);
+      sidebarReopened = await sidebarWidth();
+    }
     const sidebarOk =
+      sidebarInitial === (compactSidebar ? 50 : sidebarExpandedWidth) &&
+      mainMarginInitial === (compactSidebar ? 50 : sidebarExpandedWidth) &&
       sidebarExpanded === sidebarExpandedWidth &&
       mainMarginExpanded === sidebarExpandedWidth &&
       sidebarCollapsed === 50 &&
       mainMarginCollapsed === 50 &&
       sidebarReopened === sidebarExpandedWidth;
+
+    // ── 回归：点三态选项既不得把整个文档滚走，也不得让隐藏控件抢焦点 ──
+    // 曾出现：点「符合/不符合/无此项」后浏览器为聚焦隐藏 radio 把 html 滚了上千像素，
+    // 侧栏是 fixed 所以只剩侧栏、中间一片白（板端 600x960 每次点击必现）；
+    // 同时 input 聚焦会让板端弹出软键盘。
+    await page.locator(".items tbody tr").nth(0).locator(".seg label").nth(0).click();
+    await page.waitForTimeout(450);
+    const optionProbe = await page.evaluate(() => {
+      const a = document.activeElement;
+      return {
+        winScroll: Math.round(window.scrollY),
+        htmlScroll: Math.round(document.scrollingElement ? document.scrollingElement.scrollTop : -1),
+        activeTag: a ? a.tagName : "",
+        activeType: a && a.type ? a.type : "",
+        radioChecked: !!document.querySelector(".items tbody tr:nth-child(1) input[type=radio]:checked"),
+      };
+    });
+    const noRootScroll =
+      optionProbe.winScroll === 0 &&
+      optionProbe.htmlScroll === 0 &&
+      !(optionProbe.activeTag === "INPUT" && ["radio", "checkbox"].includes(optionProbe.activeType)) &&
+      optionProbe.radioChecked;
+    console.log(`  选项不抢焦点/不滚整页  ${JSON.stringify(optionProbe)} ${noRootScroll ? "✓" : "✗"}`);
 
     await page.click(".actionbar .btn-primary");
     await page.waitForTimeout(300);
@@ -472,6 +520,7 @@ async function seedEmptyDraft(browser) {
     const pass =
       loginPageOk && themeOk && warmOk && rowColorOk && labelFontOk && clauseOk &&
       reportClauseOk && clippedOk && borderOk && outlineOk && sidebarOk && actionbarOk &&
+      noRootScroll &&
       rows === 66 && overflow <= 0 && alertVisible && alertCount > 0 &&
       focusedId.startsWith("f-") && counters.includes("未填 0 项") &&
       papers === 4 && overflowReport <= 0 && grade4 && score0 &&

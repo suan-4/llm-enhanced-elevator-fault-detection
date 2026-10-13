@@ -345,6 +345,8 @@ table {
 
 .seg label {
   flex: 1;
+  /* 三态按钮的隐藏 radio 必须以本 label 为包含块，见 .seg input 的说明。 */
+  position: relative;
   text-align: center;
   padding: 7px 0;
   cursor: pointer;
@@ -376,7 +378,13 @@ table {
 }
 
 .seg input {
+  /* 这里必须 position:absolute + 以 .seg label 为包含块。
+     若包含块退化成文档根（初始包含块），这个盒子在文档里位于第 1600+ px，
+     浏览器为了把「被点击而获得焦点」的 radio 滚进可视区，会把整个 html 滚走；
+     侧栏是 position:fixed 不跟着动，于是只剩侧栏、中间一片白。
+     板端 600x960 逻辑视口下每次点三态按钮必现（已实测）。 */
   position: absolute;
+  inset: 0;
   opacity: 0;
   pointer-events: none;
 }

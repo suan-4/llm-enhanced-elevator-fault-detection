@@ -8,7 +8,12 @@ import { ref } from 'vue'
      用"待办标记"而不是事件，是因为从账号页点过来时录入页还没挂载，
      事件会丢；标记会在挂载时被读到。 */
 export const useShell = defineStore('shell', () => {
-  const collapsed = ref(false)
+  /* 窄屏（板端 600x960 逻辑视口）默认收起侧栏：一登录就展开的菜单会横在
+     正文左侧挡内容，操作员还得先手动收一次。宽屏保持展开，与旧版习惯一致。 */
+  const NARROW_MAX_WIDTH = 900
+  const collapsed = ref(
+    typeof window !== 'undefined' && window.innerWidth > 0 && window.innerWidth <= NARROW_MAX_WIDTH,
+  )
   const active = ref('input')
   const requested = ref<'' | 'input' | 'report'>('')
 

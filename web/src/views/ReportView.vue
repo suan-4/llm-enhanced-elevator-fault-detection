@@ -166,8 +166,15 @@ function jump(key: string, kind: 'field' | 'item'): void {
   el.classList.remove('row-mark')
   void (el as HTMLElement).offsetWidth
   el.classList.add('row-mark')
-  const focusable = el.matches('input') ? el : el.querySelector('input, textarea')
-  if (focusable instanceof HTMLElement) focusable.focus({ preventScroll: true })
+  /* 只把焦点给「要打字」的控件：radio/checkbox 拿到焦点会让板端弹软键盘，
+     而且它们本身不需要光标。条目行只做高亮 + 滚动定位就够了。 */
+  const isTextControl = (node: Element | null): boolean =>
+    node instanceof HTMLTextAreaElement ||
+    (node instanceof HTMLInputElement && node.type !== 'radio' && node.type !== 'checkbox')
+  const focusable = isTextControl(el)
+    ? el
+    : (el.querySelector('input:not([type="radio"]):not([type="checkbox"]), textarea') as HTMLElement | null)
+  if (focusable) focusable.focus({ preventScroll: true })
 }
 
 /** 报告页整体等比缩放：竖屏下也完整可见，不重排 */
