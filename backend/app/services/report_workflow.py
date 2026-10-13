@@ -20,9 +20,19 @@ from app.repo import report_repo
 from app.repo.base import day_key, now_iso
 from app.repo.ids import next_id
 from app.services import audit_service, risk_rules
+from app.services.llm_service import llm_service
 
 TEMPLATE_VERSION = "JTE-09-R02-3.00"
 ITEMS_PATH = Path(__file__).resolve().parent.parent / "data" / "jte_items.json"
+
+# 让模型"写话"，不让它"定数"：编号、风险类别、得分、等级都不许它碰。
+NARRATIVE_SYSTEM = (
+    "你是电梯安全评估报告的编写助手。请根据给定的评估数据，用简体中文、正式书面语，"
+    "写一段「评估概况」说明，3~5 句，概括本次评估的主要发现与结论。"
+    "要求：只陈述数据中已有的事实，不得新增、推测或夸大；"
+    "不得改动项目编号、风险类别、得分与等级；不要使用 Markdown 标记；"
+    "不要逐条罗列，用概括性语言；直接给正文，不要任何前后缀说明。"
+)
 
 
 class VersionConflict(Exception):
@@ -175,9 +185,48 @@ def _narrative(unfit: list[dict], risks: dict, score: float, grade: str,
     return "\n".join(lines)
 
 
-def generate(report_id: int | str, *, use_llm: bool = False,
-             actor: dict | None = None) -> dict:
-    """生成报告：分配编号 + 算风险评定值 + 算得分等级 + 组装叙述文字。"""
+def _narrative_prompt(report: dict, unfit: list[dict], risks: dict,
+                      score: float, grade: str) -> str:
+    """把报告里的事实整理成提示词。
+
+    刻意**不带知识图谱链路**：模板条目与图谱条目还没建立映射（PRD Q5），
+    现在硬接只会给出对不上的证据。模型只根据"用户自己填的内容+规则算出的风险值"来写。
+    """
+    form = report.get("form") or {}
+    counters = report.get("counters") or {}
+    categories = {"Ⅰ类": 0, "Ⅱ类": 0, "Ⅲ类": 0}
+    for risk in risks.values():
+        if risk["category"] in categories:
+            categories[risk["category"]] += 1
+    data = {
+        "委托单位名称": form.get("clientName", ""),
+        "使用单位名称": form.get("userName", ""),
+        "设备类别": form.get("deviceCategory", ""),
+        "产品编号": form.get("productNo", ""),
+        "评估日期": form.get("assessDate", ""),
+        "评价条目总数": counters.get("total"),
+        "不符合项": [
+            {
+                "项目编号": item["no"],
+                "存在风险": "；".join(item.get("reasons") or []) or item.get("other_text") or "",
+                "风险类别": risks.get(item["no"], {}).get("category", ""),
+            }
+            for item in unfit
+        ],
+        "风险类别统计": categories,
+        "综合安全状况得分": score,
+        "综合安全状况等级": grade,
+    }
+    return json.dumps({"system": NARRATIVE_SYSTEM, "data": data}, ensure_ascii=False)
+
+
+async def generate(report_id: int | str, *, use_llm: bool = False,
+                   actor: dict | None = None) -> dict:
+    """生成报告：分配编号 + 算风险评定值 + 算得分等级 + 组装叙述文字。
+
+    异步是为了能直接 await 模型调用（模型用同一个事件循环里的 httpx 客户端）。
+    模型不可用时**不抛错**，退回规则摘要并在溯源里写明 —— 报告必须出得来。
+    """
     rid = int(report_id)
     started = monotonic()
     stamp = now_iso()
@@ -208,12 +257,27 @@ def generate(report_id: int | str, *, use_llm: bool = False,
             seq = report_repo.next_seq(conn, day)
             report_no = f"{settings.report_no_prefix}-{day}-{seq:03d}"
 
-        # 模型接入见批 5：当前一律走规则/图谱摘要兜底，并在溯源里写明
-        narrative = _narrative(unfit, risks, score, grade, llm_used=False)
+        fallback = _narrative(unfit, risks, score, grade, llm_used=False)
+        narrative, llm_used, llm_error = fallback, False, ""
+        if use_llm:
+            try:
+                text = (await llm_service.generate(
+                    _narrative_prompt(report, unfit, risks, score, grade)) or "").strip()
+                if text:
+                    narrative, llm_used = text, True
+                else:
+                    llm_error = "模型返回空内容"
+            except Exception as e:  # noqa: BLE001
+                # 模型挂了不是"报告出不来"的理由，降级并记明原因
+                llm_error = f"{type(e).__name__}: {e}"
+
         provenance = {
-            "llm_used": False,
-            "llm_note": "模型接入待批 5；当前为规则与图谱摘要兜底",
+            "llm_used": llm_used,
+            "llm_model": "Qwen3.5-4B" if llm_used else "",
+            "llm_error": llm_error,
+            "llm_note": "" if llm_used else "未使用大模型，叙述文字由规则摘要自动汇总",
             "kg_available": False,
+            "kg_note": "模板条目与图谱条目的映射未定（PRD Q5），暂不引用图谱链路",
             "risk_rule": "placeholder（PRD Q6 未定）",
             "unfit_count": len(unfit),
             "catalog_version": report["catalog_version"],

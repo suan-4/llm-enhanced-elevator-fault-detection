@@ -106,7 +106,14 @@ const riskByNo = computed(() => {
 const categories = computed(() => riskRows.value.map((row) => row.risk.category))
 const g = computed(() => store.generated?.score ?? computeG(categories.value))
 const grade = computed(() => store.generated?.grade ?? gradeOf(g.value))
-const overview = computed(() => overviewText(categories.value, g.value))
+/* 评估概况 = 模板要求的两行（风险分布 + 得分）+ 大模型写的那段说明。
+   规则摘要兜底的那版不往报告上打印 —— 它逐条罗列，附页已经列过了，
+   塞进概况会把单元格撑得很长（放哪由 PRD Q7 定，这里先按建议默认放概况）。 */
+const overview = computed(() => {
+  const base = overviewText(categories.value, g.value)
+  const ai = store.generated?.llm_used ? store.generated.narrative.trim() : ''
+  return ai ? `${base}\n${ai}` : base
+})
 const conclusion = computed(() => `综合安全状况等级：${grade.value}`)
 const appendixRows = computed<AppendixRow[]>(() =>
   riskRows.value.map((row) => ({ no: row.item.no, risk: row.risk, text: reasonsText(row.state) })),

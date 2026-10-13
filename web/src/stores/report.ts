@@ -31,6 +31,8 @@ export interface GeneratedInfo {
   score: number | null
   grade: Grade | null
   narrative: string
+  /** 叙述文字是否真由大模型生成（false = 规则摘要兜底，报告里不打印） */
+  llm_used: boolean
   risks: Record<string, RiskValue>
   generated_at: string
 }
@@ -225,7 +227,8 @@ export const useReportStore = defineStore('report', () => {
   async function generate(): Promise<ReportSummary> {
     if (!reportId.value) throw new Error('还没有正在编辑的报告')
     await save()
-    const res = await flowApi.generateReport(reportId.value)
+    // use_llm=true：模型可用就用模型写概况；不可用后端会自动降级，不影响出报告
+    const res = await flowApi.generateReport(reportId.value, true)
     const report = res.report
     version.value = report.version
     status.value = report.status
@@ -234,6 +237,7 @@ export const useReportStore = defineStore('report', () => {
       score: report.score,
       grade: report.grade,
       narrative: report.narrative,
+      llm_used: Boolean((report.provenance || {}).llm_used),
       risks: report.risks || {},
       generated_at: report.generated_at || '',
     }
@@ -260,6 +264,7 @@ export const useReportStore = defineStore('report', () => {
             score: report.score,
             grade: report.grade,
             narrative: report.narrative,
+            llm_used: Boolean((report.provenance || {}).llm_used),
             risks: report.risks || {},
             generated_at: report.generated_at || '',
           }

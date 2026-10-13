@@ -91,10 +91,10 @@ def save_report(report_id: str, req: ReportSaveRequest,
 
 
 @router.post("/{report_id}/generate")
-def generate_report(report_id: str, req: ReportGenerateRequest,
-                    user: dict = Depends(get_current_user)) -> dict:
+async def generate_report(report_id: str, req: ReportGenerateRequest,
+                          user: dict = Depends(get_current_user)) -> dict:
     try:
-        report = wf.generate(_report_id(report_id), use_llm=req.use_llm, actor=user)
+        report = await wf.generate(_report_id(report_id), use_llm=req.use_llm, actor=user)
     except (LookupError, ValueError, wf.VersionConflict) as e:
         raise _translate(e)
     return {"success": True, "report": report}

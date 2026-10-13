@@ -5,6 +5,11 @@
    并记住旧 id → 新 id 的映射，供后面挂接。
 2. `report_history` 变成 `report`，**并且按创建日期补上报告编号** ——
    不补的话老报告在列表里没有编号，现场对不上纸面件。
+   ⚠ 实测（板端真实数据）：旧 `items_data` 是**图谱口径**
+   （`{"INS_BRAKE_002": {"selected": ["STATE_BRAKE_006"]}}`），
+   与模板的 66 条评价结果（1.7 / 1.8 …）**不是一套编号** —— 这正是 PRD Q5 那个映射问题。
+   因此这里**不把状态硬翻译成"不符合"**（那是编造），只保留编号与原始数据：
+   评价结果留空、原文进 provenance.legacy_items，等映射规则定了再回填。
 3. `form_draft` 变成 `status='draft'` 的报告（没有编号）。
 4. 旧表**改名保留**（`*_legacy_日期`）而不是删除，方便回查。
 5. 最后把 `user_version` 置 1；重复执行直接跳过（幂等）。
@@ -181,6 +186,10 @@ def run(conn: Any, *, prefix: str | None = None, suffix: str = LEGACY_SUFFIX) ->
             "legacy_id": h["id"],
             "kg": loads(h["fault_chain"], None),
             "migrated_from": "report_history",
+            # 旧数据的原始口径原样留底：将来 Q5 的映射定了可以据此回填评价结果
+            "legacy_items": loads(h["items_data"], None),
+            "legacy_note": "旧系统按图谱检测项（INS_*）记录，与模板 66 条评价结果不是一套编号，"
+                           "故评价结果未回填",
         }
         conn.execute(
             "INSERT INTO report (id, report_no, status, version, created_by, created_at,"

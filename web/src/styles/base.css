@@ -239,6 +239,8 @@ table {
   border: 1px solid var(--c-line);
   padding: 5px 8px;
   vertical-align: middle;
+  /* 评估概况是带换行的多段文字（模板两行 + 大模型那段），要按原样换行显示 */
+  white-space: pre-line;
 }
 
 .info th {

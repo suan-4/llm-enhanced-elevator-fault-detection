@@ -11,6 +11,7 @@
 from __future__ import annotations
 
 import sys
+import asyncio
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -18,6 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from tests._tempdb import TempDB  # noqa: E402
 
 from app.services import auth_service, report_workflow, risk_rules  # noqa: E402
+from app.services.llm_service import llm_service  # noqa: E402
 
 FORM = {
     "clientName": "佛山某公司",
@@ -79,7 +81,7 @@ def test_generate_assigns_number_and_computes_grade() -> None:
         report_workflow.save_content(
             report["id"], form=FORM, items=_items(unfit=1), actor=actor
         )
-        generated = report_workflow.generate(report["id"], actor=actor)
+        generated = asyncio.run(report_workflow.generate(report["id"], actor=actor))
 
         assert generated["status"] == "generated"
         assert generated["report_no"].startswith("GDSEI-JTE-")
@@ -101,11 +103,66 @@ def test_generate_rejects_incomplete_items() -> None:
         items[1]["result"] = ""
         report_workflow.save_content(report["id"], form=FORM, items=items, actor=actor)
         try:
-            report_workflow.generate(report["id"], actor=actor)
+            asyncio.run(report_workflow.generate(report["id"], actor=actor))
         except ValueError as e:
             assert "未填" in str(e)
         else:
             raise AssertionError("有未填项时不应允许生成")
+
+
+def _prepare(actor: dict) -> str:
+    report = report_workflow.create_draft(actor=actor)
+    report_workflow.save_content(report["id"], form=FORM, items=_items(unfit=2), actor=actor)
+    return report["id"]
+
+
+def test_generate_uses_llm_when_available() -> None:
+    """模型可用时：叙述文字用模型输出，并在溯源里记明用了模型。"""
+    with TempDB():
+        actor = _actor()
+        rid = _prepare(actor)
+        seen: dict = {}
+
+        async def fake_generate(prompt_json: str) -> str:
+            seen["prompt"] = prompt_json
+            return "本次评估发现两项不符合，属Ⅰ类风险，建议整改后复检。"
+
+        original = llm_service.generate
+        llm_service.generate = fake_generate  # type: ignore[assignment]
+        try:
+            report = asyncio.run(report_workflow.generate(rid, use_llm=True, actor=actor))
+        finally:
+            llm_service.generate = original  # type: ignore[assignment]
+
+        assert report["narrative"].startswith("本次评估发现两项不符合"), report["narrative"]
+        assert report["provenance"]["llm_used"] is True
+        # 提示词里必须带上真实数据，否则模型没得可写
+        assert "GDSEI" not in seen["prompt"], "提示词里不该出现报告编号（还没分配）"
+        assert "箱体出现裂纹" in seen["prompt"], "不符合情形要进提示词"
+        assert "综合安全状况" in seen["prompt"] or "得分" in seen["prompt"]
+
+
+def test_generate_falls_back_when_llm_fails() -> None:
+    """模型不可用（或返回空）时：仍然出报告，叙述文字走规则摘要，并记明原因。"""
+    with TempDB():
+        actor = _actor()
+        rid = _prepare(actor)
+
+        async def broken(prompt_json: str) -> str:
+            raise RuntimeError("RKLLM服务器响应超时")
+
+        original = llm_service.generate
+        llm_service.generate = broken  # type: ignore[assignment]
+        try:
+            report = asyncio.run(report_workflow.generate(rid, use_llm=True, actor=actor))
+        finally:
+            llm_service.generate = original  # type: ignore[assignment]
+
+        assert report["status"] == "generated", "模型挂了也要能出报告"
+        assert report["narrative"], "降级后叙述文字不能为空"
+        assert report["provenance"]["llm_used"] is False
+        assert "超时" in str(report["provenance"].get("llm_error", ""))
+        assert "未使用大模型" in report["narrative"], "报告里要写明没用模型"
 
 
 def test_void_keeps_number_and_delete_rules() -> None:
@@ -114,7 +171,7 @@ def test_void_keeps_number_and_delete_rules() -> None:
         actor = _actor()
         first = report_workflow.create_draft(actor=actor)
         report_workflow.save_content(first["id"], form=FORM, items=_items(), actor=actor)
-        generated = report_workflow.generate(first["id"], actor=actor)
+        generated = asyncio.run(report_workflow.generate(first["id"], actor=actor))
         number = generated["report_no"]
 
         try:
@@ -137,12 +194,12 @@ def test_number_never_reused_after_void() -> None:
         actor = _actor()
         first = report_workflow.create_draft(actor=actor)
         report_workflow.save_content(first["id"], form=FORM, items=_items(), actor=actor)
-        no1 = report_workflow.generate(first["id"], actor=actor)["report_no"]
+        no1 = asyncio.run(report_workflow.generate(first["id"], actor=actor))["report_no"]
         report_workflow.void_report(first["id"], reason="作废", actor=actor)
 
         second = report_workflow.create_draft(actor=actor)
         report_workflow.save_content(second["id"], form=FORM, items=_items(), actor=actor)
-        no2 = report_workflow.generate(second["id"], actor=actor)["report_no"]
+        no2 = asyncio.run(report_workflow.generate(second["id"], actor=actor))["report_no"]
         assert no1 != no2, f"编号被重复使用：{no1} / {no2}"
         assert no2.endswith("-002"), no2
 
@@ -205,6 +262,8 @@ def _main() -> int:
         ("草稿整存整取与抬头提升", test_create_save_and_get_draft),
         ("生成分配编号并算等级", test_generate_assigns_number_and_computes_grade),
         ("漏填拒绝生成", test_generate_rejects_incomplete_items),
+        ("模型可用则用模型", test_generate_uses_llm_when_available),
+        ("模型不可用则降级", test_generate_falls_back_when_llm_fails),
         ("作废保留编号与删除规则", test_void_keeps_number_and_delete_rules),
         ("编号不复用", test_number_never_reused_after_void),
         ("复制只带抬头", test_clone_copies_header_only),

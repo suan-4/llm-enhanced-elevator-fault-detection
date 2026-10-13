@@ -98,6 +98,11 @@ def test_history_becomes_generated_report_with_number() -> None:
             assert items[1]["result"] == "unfit" and items[1]["reasons"] == ["箱体出现裂纹"]
             prov = report_repo.find_by_id(conn, row["id"])["provenance"]
             assert prov.get("legacy_id") == 7, "旧 id 要留痕以便追溯"
+            # 旧数据是图谱口径，原样留底、不做硬翻译
+            assert prov.get("legacy_items") == {"1.7": {"result": "符合"},
+                                                "2.1": {"result": "不符合",
+                                                        "reasons": ["箱体出现裂纹"]}}
+            assert "不是一套编号" in prov.get("legacy_note", "")
 
 
 def test_form_draft_becomes_draft_report() -> None:
