@@ -14,8 +14,14 @@ class Settings(BaseSettings):
     # ── 业务数据库（用户账号 / 报告历史 / 填写记录）──
     # 相对路径按 backend/ 目录解析；知识图谱仍在 Neo4j
     sqlite_path: str = "data/elevator.db"
-    session_ttl_hours: int = 168          # 登录令牌有效期，默认 7 天
+    session_ttl_hours: int = 168          # 登录令牌绝对有效期，默认 7 天
+    session_idle_hours: int = 8           # 空闲多久算掉线（板端是共用终端）
     history_limit: int = 50               # 每个用户保留的历史报告条数
+
+    # ── 新结构（v1 基础版）──
+    worker_id: int = 1                    # 雪花 ID 的工作节点号（一台终端一个值）
+    report_no_prefix: str = "GDSEI-JTE"   # 报告编号前缀：{前缀}-{YYYYMMDD}-{3 位流水}
+    recovery_key_path: str = "/userdata/elevator/recovery.key"  # 忘记口令用的恢复口令文件
 
     # 自助终端：前端「退出系统」按钮是否可用（关闭 kiosk 窗口返回桌面）
     kiosk_exit_enabled: bool = True
