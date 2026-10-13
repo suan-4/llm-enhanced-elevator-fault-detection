@@ -141,6 +141,30 @@ async function seedEmptyDraft(browser) {
 
     const rows = await page.locator(".items tbody tr").count();
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+
+    // ── 回归：除四个必填项，其余字段默认必须是「/」──
+    // 现场规则：文档第三页只留 委托单位名称/使用单位名称/设备类别/产品编号 四个填空，
+    // 其他地方一律打「/」（意思是可填可不填）。
+    // 评估仪器、评估依据 原先直接照抄了设计稿 mockup 里的演示文案（一长串仪器清单 /
+    // 规范清单），打开就像「已经填过了」，操作员容易被误导。
+    const defaults = await page.evaluate(() => {
+      const REQUIRED = ["clientName", "userName", "deviceCategory", "productNo"];
+      const out = { total: 0, requiredFilled: [], bad: [] };
+      document.querySelectorAll('.info input[id^="f-"]').forEach((el) => {
+        const key = el.id.slice(2);
+        // __overview / __conclusion 是报告预览专用的计算行，录入页只是被 v-show 藏着
+        if (key.startsWith("__")) return;
+        out.total += 1;
+        if (REQUIRED.includes(key)) {
+          if (el.value.trim() !== "") out.requiredFilled.push(key);
+          return;
+        }
+        if (!el.value.startsWith("/")) out.bad.push(key + "=" + el.value.slice(0, 24));
+      });
+      return out;
+    });
+    const defaultsOk =
+      defaults.total >= 22 && defaults.requiredFilled.length === 0 && defaults.bad.length === 0;
     // 未填行的底色必须在填表之前取，否则所有行都已被置为「符合」
     const unfilledBg = await page.evaluate(() => {
       const el = document.querySelector("#row-1-9 td");
@@ -637,7 +661,7 @@ async function seedEmptyDraft(browser) {
       loginPageOk && themeOk && warmOk && rowColorOk && labelFontOk && clauseOk &&
       reportClauseOk && clippedOk && borderOk && outlineOk && sidebarOk && actionbarOk &&
       noRootScroll &&
-      paperLayoutOk && cardOk && newBtnOk && actionbarStableOk &&
+      paperLayoutOk && cardOk && newBtnOk && actionbarStableOk && defaultsOk &&
       rows === 66 && overflow <= 0 && alertVisible && alertCount > 0 &&
       focusedId.startsWith("f-") && counters.includes("未填 0 项") &&
       papers === 4 && overflowReport <= 0 && grade4 && score0 &&
@@ -658,6 +682,9 @@ async function seedEmptyDraft(browser) {
       `  样式还原            圆角${styleFacts.radius} 最大宽${styleFacts.maxWidth} 卡片底色=${styleFacts.cardBg} 背景=渐变:${styleFacts.viewBg.includes("linear-gradient")} 字体=${styleFacts.font}`,
     );
     console.log(`  条目行数        ${rows}`);
+    console.log(
+      `  默认值(非必填=/ ) ${defaults.total} 个字段 必填被预填=${JSON.stringify(defaults.requiredFilled)} 不合规=${JSON.stringify(defaults.bad)} ${defaultsOk ? "✓" : "✗"}`,
+    );
     console.log(
       `  主题统一        底色=${theme.bg} 卡片圆角=${theme.sheetRadius} 按钮圆角=${theme.btnRadius} 字体=${theme.font} ${themeOk ? "✓" : "✗"}`,
     );

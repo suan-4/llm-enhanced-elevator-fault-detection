@@ -260,8 +260,10 @@ tr.mark{animation:mark 1.5s ease-out}
         <th>层站门数</th><td class="cell"><input class="input" value="/ 层　/ 站　/ 门"></td>
         <th>控制方式</th><td class="cell"><input class="input" value="/"></td>
       </tr>
-      <tr><th>评估仪器</th><td class="cell" colspan="3"><input class="input" value="温湿度计、万用表、绝缘电阻仪、转速表、钢卷尺、钢直尺、塞尺、游标卡尺、钳形电流表、照度计、乘运质量测试仪、声级计等"></td></tr>
-      <tr><th>评估依据</th><td class="cell" colspan="3"><input class="input" value="1、GB/T 42615-2023《在用电梯安全评估规范》　2、技术服务合同/协议（合同/协议编号：　　　　）"></td></tr>
+      <!-- 除四个必填项（委托/使用单位名称、设备类别、产品编号），其余字段默认一律是「/」，
+           意思是可填可不填。这里以前放的是演示文案，被照抄进代码后打开就像已经填过 —— 别再改回去。 -->
+      <tr><th>评估仪器</th><td class="cell" colspan="3"><input class="input" value="/"></td></tr>
+      <tr><th>评估依据</th><td class="cell" colspan="3"><input class="input" value="/"></td></tr>
       <tr><th>评估概况</th><td class="cell" colspan="3"><span id="statOverview" style="color:var(--muted)">生成报告后自动填写</span></td></tr>
       <tr><th>评估结论</th><td class="cell" colspan="3"><span id="statConclusion" style="color:var(--muted)">生成报告后自动填写</span></td></tr>
       <tr><th>整机建议</th><td class="cell" colspan="3"><input class="input" value="/"></td></tr>

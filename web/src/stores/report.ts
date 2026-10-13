@@ -66,10 +66,11 @@ function createForm(): Record<string, string> {
     ratedSpeed: '/ m/s',
     floorsStopsDoors: '/ 层　/ 站　/ 门',
     controlMode: '/',
-    instruments:
-      '温湿度计、万用表、绝缘电阻仪、转速表、钢卷尺、钢直尺、塞尺、游标卡尺、钳形电流表、照度计、乘运质量测试仪、声级计等',
-    basis:
-      '1、GB/T 42615-2023《在用电梯安全评估规范》　2、技术服务合同/协议（合同/协议编号：　　　　）',
+    /* 现场规则：除四个必填项（委托/使用单位名称、设备类别、产品编号），其余一律以「/」
+       占位，意思是可填可不填。这两项以前直接照抄了设计稿 mockup 里的演示文案
+       （一长串仪器清单 / 规范清单），打开就像已经填过，会误导操作员。 */
+    instruments: '/',
+    basis: '/',
     suggestion: '/',
     remark: '/',
     assessDate: '/',
