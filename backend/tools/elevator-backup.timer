@@ -1,0 +1,11 @@
+[Unit]
+Description=Run elevator backup daily (03:30)
+
+[Timer]
+# 板子不通电就跳过；Persistent=true 让开机后补上一次，离线设备必须带这个
+OnCalendar=*-*-* 03:30:00
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target

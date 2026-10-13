@@ -1,0 +1,9 @@
+[Unit]
+Description=Elevator daily backup
+Documentation=file:///home/ubuntu/elevator/backend/tools/daily_backup.py
+After=elevator-api.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/ubuntu/elevator/backend
+ExecStart=/usr/bin/python3 tools/daily_backup.py
