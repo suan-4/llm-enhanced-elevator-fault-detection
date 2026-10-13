@@ -4,6 +4,7 @@ import InfoTable from '@/components/report/InfoTable.vue'
 import ItemTable from '@/components/report/ItemTable.vue'
 import MissingList from '@/components/report/MissingList.vue'
 import ReportDocument from '@/components/report/ReportDocument.vue'
+import AppDialog from '@/components/AppDialog.vue'
 import type { AppendixRow } from '@/types/report'
 import { assignRiskDemo, type RiskValue } from '@/domain/riskAssign'
 import { computeG, gradeOf, overviewText } from '@/domain/riskScore'
@@ -21,6 +22,8 @@ const { show } = useToast()
 const view = ref<'input' | 'report'>('input')
 const showAlert = ref(false)
 const generating = ref(false)
+const confirmNew = ref(false)
+const newBusy = ref(false)
 const reportWrap = ref<HTMLElement | null>(null)
 
 /* 侧栏 / 顶栏已上移到 AppShell，本页只管内容。
@@ -132,6 +135,44 @@ async function saveNow(): Promise<void> {
     show('草稿已保存')
   } catch (err) {
     show(err instanceof Error ? err.message : '保存失败')
+  }
+}
+
+/* ── 新建评估 ──
+   现场真实需要：上一条电梯录完（或录到一半）要开下一条。
+   录入页以前只会「没有草稿就建、有草稿就续录」，用户既找不到入口，
+   也分不清眼前这张表是新的还是上次没填完的。 */
+const hasProgress = computed(
+  () =>
+    store.counters.done > 0 ||
+    ['clientName', 'userName', 'deviceCategory', 'productNo'].some(
+      (key) => !!(store.form[key] || '').trim(),
+    ),
+)
+
+async function startNewReport(): Promise<void> {
+  if (generating.value || newBusy.value) return
+  // 空白表直接新建；已经填了东西才提醒一句，避免误点丢掉现场进度
+  if (hasProgress.value) {
+    confirmNew.value = true
+    return
+  }
+  await doNewReport()
+}
+
+async function doNewReport(): Promise<void> {
+  confirmNew.value = false
+  newBusy.value = true
+  try {
+    await store.createNew()
+    view.value = 'input'
+    showAlert.value = false
+    show('已新建一份评估')
+    scrollToTop()
+  } catch (err) {
+    show(err instanceof Error ? err.message : '新建失败')
+  } finally {
+    newBusy.value = false
   }
 }
 
@@ -261,49 +302,80 @@ function fitPapers(): void {
       </section>
 
       <div class="actionbar">
-        <span class="count">
-          共 <b>{{ store.counters.total }}</b> 项　已评 <b>{{ store.counters.done }}</b> 项　不符合
-          <span class="bad">{{ store.counters.unfit }}</span> 项　未填
-          <span class="bad">{{ store.counters.miss }}</span> 项
-        </span>
-        <span v-if="saveHint" class="save-hint">{{ saveHint }}</span>
-        <span class="spacer" />
-        <button
-          class="btn btn-lg"
-          type="button"
-          :disabled="store.saveState === 'saving'"
-          @click="saveNow"
-        >
-          保存草稿
-        </button>
-        <button
-          v-if="view === 'input'"
-          class="btn btn-lg btn-primary"
-          type="button"
-          :disabled="generating"
-          @click="generate"
-        >
-          {{ generating ? '生成中…' : '校验并生成报告' }}
-        </button>
-        <template v-else>
+        <div class="bar-top">
+          <span class="count">
+            共 <b>{{ store.counters.total }}</b> 项　已评 <b>{{ store.counters.done }}</b> 项　不符合
+            <span class="bad">{{ store.counters.unfit }}</span> 项　未填
+            <span class="bad">{{ store.counters.miss }}</span> 项
+          </span>
+          <span v-if="saveHint" class="save-hint">{{ saveHint }}</span>
+        </div>
+
+        <div class="bar-bottom">
           <button
-            class="btn btn-lg btn-primary"
+            class="new-btn"
             type="button"
-            :disabled="exp.busy.value"
-            @click="exp.run('pdf')"
+            :disabled="generating || newBusy"
+            @click="startNewReport"
           >
-            {{ exp.busy.value ? '导出中…' : '导出 PDF' }}
+            ＋ 新建评估
           </button>
           <button
-            class="btn btn-lg btn-primary"
+            class="btn btn-lg btn-save"
             type="button"
-            :disabled="exp.busy.value"
-            @click="exp.run('docx')"
+            :disabled="store.saveState === 'saving'"
+            @click="saveNow"
           >
-            导出 Word
+            保存草稿
           </button>
-        </template>
+          <div class="bar-actions">
+            <button
+              v-if="view === 'input'"
+              class="btn btn-lg btn-primary"
+              type="button"
+              :disabled="generating"
+              @click="generate"
+            >
+              {{ generating ? '生成中…' : '校验并生成报告' }}
+            </button>
+            <template v-else>
+              <button
+                class="btn btn-lg btn-primary"
+                type="button"
+                :disabled="exp.busy.value"
+                @click="exp.run('pdf')"
+              >
+                {{ exp.busy.value ? '导出中…' : '导出 PDF' }}
+              </button>
+              <button
+                class="btn btn-lg btn-primary"
+                type="button"
+                :disabled="exp.busy.value"
+                @click="exp.run('docx')"
+              >
+                导出 Word
+              </button>
+            </template>
+          </div>
+        </div>
       </div>
+
+      <AppDialog
+        :open="confirmNew"
+        title="新建评估"
+        confirm-text="新建"
+        :busy="newBusy"
+        @close="confirmNew = false"
+        @confirm="doNewReport"
+      >
+        <p class="dialog-p">
+          当前这份评估已填 <b>{{ store.counters.done }}</b> 项。
+        </p>
+        <p class="dialog-p">
+          新建后它不会丢，仍留在「报告管理」里，随时可以点「继续编辑」接着填。
+        </p>
+        <p class="dialog-p">确定新建一份空白评估吗？</p>
+      </AppDialog>
 </template>
 
 <style scoped>

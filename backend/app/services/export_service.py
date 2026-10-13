@@ -128,15 +128,16 @@ p     { margin: 0 0 6pt 0; }
 ul,ol { margin: 0 0 6pt 0; padding-left: 20pt; }
 li    { margin-bottom: 3pt; }
 table.meta { border-collapse: collapse; width: 100%%; margin-bottom: 14pt; }
-table.meta th { background: #f2f2f2; width: 26%%; text-align: left; font-weight: bold; }
+table.meta th { width: 26%%; text-align: left; font-weight: bold; }
 table.meta th, table.meta td { border: 1px solid #000; padding: 4pt 7pt; font-size: 10pt; }
 /* 报告正文里的表格没有类名（直接取自页面已渲染的 HTML），
    所以这里对裸 table/th/td 也要给边框，否则导出后是无框的散排文字 */
-/* 纸张里的表格按 JTE 文档：黑框、浅灰表头（与屏幕上 .paper th 的 #f2f2f2 一致）。
-   之前用蓝灰边框 + 淡蓝表头，导出件跟文档和预览都不一样（现场反馈「抬头标题有蓝底」）。 */
+/* 纸张里的表格按 JTE 文档：只留黑色框线，任何地方都不加底色。
+   实测模板 JTE-09-R02-3.00 的 w:shd 填充全是 FFFFFF（白），没有一处彩色底；
+   之前给表头加淡蓝底、后来又改成浅灰底，都是凭空加的（现场反馈「抬头标题有背景色」）。 */
 table { border-collapse: collapse; width: 100%%; margin: 6pt 0 12pt 0; }
 th, td { border: 1px solid #000; padding: 3pt 6pt; font-size: 9.5pt; vertical-align: top; }
-th { background: #f2f2f2; font-weight: bold; }
+th { font-weight: bold; }
 table.meta th, table.meta td { padding: 4pt 7pt; font-size: 10pt; }
 .card { margin: 0 0 8pt 0; }
 .raw-text { font-size: 10.5pt; }

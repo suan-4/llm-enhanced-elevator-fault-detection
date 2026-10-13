@@ -476,8 +476,50 @@ async function seedEmptyDraft(browser) {
     const itemsEdgeGap = narrow ? 0 : await edgeGap(".items");
     const outlineOk = infoEdgeGap < 0.05 && itemsEdgeGap < 0.05;
 
+    // ── 回归：「新建评估」入口与二次确认 ──
+    await page.click(".actionbar .new-btn");
+    await page.waitForSelector(".dialog", { timeout: 5000 });
+    const newDialogText = (await page.locator(".dialog").innerText()).replace(/\s+/g, " ").trim();
+    await page.locator(".dialog-foot .btn").first().click();
+    await page.waitForTimeout(250);
+    const newDialogClosed = (await page.locator(".dialog").count()) === 0;
+    const newBtnOk =
+      newDialogText.includes("新建评估") &&
+      newDialogText.includes("报告管理") &&
+      newDialogClosed;
+
+    // ── 回归：切换「录入态 / 预览态」时，常驻按钮的外框不能变 ──
+    // 板端 WebKit 只重绘一部分，保存草稿由 202px 变窄后旧宽度残影会压住「导出 PDF」左半边。
+    const barGeom = () =>
+      page.evaluate(() => {
+        const rect = (sel) => {
+          const el = document.querySelector(sel);
+          if (!el) return null;
+          const b = el.getBoundingClientRect();
+          return [Math.round(b.left), Math.round(b.top), Math.round(b.width), Math.round(b.height)];
+        };
+        return {
+          save: rect(".actionbar .btn-save"),
+          actions: rect(".actionbar .bar-actions"),
+          newBtn: rect(".actionbar .new-btn"),
+        };
+      });
+    const barBefore = await barGeom();
+
     await page.click(".actionbar .btn-primary");
     await page.locator(".paper").first().waitFor({ state: "visible", timeout: 12000 });
+
+    const barAfter = await barGeom();
+    const sameBox = (a, b) => !!a && !!b && a[0] === b[0] && a[2] === b[2];
+    // 真正的病根是「变窄」后旧宽度的残影，所以宽度必须处处不变；
+    // 窄屏更进一步要求整框不动（我们的定宽方案做到了），宽屏按钮组右对齐会整体左移属正常。
+    const sameWidth = (a, b) => !!a && !!b && a[2] === b[2];
+    const actionbarStableOk =
+      sameWidth(barBefore.save, barAfter.save) &&
+      (narrow
+        ? sameBox(barBefore.save, barAfter.save) && sameBox(barBefore.actions, barAfter.actions)
+        : true) &&
+      !!barAfter.newBtn;
     const papers = await page.locator(".paper").count();
     const bodyText = await page.locator(".report-wrap").innerText();
     const overflowReport = await page.evaluate(
@@ -595,7 +637,7 @@ async function seedEmptyDraft(browser) {
       loginPageOk && themeOk && warmOk && rowColorOk && labelFontOk && clauseOk &&
       reportClauseOk && clippedOk && borderOk && outlineOk && sidebarOk && actionbarOk &&
       noRootScroll &&
-      paperLayoutOk && cardOk &&
+      paperLayoutOk && cardOk && newBtnOk && actionbarStableOk &&
       rows === 66 && overflow <= 0 && alertVisible && alertCount > 0 &&
       focusedId.startsWith("f-") && counters.includes("未填 0 项") &&
       papers === 4 && overflowReport <= 0 && grade4 && score0 &&
@@ -652,6 +694,12 @@ async function seedEmptyDraft(browser) {
     );
     console.log(
       `  导出结果卡      ${JSON.stringify(cardFacts)} ${cardOk ? "✓" : "✗"}`,
+    );
+    console.log(
+      `  新建评估        「${newDialogText.slice(0, 24)}…」关掉=${newDialogClosed} ${newBtnOk ? "✓" : "✗"}`,
+    );
+    console.log(
+      `  悬浮岛外框不变  before=${JSON.stringify(barBefore)} after=${JSON.stringify(barAfter)} ${actionbarStableOk ? "✓" : "✗"}`,
     );
     console.log(`  导出            ${exportOk ? "成功" : "失败可见 → " + toast.slice(0, 70)}`);
     console.log(

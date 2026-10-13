@@ -161,6 +161,36 @@ export const useReportStore = defineStore('report', () => {
   }
 
   /** 进页面时调用：没有当前报告就新建，有就续录 */
+  /** 未完成草稿数（含当前这份），「新建评估」前用来决定要不要提醒 */
+  async function countDrafts(): Promise<number> {
+    try {
+      const res = await flowApi.listReports({ status: 'draft', mine: true, size: 1 })
+      return res.total
+    } catch {
+      // 数不出来就不吓唬用户：最多是少弹一次提醒
+      return 0
+    }
+  }
+
+  /** 悬浮岛「新建评估」：显式开一份空白评估。
+      不碰当前这份草稿 —— 它仍在库里，去「报告管理」能继续编辑。 */
+  async function createNew(): Promise<string> {
+    const created = await flowApi.createReport()
+    reportId.value = created.report.id
+    version.value = created.report.version
+    status.value = created.report.status
+    generated.value = null
+    saveState.value = 'idle'
+    savedAt.value = ''
+    // 必须就地改 form（InfoTable 在 setup 时抓住了它的引用），换对象会让抬头表变空
+    const fresh = createForm()
+    for (const key of Object.keys(form.value)) delete form.value[key]
+    Object.assign(form.value, fresh)
+    resetItemStates()
+    ready.value = true
+    return created.report.id
+  }
+
   async function ensureDraft(): Promise<'created' | 'resumed'> {
     if (reportId.value) return 'resumed'
     draftError.value = ''
@@ -294,6 +324,8 @@ export const useReportStore = defineStore('report', () => {
     savedAt,
     ready,
     draftError,
+    countDrafts,
+    createNew,
     ensureDraft,
     flush,
     hydrate,

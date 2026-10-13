@@ -94,9 +94,9 @@ def test_build_html_keeps_the_document_as_is() -> None:
     )
     assert html.count("<h1>") == 1, html.count("<h1>")
     assert 'class="meta"' not in html
-    # 抬头标签不能再带淡蓝底（#eef3f6），也不能是蓝灰边框（#9fb3bd）
-    assert "#eef3f6" not in html
-    assert "#9fb3bd" not in html
+    # 官方模板 JTE-09-R02-3.00 的 w:shd 填充全是 FFFFFF，一处底色都没有；
+    # 导出件也必须一个 background 都不加（淡蓝 #eef3f6、浅灰 #f2f2f2 都算多加）。
+    assert "background" not in html
     # 纸张里的表格按 JTE 文档：黑框
     assert "1px solid #000" in html
 

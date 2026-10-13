@@ -474,6 +474,56 @@ table {
   border-top: 1px solid var(--c-line);
 }
 
+/* 悬浮岛分两段：左边计数/保存状态，右边按钮组。
+   分段的真正原因见窄屏那段的注释 —— 切换「录入态 / 预览态」时按钮集合会变，
+   分段后外层容器宽度可以做到完全不变，避免 WebKit 留下旧宽度的残影。 */
+.bar-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.bar-bottom {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex: 0 0 auto;
+}
+
+.bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+/* 新建评估：次要描边按钮。故意不叫 .btn —— walkthrough 用
+   `.actionbar .btn:not(.btn-primary)` 选「保存草稿」，多一个 .btn 会选错。 */
+.new-btn {
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 500;
+  height: var(--h-control);
+  padding: 0 14px;
+  background: var(--c-panel);
+  border: 1px solid var(--c-primary);
+  border-radius: var(--radius-sm);
+  color: var(--c-primary);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+
+.new-btn:hover:not(:disabled) {
+  background: var(--c-primary-soft);
+}
+
+.new-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .count {
   color: var(--c-secondary);
   font-size: 14px;
@@ -487,10 +537,6 @@ table {
 
 .count .bad {
   color: var(--c-danger);
-}
-
-.spacer {
-  margin-left: auto;
 }
 
 /* ── 管理类页面的通用骨架（列表 / 工具栏 / 状态标签 / 表单字段）──
@@ -894,15 +940,21 @@ table {
     font-size: 13px;
   }
 
-  /* 底部操作条分两行 */
+  /* 底部操作条分两行：上行计数/保存状态，下行三个按钮块 */
   .actionbar {
-    flex-wrap: wrap;
+    flex-direction: column;
+    align-items: stretch;
     gap: 8px;
-    padding: 16px 24px;
+    padding: 12px 16px;
+  }
+
+  .bar-top,
+  .bar-bottom {
+    gap: 8px;
   }
 
   .count {
-    width: 100%;
+    flex: 1 1 auto;
     font-size: 14px;
   }
 
@@ -910,12 +962,39 @@ table {
     font-size: 18px;
   }
 
-  .spacer {
-    display: none;
+  /* ★★ 这一段是「保存草稿压住导出 PDF」的修复核心 ★★
+     板端 WebKit（一体机 600x960）在切换视图时只重绘了变化的一部分：
+     保存草稿原本 flex:1 会被平分宽度，录入态 202px、预览态 134px；
+     变窄后旧宽度的白底残影留在屏幕上，正好压住「导出 PDF」左半边，
+     而且一直留到下一次点击才消失（实测边框线同时存在新的 294.5 和旧的 365）。
+     改法：让「新建评估 / 保存草稿 / 按钮容器」三块的外框宽度在两种视图下
+     完全一致 —— 定宽 + 定宽容器，外层不再发生任何宽度变化，残影无从产生。 */
+  .new-btn {
+    flex: 0 0 auto;
+    height: var(--h-touch);
+    padding: 0 10px;
   }
 
-  .actionbar .btn {
-    flex: 1;
+  .btn-save {
+    flex: 0 0 112px;
     height: var(--h-touch);
+    padding: 0;
+  }
+
+  .bar-actions {
+    flex: 1 1 0;
+    min-width: 0;
+    gap: 8px;
+  }
+
+  .bar-actions .btn {
+    flex: 1 1 0;
+    min-width: 0;
+    height: var(--h-touch);
+    padding: 0 6px;
+  }
+
+  .dialog-p {
+    margin: 0 0 8px;
   }
 }
