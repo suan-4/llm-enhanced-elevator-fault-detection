@@ -72,7 +72,12 @@ def main() -> int:
 
         payload = r.json()
         token = payload["token"]
-        check(3, "响应不含口令", "password" not in str(payload.get("user", {})))
+        # 断言要精确到"字段名"，不能拿子串碰 —— must_change_password 里也有 password
+        user_keys = set(payload.get("user", {}).keys())
+        check(3, "响应不含口令字段",
+              not ({"password", "password_hash", "password_salt"} & user_keys))
+        check(3, "用户 id 是字符串（雪花 ID）",
+              isinstance(payload.get("user", {}).get("id"), str))
         H = {"Authorization": f"Bearer {token}"}
 
         check(3, "GET /api/auth/me → 200", c.get("/api/auth/me", headers=H).status_code == 200)
@@ -113,6 +118,78 @@ def main() -> int:
         check(5, "导出目录内不存在的文件 → 404",
               c.post("/api/report/open", headers=H,
                      json={"target": "/home/user/导出/不存在的文件.pdf"}).status_code == 404)
+
+        print("═══ 第 6 层：初始化状态与恢复口令 ═══")
+        st = c.get("/api/setup/status")
+        check(6, "GET /api/setup/status → 200", st.status_code == 200)
+        info = st.json() if st.status_code == 200 else {}
+        check(6, "已初始化", info.get("initialized") is True)
+        check(6, "报告版本号", bool(info.get("version")))
+        # 本机没有 /userdata/elevator/recovery.key，应当如实报"不可用"
+        check(6, "恢复口令可用性如实上报",
+              isinstance(info.get("recovery_available"), bool),
+              f"recovery_available={info.get('recovery_available')}")
+        forgot = c.post("/api/auth/forgot-password",
+                        json={"recovery_key": "x", "username": USERNAME,
+                              "new_password": "Ee2026elevator"})
+        check(6, "未配置恢复口令 → 503（不给用不了的入口）",
+              forgot.status_code in (403, 503), f"status={forgot.status_code}")
+        check(6, "重复初始化 → 409",
+              c.post("/api/setup/init",
+                     json={"display_name": "x", "username": "someoneelse",
+                           "password": "Ee2026elevator"}).status_code == 409)
+
+        print("═══ 第 7 层：账号管理（单角色：登录即可）═══")
+        listing = c.get("/api/accounts", headers=H)
+        check(7, "GET /api/accounts → 200", listing.status_code == 200)
+        items = listing.json().get("items", []) if listing.status_code == 200 else []
+        check(7, "账号 id 是字符串", bool(items) and isinstance(items[0]["id"], str),
+              str(items[:1]))
+        check(7, "列表不含口令字段",
+              all(not ({"password", "password_hash", "password_salt"} & set(i.keys()))
+                  for i in items))
+
+        weak = c.post("/api/accounts", headers=H,
+                      json={"display_name": "弱口令", "username": "weakuser",
+                            "password": "12345678"})
+        check(7, "弱口令开户 → 422", weak.status_code == 422, f"status={weak.status_code}")
+
+        created = c.post("/api/accounts", headers=H,
+                         json={"display_name": "验收账号", "username": "acceptance_user",
+                               "password": "Ee2026elevator", "employee_no": "T-001"})
+        check(7, "开户 → 200", created.status_code in (200, 409),
+              f"status={created.status_code}")
+        new_id = created.json().get("account", {}).get("id") if created.status_code == 200 else None
+
+        if new_id:
+            check(7, "新账号 id 是字符串", isinstance(new_id, str))
+            # 新账号能登录
+            with httpx.Client(base_url=BASE, timeout=15) as c2:
+                lr = c2.post("/api/auth/login",
+                             json={"username": "acceptance_user", "password": "Ee2026elevator"})
+                check(7, "新账号可登录 → 200", lr.status_code == 200)
+                tok2 = lr.json().get("token") if lr.status_code == 200 else None
+            # 停用需要二次确认
+            check(7, "停用缺 confirm → 400",
+                  c.patch(f"/api/accounts/{new_id}", headers=H,
+                          json={"is_active": False}).status_code == 400)
+            disabled = c.patch(f"/api/accounts/{new_id}", headers=H,
+                               json={"is_active": False, "confirm": True})
+            check(7, "停用成功 → 200", disabled.status_code == 200)
+            if tok2:
+                check(7, "停用后该账号令牌立即失效 → 401",
+                      c.get("/api/auth/me",
+                            headers={"Authorization": f"Bearer {tok2}"}).status_code == 401)
+            check(7, "重置口令缺 confirm → 400",
+                  c.post(f"/api/accounts/{new_id}/reset-password", headers=H,
+                         json={"new_password": "Ee2027elevator"}).status_code == 400)
+            # 收尾：把验收账号删掉（它没有报告，允许删除）
+            check(7, "删除验收账号 → 200",
+                  c.delete(f"/api/accounts/{new_id}?confirm=true", headers=H).status_code == 200)
+
+        check(7, "最后一个启用账号不可停用 → 400",
+              c.patch(f"/api/accounts/{items[0]['id']}", headers=H,
+                      json={"is_active": False, "confirm": True}).status_code == 400)
 
         c.post("/api/auth/logout", headers=H)
     return summarize()

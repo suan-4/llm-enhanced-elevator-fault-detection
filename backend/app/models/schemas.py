@@ -58,7 +58,8 @@ class ReportResponse(BaseModel):
     generated_at: Optional[datetime] = None
 
 
-# ── 认证 ──────────────────────────────────────────────────
+# ── 认证与账号 ────────────────────────────────────────────
+# 注意：id 一律以**字符串**出现在响应里（雪花 ID 超出 JS 安全整数）。
 class LoginRequest(BaseModel):
     username: str = Field(..., min_length=1, max_length=64)
     password: str = Field(..., min_length=1)
@@ -66,67 +67,43 @@ class LoginRequest(BaseModel):
 
 class ChangePasswordRequest(BaseModel):
     old_password: str = Field(..., min_length=1)
-    new_password: str = Field(..., min_length=4, max_length=128)
+    new_password: str = Field(..., min_length=8, max_length=128)
 
 
-class CreateUserRequest(BaseModel):
+class SetupInitRequest(BaseModel):
+    display_name: str = Field(..., min_length=1, max_length=64)
     username: str = Field(..., min_length=1, max_length=64)
-    password: str = Field(..., min_length=4, max_length=128)
-    display_name: str = Field(default="", max_length=64)
-    role: str = Field(default="inspector", description="admin 或 inspector")
+    password: str = Field(..., min_length=8, max_length=128)
 
 
-class UpdateUserRequest(BaseModel):
+class ForgotPasswordRequest(BaseModel):
+    recovery_key: str = Field(..., min_length=1, max_length=200)
+    username: str = Field(..., min_length=1, max_length=64)
+    new_password: str = Field(..., min_length=8, max_length=128)
+
+
+class CreateAccountRequest(BaseModel):
+    display_name: str = Field(..., min_length=1, max_length=64)
+    username: str = Field(..., min_length=1, max_length=64)
+    password: str = Field(..., min_length=8, max_length=128)
+    employee_no: str = Field(default="", max_length=32)
+    require_change: bool = Field(default=False, description="是否要求对方首次登录改密")
+    client_token: Optional[str] = Field(default=None, max_length=64)
+
+
+class UpdateAccountRequest(BaseModel):
     display_name: Optional[str] = Field(default=None, max_length=64)
-    role: Optional[str] = None
+    employee_no: Optional[str] = Field(default=None, max_length=32)
     is_active: Optional[bool] = None
-    password: Optional[str] = Field(default=None, min_length=4, max_length=128)
+    confirm: bool = Field(default=False, description="停用等破坏性操作需要二次确认")
 
 
-class UserOut(BaseModel):
-    id: int
-    username: str
-    display_name: str = ""
-    role: str
-    is_active: bool
-    created_at: Optional[str] = None
-    last_login_at: Optional[str] = None
+class ResetPasswordRequest(BaseModel):
+    new_password: str = Field(..., min_length=8, max_length=128)
+    require_change: bool = Field(default=False)
+    confirm: bool = Field(default=False)
 
 
-# ── 报告历史 / 填写记录 ────────────────────────────────────
-class HistoryCreate(BaseModel):
-    time_label: str = ""
-    reg: str = ""
-    location: str = ""
-    items_count: int = 0
-    states_count: int = 0
-    report_text: str = ""
-    fault_chain: Optional[dict] = None
-    form_data: Optional[dict] = None
-    items_data: Optional[dict] = None
-
-
-class HistorySummary(BaseModel):
-    id: int
-    time_label: str = ""
-    reg: str = ""
-    location: str = ""
-    items_count: int = 0
-    states_count: int = 0
-    created_at: Optional[str] = None
-
-
-class HistoryDetail(HistorySummary):
-    report_text: str = ""
-    fault_chain: Optional[dict] = None
-    form_data: Optional[dict] = None
-    items_data: Optional[dict] = None
-
-
-class HistoryUpdate(BaseModel):
-    report_text: Optional[str] = None
-
-
-class DraftPayload(BaseModel):
-    form_data: dict = Field(default_factory=dict)
-    items_data: dict = Field(default_factory=dict)
+# 说明：旧的 /api/history 与 /api/draft 已随 v1 结构下线
+#（它们对应的 report_history / form_draft 表在迁移中已改名保留）。
+# 报告相关的接口在批 4 以 /api/reports 的形态重建。

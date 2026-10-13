@@ -6,13 +6,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 
+from app.api.accounts import router as accounts_router
 from app.api.auth import router as auth_router
 from app.api.export import router as export_router
-from app.api.history import router as history_router
 from app.api.ime import router as ime_router
 from app.api.kiosk import router as kiosk_router
 from app.api.report import router as report_router
-from app.db import init_db
+from app.api.setup import router as setup_router
+from app.config import settings
+from app.db import get_conn, init_db, max_business_id
+from app.repo import ids as id_gen
 from app.services import auth_service
 from app.services.kg_service import kg_service
 from app.services.llm_service import llm_service
@@ -25,15 +28,18 @@ DIST_DIR = WEB_DIR / "dist"
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # 业务数据库（SQLite）：建表 + 首次启动预置管理员
+    # 业务数据库（SQLite）：建表（幂等）
     init_db()
-    created = auth_service.ensure_admin()
-    if created:
-        print(
-            f"[init] 已创建预置管理员 '{created['username']}'，请登录后立即修改口令。",
-            flush=True,
-        )
-    auth_service.purge_expired_sessions()
+    # 雪花 ID 生成器就位：用各业务表 MAX(id) 当下界。
+    # 这台板子每次开机 RTC 都会回到 2021 年，没有这道保护就会发重号。
+    id_gen.configure(settings.worker_id, max_business_id())
+    removed = auth_service.purge_expired_sessions()
+    with get_conn() as conn:
+        total = conn.execute("SELECT COUNT(*) AS c FROM account").fetchone()["c"]
+    if int(total) == 0:
+        print("[init] 尚未创建账号，请打开界面完成初始化向导。", flush=True)
+    elif removed:
+        print(f"[init] 已清理 {removed} 个过期会话。", flush=True)
     yield
     kg_service.close()
     await llm_service.close()
@@ -55,7 +61,8 @@ app.add_middleware(
 )
 
 app.include_router(auth_router)
-app.include_router(history_router)
+app.include_router(accounts_router)
+app.include_router(setup_router)
 app.include_router(kiosk_router)
 app.include_router(report_router)
 app.include_router(export_router)

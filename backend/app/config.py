@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     worker_id: int = 1                    # 雪花 ID 的工作节点号（一台终端一个值）
     report_no_prefix: str = "GDSEI-JTE"   # 报告编号前缀：{前缀}-{YYYYMMDD}-{3 位流水}
     recovery_key_path: str = "/userdata/elevator/recovery.key"  # 忘记口令用的恢复口令文件
+    app_version: str = "1.1.0"            # 对外展示的版本号（关于页 / setup 状态）
 
     # 自助终端：前端「退出系统」按钮是否可用（关闭 kiosk 窗口返回桌面）
     kiosk_exit_enabled: bool = True

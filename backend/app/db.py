@@ -224,3 +224,22 @@ def user_version() -> int:
 def set_user_version(version: int) -> None:
     with get_conn() as conn:
         conn.execute(f"PRAGMA user_version = {int(version)}")
+
+
+# 带雪花主键的业务表（session 的主键是令牌，不算）
+ID_TABLES = ("account", "report", "audit_log")
+
+
+def max_business_id() -> int | None:
+    """各业务表 MAX(id) 的全局最大值。
+
+    启动时用它给雪花生成器设下界 —— 这是"重启后时钟回到 2021 年也不发重号"
+    的关键（设计 §5.2 第 1 道防线）。
+    """
+    values: list[int] = []
+    with get_conn() as conn:
+        for table in ID_TABLES:
+            row = conn.execute(f"SELECT MAX(id) AS m FROM {table}").fetchone()
+            if row is not None and row["m"] is not None:
+                values.append(int(row["m"]))
+    return max(values) if values else None

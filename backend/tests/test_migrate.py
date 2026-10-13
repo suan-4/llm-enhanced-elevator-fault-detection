@@ -10,37 +10,18 @@
 """
 from __future__ import annotations
 
-import os
 import sys
-import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from tests._tempdb import TempDB  # noqa: E402
 
 from app import db  # noqa: E402
 from app.migrations import legacy_to_v1  # noqa: E402
 from app.repo import report_repo  # noqa: E402
 
 DAY = "20261013"
-
-
-class TempDB:
-    def __enter__(self):
-        fd, self.path = tempfile.mkstemp(prefix="elevator-migrate-", suffix=".db")
-        os.close(fd)
-        self._old = db.DB_PATH
-        db.DB_PATH = Path(self.path)
-        db.init_db()
-        return self.path
-
-    def __exit__(self, *exc):
-        db.DB_PATH = self._old
-        for suffix in ("", "-wal", "-shm"):
-            try:
-                os.unlink(self.path + suffix)
-            except OSError:
-                pass
-        return False
 
 
 def seed_legacy(conn) -> None:

@@ -142,3 +142,11 @@ def max_id(conn: Any) -> int | None:
     """重启时用来反推雪花 ID 的下界。"""
     row = conn.execute("SELECT MAX(id) AS m FROM report").fetchone()
     return int(row["m"]) if row and row["m"] is not None else None
+
+
+def count_by_creator(conn: Any, account_id: int) -> int:
+    """某账号有多少份报告 —— 决定他能不能被物理删除。"""
+    row = conn.execute(
+        "SELECT COUNT(*) AS c FROM report WHERE created_by = ?", (account_id,)
+    ).fetchone()
+    return int(row["c"])
