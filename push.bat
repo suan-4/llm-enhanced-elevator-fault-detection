@@ -82,8 +82,13 @@ adb shell "curl -sf -o /dev/null -w '  条目目录  %%{http_code}\n' http://127
 echo.
 echo ============================================================
 echo  部署完成
-echo  板端访问 : http://^<板子IP^>:8081
-echo  业务库   : %ROOT%/backend/data/elevator.db  （部署不覆盖）
+echo  板端访问 : 只在板子本机 http://127.0.0.1:8081
+echo             （服务已收紧为仅监听回环；若确实需要从电脑访问，
+echo               把 /etc/systemd/system/elevator-api.service 里的
+echo               --host 127.0.0.1 改回 0.0.0.0 再 daemon-reload + restart）
+echo  调试用   : adb forward tcp:18081 tcp:8081  ^(电脑上访问 127.0.0.1:18081^)
+echo  业务库   : /userdata/elevator/elevator.db  （部署不覆盖；已迁到持久分区）
+echo  备份     : /userdata/backup/  每日 03:30 自动备份（elevator-backup.timer）
 echo  回滚快照 : /userdata/releases/ 下的最新目录
 echo.
 echo  注意：条目目录接口返回 401 属正常（未带登录令牌时会鉴权拦截），

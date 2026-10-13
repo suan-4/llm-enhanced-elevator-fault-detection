@@ -8,6 +8,9 @@ class Settings(BaseSettings):
 
     rkllm_server_url: str = "http://127.0.0.1:8080/rkllm_chat"
     rkllm_timeout: int = 600
+    # 连接超时单独设：模型服务"假死"（端口在但不响应）时，
+    # 不能拿 600 秒的读取超时去等连接，否则报告生成会被卡住
+    rkllm_connect_timeout: float = 5.0
     rkllm_temperature: float = 0.7
     rkllm_max_new_tokens: int = 512
 

@@ -12,7 +12,8 @@ class LLMService:
     def client(self) -> httpx.AsyncClient:
         if self._client is None:
             self._client = httpx.AsyncClient(
-                timeout=httpx.Timeout(settings.rkllm_timeout),
+                timeout=httpx.Timeout(settings.rkllm_timeout,
+                                      connect=settings.rkllm_connect_timeout),
             )
         return self._client
 
@@ -127,7 +128,9 @@ class LLMService:
 
         async with self.client.stream("POST", settings.rkllm_server_url, json=payload,
                                         headers={"Content-Type": "application/json"},
-                                        timeout=httpx.Timeout(settings.rkllm_timeout)) as response:
+                                        timeout=httpx.Timeout(
+                                            settings.rkllm_timeout,
+                                            connect=settings.rkllm_connect_timeout)) as response:
             response.raise_for_status()
             async for line in response.aiter_lines():
                 if line.startswith("data: "):
