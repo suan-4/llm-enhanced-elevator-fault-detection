@@ -1,38 +1,45 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
-import AppSidebar, { type NavItem } from '@/components/AppSidebar.vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import InfoTable from '@/components/report/InfoTable.vue'
 import ItemTable from '@/components/report/ItemTable.vue'
 import MissingList from '@/components/report/MissingList.vue'
 import ReportDocument from '@/components/report/ReportDocument.vue'
-import ExportResult from '@/components/report/ExportResult.vue'
 import type { AppendixRow } from '@/types/report'
 import { assignRiskDemo, type RiskValue } from '@/domain/riskAssign'
 import { computeG, gradeOf, overviewText } from '@/domain/riskScore'
 import { reasonsText } from '@/domain/validation'
-import { useAuthStore } from '@/stores/auth'
 import { useReportStore } from '@/stores/report'
+import { useShell } from '@/stores/shell'
 import { useExport } from '@/utils/export'
-import { useKiosk } from '@/utils/kiosk'
 import { useToast } from '@/utils/toast'
 
-const router = useRouter()
-const auth = useAuthStore()
 const store = useReportStore()
-const kiosk = useKiosk()
+const shell = useShell()
 const exp = useExport()
 const { show } = useToast()
 
 const view = ref<'input' | 'report'>('input')
-const collapsed = ref(false)
 const showAlert = ref(false)
 const reportWrap = ref<HTMLElement | null>(null)
 
-const NAV: NavItem[] = [
-  { key: 'input', label: '评估报告录入' },
-  { key: 'report', label: '报告预览' },
-]
+/* 侧栏 / 顶栏已上移到 AppShell，本页只管内容。
+   侧栏点「评估报告录入 / 报告预览」可能是①本页已挂载（立即切）或
+   ②从账号页跳过来（本页刚挂载，事件已过去）——所以看 shell.requested 待办标记。 */
+function consumeShellRequest(): void {
+  const want = shell.requested
+  if (!want) return
+  shell.requested = ''
+  if (want === 'report') {
+    generate()
+  } else {
+    view.value = 'input'
+  }
+}
+
+watch(() => shell.requested, consumeShellRequest)
+watch(view, (v) => {
+  shell.active = v
+})
 
 /** A4 宽度（210mm @96dpi），用于按视口等比缩放报告页 */
 const PAPER_WIDTH = 793.7
@@ -40,6 +47,7 @@ const PAPER_WIDTH = 793.7
 onMounted(async () => {
   await store.loadItems()
   window.addEventListener('resize', fitPapers)
+  consumeShellRequest()
 })
 
 onBeforeUnmount(() => {
@@ -87,22 +95,6 @@ function generate(): void {
   nextTick(fitPapers)
 }
 
-function navigate(key: string): void {
-  if (key === view.value) return
-  if (key === 'report') {
-    generate()
-  } else {
-    view.value = 'input'
-  }
-}
-
-/** 与旧版一致：点击右侧内容区自动收起侧边栏，把宽度让给正文 */
-function onMainClick(e: MouseEvent): void {
-  if (!collapsed.value && !(e.target as HTMLElement).closest('.sidebar-toggle')) {
-    collapsed.value = true
-  }
-}
-
 function jump(key: string, kind: 'field' | 'item'): void {
   const el =
     kind === 'field'
@@ -135,47 +127,10 @@ function fitPapers(): void {
   })
 }
 
-async function signOut(): Promise<void> {
-  await auth.signOut()
-  await router.replace({ name: 'login' })
-}
-
-async function exitSystem(): Promise<void> {
-  try {
-    await kiosk.exit()
-    show('已退出系统，正在返回桌面')
-  } catch (err) {
-    show(err instanceof Error ? err.message : '退出失败')
-  }
-}
 </script>
 
 <template>
-  <div class="app-shell">
-    <AppSidebar
-      :collapsed="collapsed"
-      :items="NAV"
-      :active="view"
-      :user-name="auth.user?.display_name || auth.user?.username || ''"
-      :user-role="auth.user?.role === 'admin' ? '管理员' : '检验员'"
-      :show-exit="kiosk.showExit()"
-      @toggle="collapsed = !collapsed"
-      @navigate="navigate"
-      @logout="signOut"
-      @exit-system="exitSystem"
-    />
-
-    <div class="main" :class="{ expanded: collapsed }" @click="onMainClick">
-      <header class="topbar">
-        <div class="brand">
-          <span class="brand-mark">GDSEI</span>
-          <span class="brand-text">在用曳引驱动电梯安全评估系统</span>
-        </div>
-        <span class="topbar-sep" />
-        <div class="topbar-meta">质量体系文件编号：GDSEI/JTE-09-R02-3.00</div>
-      </header>
-
-      <MissingList v-if="showAlert && store.missing.length" @jump="jump" />
+  <MissingList v-if="showAlert && store.missing.length" @jump="jump" />
 
       <section v-show="view === 'input'">
         <div class="sheet">
@@ -256,10 +211,6 @@ async function exitSystem(): Promise<void> {
           </button>
         </template>
       </div>
-    </div>
-
-    <ExportResult />
-  </div>
 </template>
 
 <style scoped>

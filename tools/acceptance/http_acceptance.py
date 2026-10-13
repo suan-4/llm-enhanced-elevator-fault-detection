@@ -187,9 +187,14 @@ def main() -> int:
             check(7, "删除验收账号 → 200",
                   c.delete(f"/api/accounts/{new_id}?confirm=true", headers=H).status_code == 200)
 
-        check(7, "最后一个启用账号不可停用 → 400",
-              c.patch(f"/api/accounts/{items[0]['id']}", headers=H,
+        # 用"当前登录账号"来断言，别用 items[0] —— 列表里可能有测试残留账号，
+        # 对已停用账号再停用会返回 200，断言就成了假通过/假失败。
+        my_id = payload["user"]["id"]
+        check(7, "停用当前登录账号 → 400（不许把自己锁在门外）",
+              c.patch(f"/api/accounts/{my_id}", headers=H,
                       json={"is_active": False, "confirm": True}).status_code == 400)
+        check(7, "删除当前登录账号 → 400",
+              c.delete(f"/api/accounts/{my_id}?confirm=true", headers=H).status_code == 400)
 
         c.post("/api/auth/logout", headers=H)
     return summarize()

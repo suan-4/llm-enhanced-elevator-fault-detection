@@ -156,6 +156,26 @@ def test_delete_account_with_reports_is_rejected() -> None:
             raise AssertionError("有报告的账号不应允许删除")
 
 
+def test_cannot_disable_or_delete_self() -> None:
+    """不能把自己锁在门外（第二个账号在场时也不允许停用自己）。"""
+    with TempDB():
+        me, _ = auth_service.init_system(
+            display_name="张三", username="zhangsan", password="elevator2026"
+        )
+        auth_service.create_account(display_name="李四", username="lisi", password="elevator2026")
+        actor = {"id": me["id"], "display_name": me["display_name"]}
+        for call in (
+            lambda: auth_service.update_account(me["id"], is_active=False, actor=actor),
+            lambda: auth_service.delete_account(me["id"], actor=actor),
+        ):
+            try:
+                call()
+            except ValueError as e:
+                assert "当前登录" in str(e)
+                continue
+            raise AssertionError("不允许停用或删除当前登录账号")
+
+
 def test_username_must_be_unique() -> None:
     with TempDB():
         auth_service.init_system(display_name="张三", username="zhangsan", password="elevator2026")
@@ -223,6 +243,7 @@ def _main() -> int:
         ("停用即失效", test_disable_account_invalidates_session),
         ("最后一个启用账号保护", test_cannot_disable_or_delete_last_active_account),
         ("有报告不可删除", test_delete_account_with_reports_is_rejected),
+        ("不许把自己锁在门外", test_cannot_disable_or_delete_self),
         ("用户名唯一", test_username_must_be_unique),
         ("锁定自动过期与清零", test_guard_lock_expires_and_resets),
         ("重置口令", test_reset_password_forces_change_and_kills_sessions),

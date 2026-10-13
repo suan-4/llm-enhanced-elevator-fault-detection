@@ -1,13 +1,17 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
-import { RouterView } from 'vue-router'
+import { computed, onMounted, ref } from 'vue'
+import { RouterView, useRoute } from 'vue-router'
+import AppShell from '@/components/AppShell.vue'
 import SplashScreen from '@/components/SplashScreen.vue'
 import { useAuthStore } from '@/stores/auth'
+import { useSetupStore } from '@/stores/setup'
 import { useKiosk } from '@/utils/kiosk'
 import { useToast } from '@/utils/toast'
 
 const auth = useAuthStore()
+const setup = useSetupStore()
 const kiosk = useKiosk()
+const route = useRoute()
 const { message } = useToast()
 
 const ready = ref(false)
@@ -15,10 +19,17 @@ const ready = ref(false)
 // 启动页至少显示这么长时间，避免快速启动时一闪而过
 const SPLASH_MIN_MS = 600
 
+/* 登录页 / 初始化向导 / 忘记口令 是"空白页"：不套外壳（侧栏 + 顶栏）。
+   其余页面套外壳，共用同一份侧栏。 */
+const PLAIN_ROUTES = ['login', 'forgot', 'setup']
+const withShell = computed(
+  () => !!auth.user && !PLAIN_ROUTES.includes(String(route.name || '')),
+)
+
 onMounted(async () => {
   const boot = async () => {
-    await auth.restore()
-    await kiosk.load()
+    // 三件事并行：恢复登录态、问一体机状态、问是否已初始化
+    await Promise.all([auth.restoreOnce(), kiosk.load(), setup.load()])
   }
   await Promise.all([boot(), new Promise((r) => setTimeout(r, SPLASH_MIN_MS))])
   ready.value = true
@@ -39,7 +50,12 @@ onMounted(async () => {
     >
       {{ kiosk.imeLabel.value }}
     </button>
-    <RouterView />
+
+    <AppShell v-if="withShell">
+      <RouterView />
+    </AppShell>
+    <RouterView v-else />
+
     <div v-if="message" class="toast">{{ message }}</div>
   </template>
   <SplashScreen v-else />

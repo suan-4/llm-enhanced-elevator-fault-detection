@@ -5,11 +5,13 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import BrandLockup from '@/components/BrandLockup.vue'
 import { useAuthStore } from '@/stores/auth'
+import { useSetupStore } from '@/stores/setup'
 import { useKiosk } from '@/utils/kiosk'
 import { useToast } from '@/utils/toast'
 
 const router = useRouter()
 const auth = useAuthStore()
+const setup = useSetupStore()
 const { show } = useToast()
 const kiosk = useKiosk()
 
@@ -90,6 +92,12 @@ async function exitSystem(): Promise<void> {
       <button class="btn btn-primary login-btn" type="submit" :disabled="auth.loading">
         {{ auth.loading ? '登录中…' : '登 录' }}
       </button>
+
+      <!-- 忘记口令：只有板端配了恢复口令文件时才显示（不给用不了的入口）。
+           这一行是登录页唯一的新增，其余视觉与结构一字未动。 -->
+      <RouterLink v-if="setup.recoveryAvailable" class="forgot-link" to="/login/forgot">
+        忘记口令
+      </RouterLink>
 
       <div class="login-foot">广东省特种设备检测研究院佛山检测院 · 佛山大学</div>
     </form>
@@ -250,5 +258,19 @@ async function exitSystem(): Promise<void> {
   text-align: center;
   font-size: 9.6px;
   color: #8a959d;
+}
+
+/* 忘记口令：登录页唯一新增的入口，样式沿用页脚口径 */
+.forgot-link {
+  display: block;
+  margin-top: 10px;
+  text-align: center;
+  font-size: 11.4px;
+  color: #8a959d;
+  text-decoration: underline;
+}
+
+.forgot-link:hover {
+  color: #1b5e7a;
 }
 </style>

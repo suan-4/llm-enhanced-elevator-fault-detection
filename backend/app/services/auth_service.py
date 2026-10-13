@@ -297,6 +297,9 @@ def update_account(account_id: int | str, *, display_name: str | None = None,
             fields["employee_no"] = employee_no
         if is_active is not None:
             turning_off = bool(account["is_active"]) and not is_active
+            if turning_off and actor and int(actor["id"]) == aid:
+                # 防"把自己锁在门外"：要停用自己，请让同事代劳
+                raise ValueError("不能停用当前登录的账号")
             if turning_off and account_repo.count_active(conn, exclude_id=aid) == 0:
                 raise ValueError("至少需要保留一个启用状态的账号，否则没人能登录")
             fields["is_active"] = 1 if is_active else 0
@@ -327,6 +330,8 @@ def delete_account(account_id: int | str, *, actor: dict | None = None) -> None:
         account = account_repo.find_by_id(conn, aid)
         if account is None:
             raise LookupError("账号不存在")
+        if actor and int(actor["id"]) == aid:
+            raise ValueError("不能删除当前登录的账号")
         reports = report_repo.count_by_creator(conn, aid)
         if reports:
             raise ValueError(f"该账号已有 {reports} 份报告，只能停用，不能删除")

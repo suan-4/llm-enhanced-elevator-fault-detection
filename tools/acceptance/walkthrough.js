@@ -98,7 +98,67 @@ const BLANK = () => {
   await step("点「导出 PDF」(本机无 LibreOffice)");
 
   await page.locator(".sidebar-nav li:nth-child(1)").click();
+  // 只断言"不是空白页"会漏掉"点了没反应"这类问题，
+  // 所以这里必须确认真的回到了录入视图（条目表可见）。
+  await page.waitForTimeout(400);
+  const backToInput = await page
+    .locator(".items tbody tr")
+    .first()
+    .isVisible()
+    .catch(() => false);
+  const stillPreview = await page
+    .locator(".actionbar .btn-primary")
+    .first()
+    .innerText()
+    .catch(() => "");
+  if (!backToInput || stillPreview.includes("导出")) {
+    ok = false;
+    console.log(`  ✗ 点「评估报告录入」没有回到录入视图（条目表可见=${backToInput} 悬浮岛按钮=${stillPreview}）`);
+  }
   await step("返回录入页");
+
+  // ── 账号管理页（批 2 新增）：能开户、能删掉、不横向溢出 ──
+  await page.locator(".sidebar-nav li:nth-child(3)").click();
+  await page.waitForSelector(".data-table, .empty-state", { timeout: 15000 });
+  await step("打开账号管理");
+  const acctOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - window.innerWidth,
+  );
+  if (acctOverflow > 0) {
+    ok = false;
+    console.log(`  ✗ 账号管理页横向溢出 ${acctOverflow}px`);
+  }
+  const stamp = String(Date.now()).slice(-6);
+  await page.locator(".toolbar .btn-primary").click();
+  await page.waitForSelector(".dialog-mask .dialog", { timeout: 8000 });
+  await page.locator(".dialog .input").nth(0).fill("验收临时账号");
+  await page.locator(".dialog .input").nth(1).fill(`acc_${stamp}`);
+  await page.locator(".dialog .input").nth(3).fill("Ee2026elevator");
+  await page.locator(".dialog-foot .btn-primary").click();
+  await page.waitForTimeout(1200);
+  const created = await page.locator(".data-table tbody tr").count();
+  if (!(await page.locator(".data-table").innerText()).includes(`acc_${stamp}`)) {
+    ok = false;
+    console.log(`  ✗ 开户后列表里没看到新账号（当前 ${created} 行）`);
+  }
+  await step("新增账号");
+  // 删掉它（二次确认弹层）
+  await page
+    .locator(".data-table tbody tr", { hasText: `acc_${stamp}` })
+    .locator("button", { hasText: "删除" })
+    .click();
+  await page.waitForSelector(".dialog-mask .dialog", { timeout: 8000 });
+  // 确认按钮是红色的 btn-danger，不是 btn-primary —— 用"最后一个按钮"更稳
+  await page.locator(".dialog-foot button:last-child").click();
+  await page.waitForTimeout(1200);
+  if ((await page.locator(".data-table").innerText()).includes(`acc_${stamp}`)) {
+    ok = false;
+    console.log("  ✗ 删除账号后列表里仍然存在");
+  }
+  await step("删除账号");
+  await page.locator(".sidebar-nav li:nth-child(1)").click();
+  await page.waitForTimeout(600);
+  await step("回到录入页");
 
   await page.locator(".sidebar-toggle").click();
   await page.waitForTimeout(400);
