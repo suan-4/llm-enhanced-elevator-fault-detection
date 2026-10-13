@@ -2,12 +2,14 @@
 /* 导出结果卡片：固定悬浮在底部操作条上方。
    导出的触发按钮在操作条里（见 ReportView），这里只负责呈现结果与后续动作。 */
 import { useExport } from '@/utils/export'
+import { useShell } from '@/stores/shell'
 
 const { result, open, dismiss } = useExport()
+const shell = useShell()
 </script>
 
 <template>
-  <div v-if="result" class="export-float">
+  <div v-if="result" class="export-float" :class="{ 'is-collapsed': shell.collapsed }">
     <div class="row">
       <b>导出成功</b>
       <span class="name">{{ result.filename }}（{{ result.size }}）</span>
@@ -64,11 +66,17 @@ const { result, open, dismiss } = useExport()
 }
 
 @media (max-width: 900px) {
+  /* 板端：卡片必须让开左侧固定侧栏，否则左半截被侧栏压住、看起来也没居中。
+     用 left/right 相对「内容区」定位，而不是相对整个视口。 */
   .export-float {
     right: 8px;
-    left: 8px;
+    left: 194px; /* 侧栏展开 186px + 8px 间距 */
     width: auto;
     bottom: 96px;
+  }
+
+  .export-float.is-collapsed {
+    left: 58px; /* 侧栏收起 50px + 8px 间距 */
   }
 }
 </style>

@@ -501,6 +501,80 @@ async function seedEmptyDraft(browser) {
     const hasAppendixA = bodyText.includes("附录A");
     const filled = bodyText.includes("44786091");
 
+    // ── 回归：报告预览里的纸张必须仍是「文档版式」的表格，不能吃窄屏那套竖排规则 ──
+    // 曾出现：@media (max-width:900px) 的 .info{display:block} 连纸张里的信息表一起命中，
+    // 于是委托单位/使用单位/设备类别/产品编号 全被压成「一行一个数据」，与 JTE 文档不一致。
+    const paperLayout = await page.evaluate(() => {
+      const table = document.querySelector(".paper .info");
+      const row = document.querySelector(".paper .info tbody tr");
+      const th = document.querySelector(".paper .info th");
+      return {
+        tableDisplay: table ? getComputedStyle(table).display : "(无)",
+        rowDisplay: row ? getComputedStyle(row).display : "(无)",
+        thDisplay: th ? getComputedStyle(th).display : "(无)",
+        thWidth: th ? Math.round(th.getBoundingClientRect().width) : -1,
+      };
+    });
+    const paperLayoutOk =
+      paperLayout.tableDisplay === "table" &&
+      paperLayout.rowDisplay === "table-row" &&
+      paperLayout.thDisplay === "table-cell" &&
+      paperLayout.thWidth > 60;
+
+    // ── 回归：导出结果卡不能被侧栏盖住，且要在内容区里居中（不是视口居中）──
+    const cardFacts = await page.evaluate(() => {
+      let attr = "";
+      for (const sheet of Array.from(document.styleSheets)) {
+        let rules;
+        try {
+          rules = sheet.cssRules;
+        } catch {
+          continue;
+        }
+        const walk = (list) => {
+          for (const r of Array.from(list)) {
+            // 注意：新版 Chromium 给普通样式规则也挂了（空的）cssRules，
+            // 只判 truthy 会一直往空列表里递归，永远读不到 selectorText。
+            if (r.cssRules && r.cssRules.length) {
+              walk(r.cssRules);
+              continue;
+            }
+            if (r.selectorText && r.selectorText.indexOf(".export-float") >= 0) {
+              const m = r.selectorText.match(/\[(data-v-[0-9a-f]+)\]/);
+              if (m) attr = m[1];
+            }
+          }
+        };
+        walk(rules);
+      }
+      if (!attr) return { missing: true };
+      const probe = document.createElement("div");
+      probe.className = "export-float";
+      // 必须和组件保持一致：AppShell 侧栏收起时 .main 会带 expanded，
+      // 组件据此加 is-collapsed 类。漏了这一步量到的就不是用户看到的那张卡。
+      if (document.querySelector(".main.expanded")) probe.className += " is-collapsed";
+      probe.setAttribute(attr, "");
+      probe.innerHTML =
+        '<div class="row"><b>导出成功</b><span class="name">GDSEI-JTE-20261013-038_委托单位.pdf（128 KB）</span>' +
+        '<button class="close">×</button></div><div class="row"><button class="btn btn-primary">打开文件</button></div>';
+      document.querySelector(".app-shell").appendChild(probe);
+      const box = probe.getBoundingClientRect();
+      const sidebar = document.querySelector(".sidebar").getBoundingClientRect();
+      const main = document.querySelector(".main").getBoundingClientRect();
+      probe.remove();
+      return {
+        missing: false,
+        left: Math.round(box.left),
+        width: Math.round(box.width),
+        sidebarRight: Math.round(sidebar.right),
+        contentCenter: Math.round(main.left + main.width / 2),
+        cardCenter: Math.round(box.left + box.width / 2),
+      };
+    });
+    const cardNotCovered = !cardFacts.missing && cardFacts.left >= cardFacts.sidebarRight + 4;
+    const cardCentered = !cardFacts.missing && Math.abs(cardFacts.cardCenter - cardFacts.contentCenter) <= 2;
+    const cardOk = cardNotCovered && (narrow ? cardCentered : true);
+
     // 报告页的导出按钮已移到悬浮岛（底部操作条）
     const exportBtn = page.locator(".actionbar .btn-primary").first();
     const exportBtnText = (await exportBtn.innerText()).trim();
@@ -521,6 +595,7 @@ async function seedEmptyDraft(browser) {
       loginPageOk && themeOk && warmOk && rowColorOk && labelFontOk && clauseOk &&
       reportClauseOk && clippedOk && borderOk && outlineOk && sidebarOk && actionbarOk &&
       noRootScroll &&
+      paperLayoutOk && cardOk &&
       rows === 66 && overflow <= 0 && alertVisible && alertCount > 0 &&
       focusedId.startsWith("f-") && counters.includes("未填 0 项") &&
       papers === 4 && overflowReport <= 0 && grade4 && score0 &&
@@ -572,6 +647,12 @@ async function seedEmptyDraft(browser) {
     console.log(`  计数栏          ${counters}`);
     console.log(`  报告页数        ${papers}`);
     console.log(`  内容校验        四级=${grade4} 得分0=${score0} 附页=${hasAppendix} 附录A=${hasAppendixA} 抬头=${filled}`);
+    console.log(
+      `  纸张版式        ${JSON.stringify(paperLayout)} ${paperLayoutOk ? "✓" : "✗"}`,
+    );
+    console.log(
+      `  导出结果卡      ${JSON.stringify(cardFacts)} ${cardOk ? "✓" : "✗"}`,
+    );
     console.log(`  导出            ${exportOk ? "成功" : "失败可见 → " + toast.slice(0, 70)}`);
     console.log(
       `  悬浮岛按钮      「${exportBtnText}」底色=${exportBtnBg} 已移除校验并生成报告=${!generateBtnGone} ${actionbarOk ? "✓" : "✗"}`,

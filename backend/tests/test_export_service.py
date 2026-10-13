@@ -71,8 +71,51 @@ def test_export_dir_failure_is_visible() -> None:
         raise AssertionError("目录无法创建时不应静默返回")
 
 
+PAPER_BODY = (
+    '<div class="paper"><h1>在用曳引驱动电梯安全评估报告</h1>'
+    '<table class="info"><tbody>'
+    "<tr><th>委托单位名称</th><td>某某公司</td></tr>"
+    "<tr><th>使用单位名称</th><td>某某公司</td></tr>"
+    "</tbody></table></div>"
+)
+
+
+def test_build_html_keeps_the_document_as_is() -> None:
+    """正文已经是完整文档时，不能再自己补标题和抬头信息表。
+
+    现场反馈：导出的 PDF/Word 开头多出一张「委托单位/使用单位/设备类别/产品编号」
+    的表格，而且抬头标签带淡蓝底 —— 那是 build_html 拿 meta_rows 另起了一张表，
+    于是同一份抬头在文件里出现两次，样式也和 JTE 文档不一致。
+    """
+    html = export_service.build_html(
+        title="在用曳引驱动电梯安全评估报告",
+        meta_rows=[["委托单位名称", "某某公司"], ["使用单位名称", "某某公司"]],
+        body_html=PAPER_BODY,
+    )
+    assert html.count("<h1>") == 1, html.count("<h1>")
+    assert 'class="meta"' not in html
+    # 抬头标签不能再带淡蓝底（#eef3f6），也不能是蓝灰边框（#9fb3bd）
+    assert "#eef3f6" not in html
+    assert "#9fb3bd" not in html
+    # 纸张里的表格按 JTE 文档：黑框
+    assert "1px solid #000" in html
+
+
+def test_build_html_still_works_without_body() -> None:
+    """没有正文时（理论上不会发生）仍要能出一份可读的标题 + 抬头表。"""
+    html = export_service.build_html(
+        title="电梯安全评估报告",
+        meta_rows=[["委托单位名称", "某某公司"]],
+        body_html="",
+    )
+    assert "<h1>电梯安全评估报告</h1>" in html
+    assert 'class="meta"' in html
+
+
 def _main() -> int:
     tests = [
+        ("正文已是完整文档时不再补标题/抬头表", test_build_html_keeps_the_document_as_is),
+        ("没有正文时仍能出标题+抬头表", test_build_html_still_works_without_body),
         ("缺少 LibreOffice 时提示可读", test_missing_libreoffice_message_is_actionable),
         ("导出目录不可用时必须报错", test_export_dir_failure_is_visible),
     ]

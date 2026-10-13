@@ -106,6 +106,12 @@ def build_html(title: str, meta_rows, body_html: str,
     meta_table = ('<table border="1" cellspacing="0" cellpadding="4" '
                   'width="100%%" class="meta">%s</table>' % rows) if rows else ""
     sub_html = '<div class="sub">%s</div>' % _esc(subtitle) if subtitle else ""
+    # 正文已经是前端渲染好的整份文档（自带标题和自己那张抬头表）时，这里绝不能再补
+    # 标题和 meta 表：否则导出的 PDF/Word 开头会多出一张「委托单位/使用单位/设备类别/
+    # 产品编号」的表，同一份抬头在文件里出现两次（现场反馈）。
+    head_html = "" if (body_html or "").strip() else (
+        "<h1>%s</h1>%s%s" % (_esc(title), sub_html, meta_table)
+    )
     return """<!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>%(title)s</title>
 <style>
@@ -122,13 +128,15 @@ p     { margin: 0 0 6pt 0; }
 ul,ol { margin: 0 0 6pt 0; padding-left: 20pt; }
 li    { margin-bottom: 3pt; }
 table.meta { border-collapse: collapse; width: 100%%; margin-bottom: 14pt; }
-table.meta th { background: #eef3f6; width: 26%%; text-align: left; font-weight: bold; }
-table.meta th, table.meta td { border: 1px solid #9fb3bd; padding: 4pt 7pt; font-size: 10pt; }
+table.meta th { background: #f2f2f2; width: 26%%; text-align: left; font-weight: bold; }
+table.meta th, table.meta td { border: 1px solid #000; padding: 4pt 7pt; font-size: 10pt; }
 /* 报告正文里的表格没有类名（直接取自页面已渲染的 HTML），
    所以这里对裸 table/th/td 也要给边框，否则导出后是无框的散排文字 */
+/* 纸张里的表格按 JTE 文档：黑框、浅灰表头（与屏幕上 .paper th 的 #f2f2f2 一致）。
+   之前用蓝灰边框 + 淡蓝表头，导出件跟文档和预览都不一样（现场反馈「抬头标题有蓝底」）。 */
 table { border-collapse: collapse; width: 100%%; margin: 6pt 0 12pt 0; }
-th, td { border: 1px solid #9fb3bd; padding: 3pt 6pt; font-size: 9.5pt; vertical-align: top; }
-th { background: #eef3f6; font-weight: bold; }
+th, td { border: 1px solid #000; padding: 3pt 6pt; font-size: 9.5pt; vertical-align: top; }
+th { background: #f2f2f2; font-weight: bold; }
 table.meta th, table.meta td { padding: 4pt 7pt; font-size: 10pt; }
 .card { margin: 0 0 8pt 0; }
 .raw-text { font-size: 10.5pt; }
@@ -137,9 +145,7 @@ table.meta th, table.meta td { padding: 4pt 7pt; font-size: 10pt; }
 .foot { margin-top: 22pt; font-size: 9pt; color: #6b7b85; text-align: center; }
 </style></head>
 <body>
-<h1>%(title)s</h1>
-%(sub)s
-%(meta)s
+%(head)s
 %(body)s
 %(foot)s
 </body></html>
@@ -147,6 +153,7 @@ table.meta th, table.meta td { padding: 4pt 7pt; font-size: 10pt; }
         "title": _esc(title),
         "sub": sub_html,
         "meta": meta_table,
+        "head": head_html,
         "body": _borderize(body_html),
         "foot": ('<div class="foot">%s</div>' % _esc(footer)) if footer else "",
     }

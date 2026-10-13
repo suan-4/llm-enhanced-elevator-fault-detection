@@ -796,29 +796,32 @@ table {
   /* 信息表：逐字段堆叠，但每一格都保留可见的线。
      此前这里把单元格 border 置 0、只留 --c-line-soft 的极浅分隔，
      在白底上基本看不见，表现为"边框线不见了"。 */
-  .info,
-  .info tbody,
-  .info tr,
-  .info th,
-  .info td {
+  /* 只针对录入页的抬头表单。报告预览里的 .paper 是一张按视口等比缩放的 A4 文档，
+     里面的同名 .info 必须保持文档表格版式，否则委托单位/使用单位/设备类别/产品编号
+     会被压成「一行一个数据」，和 JTE 模板完全不是一回事。 */
+  .sheet .info,
+  .sheet .info tbody,
+  .sheet .info tr,
+  .sheet .info th,
+  .sheet .info td {
     display: block;
     width: auto;
   }
 
-  .info th {
+  .sheet .info th {
     border: 0;
     border-bottom: 1px solid var(--c-line);
     padding: 5px 8px;
   }
 
-  .info td {
+  .sheet .info td {
     border: 0;
     border-bottom: 1px solid var(--c-line);
     padding: 5px 8px 8px;
   }
 
   /* 最后一行贴着外框，不需要再多一条线 */
-  .info tr:last-child td {
+  .sheet .info tr:last-child td {
     border-bottom: 0;
   }
 

@@ -10,8 +10,8 @@ export interface ExportPayload {
   fmt: 'pdf' | 'docx'
   title: string
   subtitle?: string
-  /** [[标签, 值], ...] */
-  meta: string[][]
+  /** [[标签, 值], ...]；正文已自带抬头表时不要传 */
+  meta?: string[][]
   body_html: string
   footer?: string
   filename?: string

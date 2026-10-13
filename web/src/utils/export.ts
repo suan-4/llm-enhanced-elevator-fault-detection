@@ -32,16 +32,6 @@ export function useExport() {
       .join('\n')
   }
 
-  function metaRows(): string[][] {
-    const f = store.form
-    return [
-      ['委托单位名称', f.clientName],
-      ['使用单位名称', f.userName],
-      ['设备类别', f.deviceCategory],
-      ['产品编号', f.productNo],
-    ]
-  }
-
   async function run(fmt: 'pdf' | 'docx'): Promise<void> {
     if (busy.value) return
     busy.value = true
@@ -50,7 +40,8 @@ export function useExport() {
       const res = await exportReport({
         fmt,
         title: '在用曳引驱动电梯安全评估报告',
-        meta: metaRows(),
+        // 不再单独传抬头表：body_html 里那张 .paper 已经按 JTE 模板把头开好了，
+        // 再传一份会被拼成「开头多出的四行表」（现场反馈）。
         body_html: papersHtml(),
         // 有编号就用编号命名（现场对号入座），否则退回通用名
         filename: store.generated?.report_no

@@ -54,6 +54,16 @@
   width: 26mm;
 }
 
+/* 纸张里的抬头信息表按 JTE 文档版式：黑色直角外框、不裁切线。
+   录入表格那套「圆角 + 细描边 + overflow:hidden」用在 A4 文档上会既不像文档、
+   又会把最外圈的表线裁掉（实测过）。 */
+.paper .info {
+  border: 1px solid #000;
+  border-radius: 0;
+  box-shadow: none;
+  overflow: visible;
+}
+
 .paper .ctr {
   text-align: center;
 }
