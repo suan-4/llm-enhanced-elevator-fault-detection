@@ -272,6 +272,65 @@ def main() -> int:
                         json={"form": {}, "items": []})
         check(8, "不存在的报告 → 404", missing.status_code == 404)
 
+        print("═══ 第 9 层：系统管理与运维 ═══")
+        info = c.get("/api/system/info", headers=H)
+        check(9, "GET /api/system/info → 200", info.status_code == 200)
+        body = info.json() if info.status_code == 200 else {}
+        check(9, "「关于」信息含版本与模型",
+              bool(body.get("version")) and "Qwen3.5-4B" in str(body.get("model", "")),
+              f"model={body.get('model')}")
+        check(9, "条目库 66 条且哈希非空",
+              body.get("catalog", {}).get("count") == 66
+              and len(str(body.get("catalog", {}).get("hash", ""))) >= 8)
+
+        conf = c.get("/api/system/config", headers=H)
+        items_cfg = conf.json().get("items", []) if conf.status_code == 200 else []
+        check(9, "配置只读展示（基础版）",
+              bool(items_cfg) and all(i.get("editable") is False for i in items_cfg))
+
+        audit = c.get("/api/system/audit?event=login_ok&size=5", headers=H)
+        check(9, "GET /api/system/audit → 200", audit.status_code == 200)
+        events = [i["event"] for i in audit.json().get("items", [])] if audit.status_code == 200 else []
+        check(9, "审计可按事件筛选（有本次登录）",
+              audit.json().get("total", 0) >= 1 and set(events) == {"login_ok"},
+              str(events[:4]))
+
+        diag = c.get("/api/system/diagnose", headers=H)
+        check(9, "GET /api/system/diagnose → 200", diag.status_code == 200)
+        checks = diag.json().get("checks", []) if diag.status_code == 200 else []
+        names = [x["name"] for x in checks]
+        check(9, "诊断覆盖关键项",
+              all(n in names for n in ("业务库", "条目库", "知识图谱", "导出目录", "系统时间")),
+              str(names))
+        check(9, "业务库检查通过",
+              next((x["status"] for x in checks if x["name"] == "业务库"), "") == "ok")
+
+        bad_backup = c.post("/api/system/backup", headers=H)
+        check(9, "备份目录不可用时提示可读",
+              bad_backup.status_code == 503
+              and "备份目录不可用" in str(bad_backup.json().get("detail", "")),
+              str(bad_backup.json().get("detail", ""))[:80])
+
+        import tempfile as _tf
+
+        target = _tf.mkdtemp(prefix="elevator-acc-backup-")
+        ok_backup = c.post(f"/api/system/backup?target_dir={target}", headers=H)
+        check(9, "指定目录可备份 → 200", ok_backup.status_code == 200,
+              str(ok_backup.json().get("detail", ""))[:80])
+        if ok_backup.status_code == 200:
+            payload = ok_backup.json()
+            check(9, "备份含业务库与清单", payload.get("files", 0) >= 1
+                  and os.path.isfile(os.path.join(payload["dir"], "manifest.json")),
+                  payload.get("dir"))
+            listed_backups = c.get("/api/system/backups", headers=H)
+            check(9, "备份列表接口可用", listed_backups.status_code == 200)
+            check(9, "恢复缺 confirm → 400",
+                  c.post(f"/api/system/restore?source_dir={payload['dir']}",
+                         headers=H).status_code == 400)
+            check(9, "拿非备份目录恢复 → 400 且原因可读",
+                  c.post(f"/api/system/restore?source_dir={target}&confirm=true",
+                         headers=H).status_code == 400)
+
         c.post("/api/auth/logout", headers=H)
     return summarize()
 

@@ -30,8 +30,11 @@ from datetime import datetime
 from pathlib import Path
 
 SOFFICE = "/usr/bin/soffice"
-# 导出目录放在 GUI 用户家目录下，方便退出到桌面后取走文件
-EXPORT_DIR = Path("/home/user/导出")
+# 导出目录放在 GUI 用户家目录下，方便退出到桌面后取走文件。
+# 统一从配置取（config.py 的 export_dir），避免"文档写一个、代码写另一个"。
+from app.config import settings  # noqa: E402
+
+EXPORT_DIR = Path(settings.export_dir)
 EXPORT_UID = 1002
 EXPORT_GID = 1002
 CONVERT_TIMEOUT = 240

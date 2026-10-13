@@ -225,6 +225,43 @@ async function seedEmptyDraft(browser) {
   await page.waitForTimeout(600);
   await step("回到录入页");
 
+  // ── 系统设置：诊断能出结果、日志能查、窄屏不横向溢出 ──
+  await page.locator(".sidebar-nav li:nth-child(5)").click();
+  await page.waitForSelector(".tabs", { timeout: 15000 });
+  await step("打开系统设置");
+  const settingsOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - window.innerWidth,
+  );
+  if (settingsOverflow > 0) {
+    ok = false;
+    console.log(`  ✗ 系统设置页横向溢出 ${settingsOverflow}px`);
+  }
+  await page.locator(".tab", { hasText: "诊断" }).click();
+  await page.locator(".toolbar .btn-primary").click();
+  await page.waitForTimeout(4000);
+  const diagText = await page.locator(".page-pad").innerText();
+  if (!diagText.includes("业务库") || !diagText.includes("正常")) {
+    ok = false;
+    console.log("  ✗ 诊断没给出检查结果");
+  }
+  await step("运行诊断");
+  await page.locator(".tab", { hasText: "审计日志" }).click();
+  await page.waitForTimeout(800);
+  const auditText = await page.locator(".page-pad").innerText();
+  if (!auditText.includes("login_ok")) {
+    ok = false;
+    console.log("  ✗ 审计日志页没显示登录事件");
+  }
+  await step("查看审计日志");
+  await page.locator(".tab", { hasText: "关于" }).click();
+  await page.waitForTimeout(600);
+  const aboutText = await page.locator(".page-pad").innerText();
+  if (!aboutText.includes("Qwen3.5-4B")) {
+    ok = false;
+    console.log("  ✗ 关于页没显示模型名");
+  }
+  await step("关于页");
+
   // ── 账号管理页（批 2 新增）：能开户、能删掉、不横向溢出 ──
   await page.locator(".sidebar-nav li:nth-child(4)").click();
   await page.waitForSelector(".data-table, .empty-state", { timeout: 15000 });

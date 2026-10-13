@@ -18,6 +18,7 @@ const NAV: NavItem[] = [
   { key: 'report', label: '报告预览' },
   { key: 'reports', label: '报告管理' },
   { key: 'accounts', label: '账号管理' },
+  { key: 'settings', label: '系统设置' },
 ]
 
 const route = useRoute()
@@ -31,6 +32,7 @@ const { show } = useToast()
 const active = computed(() => {
   if (route.name === 'accounts') return 'accounts'
   if (route.name === 'reports') return 'reports'
+  if (route.name === 'settings') return 'settings'
   return shell.active
 })
 
@@ -41,6 +43,10 @@ function onNavigate(key: string): void {
   }
   if (key === 'accounts') {
     void router.push('/accounts')
+    return
+  }
+  if (key === 'settings') {
+    void router.push('/settings')
     return
   }
   if (route.path !== '/') void router.push('/')

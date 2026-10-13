@@ -23,6 +23,11 @@ class Settings(BaseSettings):
     report_no_prefix: str = "GDSEI-JTE"   # 报告编号前缀：{前缀}-{YYYYMMDD}-{3 位流水}
     recovery_key_path: str = "/userdata/elevator/recovery.key"  # 忘记口令用的恢复口令文件
     app_version: str = "1.1.0"            # 对外展示的版本号（关于页 / setup 状态）
+    backup_dir: str = "/userdata/backup"  # 备份产物目录
+    backup_keep: int = 10                 # 本地保留最近几份备份
+    export_dir: str = "/home/user/导出"   # PDF/Word 落盘目录（退出到桌面可取走）
+    institution_name: str = "广东省特种设备检测研究院佛山检测院"  # 报告与界面署名
+    worker_id_note: str = ""              # 占位：多台终端时在部署文档里登记
 
     # 自助终端：前端「退出系统」按钮是否可用（关闭 kiosk 窗口返回桌面）
     kiosk_exit_enabled: bool = True
