@@ -10,7 +10,10 @@
 """
 from __future__ import annotations
 
+import os
+import sqlite3
 import sys
+import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -157,6 +160,39 @@ def test_fresh_database_needs_no_data_migration() -> None:
             assert result.get("accounts", 0) == 0
 
 
+def test_migration_creates_target_tables_by_itself() -> None:
+    """只给旧结构、不给新表，迁移也要能跑通。
+
+    （上板首次部署就是这种情况：服务停着，init_db 没跑过，新表不存在。
+    第一次上板时确实栽在这里 —— 报 no such table: account。）
+    """
+    fd, path = tempfile.mkstemp(prefix="elevator-legacy-only-", suffix=".db")
+    os.close(fd)
+    try:
+        conn = sqlite3.connect(path)
+        conn.row_factory = sqlite3.Row
+        conn.executescript(db.SCHEMA_LEGACY)   # 只有旧表
+        seed_legacy(conn)
+        conn.commit()
+
+        result = legacy_to_v1.run(conn)
+        assert result["accounts"] == 2, result
+        accounts = conn.execute("SELECT COUNT(*) FROM account").fetchone()[0]
+        reports = conn.execute("SELECT COUNT(*) FROM report").fetchone()[0]
+        version = conn.execute("PRAGMA user_version").fetchone()[0]
+        assert accounts == 2, f"账号 {accounts}"
+        # 1 条 history → 已生成报告，1 条 form_draft → 草稿报告，共 2 份
+        assert reports == 2, f"报告 {reports}"
+        assert version == 1, f"user_version {version}"
+        conn.close()
+    finally:
+        for suffix in ("", "-wal", "-shm"):
+            try:
+                os.unlink(path + suffix)
+            except OSError:
+                pass
+
+
 def _main() -> int:
     tests = [
         ("账号搬迁且角色统一", test_accounts_migrated_with_single_role),
@@ -166,6 +202,7 @@ def _main() -> int:
         ("可重复执行", test_migration_is_idempotent),
         ("迁移后编号继续", test_numbering_continues_after_migration),
         ("全新库直接置版本", test_fresh_database_needs_no_data_migration),
+        ("迁移自建目标结构", test_migration_creates_target_tables_by_itself),
     ]
     failed = 0
     for name, fn in tests:
@@ -185,3 +222,6 @@ def _main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(_main())
+import sqlite3
+import tempfile
+import os

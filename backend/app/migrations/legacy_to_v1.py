@@ -14,6 +14,7 @@ from __future__ import annotations
 from typing import Any
 
 from app.config import settings
+from app import db
 from app.repo import ids as id_gen
 from app.repo.base import day_key, dumps, loads
 
@@ -118,6 +119,11 @@ def run(conn: Any, *, prefix: str | None = None, suffix: str = LEGACY_SUFFIX) ->
 
     prefix = prefix or settings.report_no_prefix
     present = _tables(conn)
+
+    # 目标结构要由迁移**自己**建出来：板端首次部署时服务是停着的，
+    # init_db 还没跑过，新表并不存在（这个坑是第一次上板时踩出来的）。
+    conn.executescript(db.SCHEMA_V1)
+
     if "users" not in present:
         # 全新库：结构已由 init_db 建好，直接标版本。
         conn.execute("PRAGMA user_version = 1")
