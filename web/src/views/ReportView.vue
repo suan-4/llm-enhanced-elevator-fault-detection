@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { afterPaint, beginInteraction } from '@/utils/performance'
 import InfoTable from '@/components/report/InfoTable.vue'
 import ItemTable from '@/components/report/ItemTable.vue'
 import MissingList from '@/components/report/MissingList.vue'
@@ -192,12 +193,19 @@ async function generate(): Promise<void> {
   }
   showAlert.value = false
   if (generating.value) return
+  const timing = beginInteraction('report_generate')
   generating.value = true
   try {
-    await store.generate()
-    view.value = 'report'
-    nextTick(fitPapers)
+    await store.generate(timing)
+    await timing.measure('render', async () => {
+      view.value = 'report'
+      await nextTick()
+      fitPapers()
+      await afterPaint()
+    })
+    timing.finish('ok')
   } catch (err) {
+    timing.finish('error')
     show(err instanceof Error ? err.message : '生成失败')
   } finally {
     generating.value = false

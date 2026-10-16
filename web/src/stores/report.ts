@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import type { Interaction } from '@/utils/performance'
 import { computed, reactive, ref } from 'vue'
 import * as reportApi from '@/api/report'
 import * as flowApi from '@/api/reports'
@@ -264,13 +265,16 @@ export const useReportStore = defineStore('report', () => {
   }
 
   /** 生成报告：编号、风险评定值、得分等级都由服务端给 */
-  async function generate(): Promise<ReportSummary> {
+  async function generate(timing?: Interaction): Promise<ReportSummary> {
     if (!reportId.value) throw new Error('还没有正在编辑的报告')
-    await save()
+    if (timing) await timing.measure('save', save)
+    else await save()
     const requestedId = reportId.value
     const inputSnapshot = JSON.stringify({ form: form.value, items: serializeItems() })
     // use_llm=true：模型可用就用模型写概况；不可用后端会自动降级，不影响出报告
-    const res = await flowApi.generateReport(reportId.value, true)
+    const res = timing
+      ? await timing.measure('generate_http', () => flowApi.generateReport(reportId.value!, true))
+      : await flowApi.generateReport(reportId.value, true)
     const report = res.report
     if (reportId.value !== requestedId || inputSnapshot !== JSON.stringify({ form: form.value, items: serializeItems() })) {
       generated.value = null

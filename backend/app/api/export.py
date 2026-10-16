@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 import shlex
 import subprocess
 from pathlib import Path
+from time import perf_counter
 
 from app.deps import get_current_user
 from app.services import export_service
@@ -79,7 +80,9 @@ def export_report(req: ExportRequest, user: dict = Depends(get_current_user)):
     注意：这里用同步 def —— LibreOffice 转换是阻塞的（数秒），
     FastAPI 会把同步路由丢到线程池执行，不会卡住事件循环。
     """
+    api_started = perf_counter()
     try:
+        build_started = perf_counter()
         html = export_service.build_html(
             title=req.title,
             meta_rows=req.meta,
@@ -87,6 +90,7 @@ def export_report(req: ExportRequest, user: dict = Depends(get_current_user)):
             subtitle=req.subtitle,
             footer=req.footer,
         )
+        html_build_ms = (perf_counter()-build_started)*1000
         info = export_service.export(
             html_str=html,
             fmt=req.fmt,
@@ -106,4 +110,6 @@ def export_report(req: ExportRequest, user: dict = Depends(get_current_user)):
         "path": info["path"],
         "dir": info["dir"],
         "size": info["size"],
+        "performance": {**info.get('performance', {}), 'html_build_ms':round(html_build_ms, 3),
+                        'api_total_ms':round((perf_counter()-api_started)*1000, 3)},
     }

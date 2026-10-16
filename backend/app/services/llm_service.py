@@ -1,7 +1,16 @@
 import json
 import httpx
+from time import perf_counter
 
 from app.config import settings
+from app.services.performance import record_model_call, current_purpose
+
+_RUNTIME_FIELDS = (
+    'prefill_time_ms', 'prefill_tokens', 'generate_time_ms', 'generate_tokens',
+    'memory_usage_mb', 'first_output_ms', 'model_run_ms', 'model_load_ms',
+    'prefill_tokens_per_s', 'generate_tokens_per_s', 'perf_source', 'run_status',
+    'inference_id', 'request_total_ms',
+)
 
 
 class LLMService:
@@ -27,6 +36,7 @@ class LLMService:
 
         prompt_json 格式: {"system": "...", "data": {...}}
         """
+        build_started = perf_counter()
         try:
             parsed = json.loads(prompt_json)
         except json.JSONDecodeError:
@@ -49,14 +59,24 @@ class LLMService:
             "tools": None,
         }
 
+        call = {'purpose':current_purpose(), 'input_chars':len(full_content),
+                'input_utf8_bytes':len(full_content.encode('utf-8')),
+                'request_build_ms':round((perf_counter()-build_started)*1000, 3),
+                'status':'error', 'http_status':None, 'runtime':None}
+        http_started = perf_counter()
         try:
             response = await self.client.post(
                 settings.rkllm_server_url,
                 json=payload,
                 headers={"Content-Type": "application/json"},
             )
+            call['http_status'] = response.status_code
             response.raise_for_status()
             data_resp = response.json()
+            runtime = data_resp.get('performance')
+            if isinstance(runtime, dict):
+                call['runtime'] = {key:runtime.get(key) for key in _RUNTIME_FIELDS}
+            call['status'] = 'ok'
             choices = data_resp.get("choices", [])
             if choices:
                 return choices[-1].get("message", {}).get("content", "")
@@ -69,6 +89,9 @@ class LLMService:
             raise RuntimeError("RKLLM服务器响应超时")
         except Exception as e:
             raise RuntimeError(f"RKLLM调用失败: {str(e)}")
+        finally:
+            call['http_ms'] = round((perf_counter()-http_started)*1000, 3)
+            record_model_call(call)
 
     async def generate_or_fallback(self, prompt_json: str) -> str:
         """调用 RKLLM，失败时返回图谱数据的结构化展示。"""

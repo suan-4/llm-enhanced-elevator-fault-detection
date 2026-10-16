@@ -23,6 +23,7 @@ from app.repo.base import day_key, now_iso
 from app.repo.ids import next_id
 from app.services import audit_service, risk_rules, expert_risk
 from app.services.llm_service import llm_service
+from app.services.performance import stage, traced_generation
 
 TEMPLATE_VERSION = "JTE-09-R02-3.00"
 ITEMS_PATH = Path(__file__).resolve().parent.parent / "data" / "jte_items.json"
@@ -266,6 +267,7 @@ def _narrative_prompt(report: dict, unfit: list[dict], risks: dict,
     return json.dumps({"system": NARRATIVE_SYSTEM, "data": data}, ensure_ascii=False)
 
 
+@traced_generation
 async def generate(report_id: int | str, *, use_llm: bool = False,
                    actor: dict | None = None) -> dict:
     """Lookup selected expert risks, match free text, aggregate, then write a snapshot.
@@ -275,7 +277,7 @@ async def generate(report_id: int | str, *, use_llm: bool = False,
     rid = int(report_id)
     started = monotonic()
     stamp = now_iso()
-    with db.get_conn() as conn:
+    with stage('db_read'), db.get_conn() as conn:
         report = report_repo.find_by_id(conn, rid)
     if report is None:
         raise LookupError("报告不存在")
@@ -285,13 +287,15 @@ async def generate(report_id: int | str, *, use_llm: bool = False,
                        ("deviceCategory", "设备类别"), ("productNo", "产品编号")):
         if str(report["form"].get(key, "")).strip() in ("", "/"):
             raise ValueError(f"{label}未填写")
-    material = expert_risk.knowledge()
-    items = report["items"]
-    numbers = [i["no"] for i in items]
-    if len(numbers) != len(set(numbers)) or set(numbers) != set(material["items"]):
-        raise ValueError("评价项目未填完整或编号重复，请核对全部66项")
-    if any(i.get("result") not in ("fit", "unfit", "na") for i in items):
-        raise ValueError("还有评价项目未填写，无法生成报告")
+    with stage('catalog_load', cache_hit=expert_risk.knowledge.cache_info().currsize > 0):
+        material = expert_risk.knowledge()
+    with stage('validate'):
+        items = report["items"]
+        numbers = [i["no"] for i in items]
+        if len(numbers) != len(set(numbers)) or set(numbers) != set(material["items"]):
+            raise ValueError("评价项目未填完整或编号重复，请核对全部66项")
+        if any(i.get("result") not in ("fit", "unfit", "na") for i in items):
+            raise ValueError("还有评价项目未填写，无法生成报告")
 
     deadline = started + min(float(settings.rkllm_timeout), 120)
 
@@ -303,45 +307,55 @@ async def generate(report_id: int | str, *, use_llm: bool = False,
 
     unfit = [i for i in items if i["result"] == "unfit"]
     risks, other_matches = {}, []
-    for item in items:
-        no = item["no"]
-        selected = expert_risk.select(no, item.get("reasons") or []) if item["result"] == "unfit" else []
-        other = (item.get("other_text") or "").strip()
-        if item["result"] == "unfit" and other:
-            try:
-                matched = expert_risk.select(no, [other])
-            except ValueError:
-                if not use_llm:
-                    raise ValueError(f"项目 {no} 的其他文字需要解析，请启用模型或选择清单中的风险；原文已保存")
+    with stage('risk_assessment'):
+        for item in items:
+            no = item["no"]
+            selected = expert_risk.select(no, item.get("reasons") or []) if item["result"] == "unfit" else []
+            other = (item.get("other_text") or "").strip()
+            if item["result"] == "unfit" and other:
                 try:
-                    raw = await model_text(expert_risk.matching_prompt(no, other))
-                except Exception as e:
-                    raise ValueError(f"项目 {no} 的其他文字解析失败，请稍后重试或手动选择风险；原文已保存") from e
-                matched = expert_risk.parse_matches(no, raw)
-                other_matches.append({"no": no, "original_text": other,
-                                      "risks": [r["text"] for r in matched]})
-            selected.extend(matched)
-        risk = expert_risk.assess(no, item["result"], selected)
-        if risk is not None:
-            risks[no] = risk
+                    matched = expert_risk.select(no, [other])
+                except ValueError:
+                    if not use_llm:
+                        raise ValueError(f"项目 {no} 的其他文字需要解析，请启用模型或选择清单中的风险；原文已保存")
+                    with stage('prompt_build', purpose='match_risk', item_no=no):
+                        prompt = expert_risk.matching_prompt(no, other)
+                    try:
+                        with stage('match_risk', item_no=no):
+                            raw = await model_text(prompt)
+                    except Exception as e:
+                        raise ValueError(f"项目 {no} 的其他文字解析失败，请稍后重试或手动选择风险；原文已保存") from e
+                    with stage('model_result_validate', purpose='match_risk'):
+                        matched = expert_risk.parse_matches(no, raw)
+                    other_matches.append({"no": no, "original_text": other,
+                                          "risks": [r["text"] for r in matched]})
+                selected.extend(matched)
+            risk = expert_risk.assess(no, item["result"], selected)
+            if risk is not None:
+                risks[no] = risk
 
     issues = [r["issue"] for r in risks.values() if r.get("issue")]
     basis = material["score_basis"]
-    if basis == "applicable_items":
-        score = risk_rules.score_of([r["category"] for r in risks.values()]) if risks else None
-        if not risks:
-            issues.append("所有项目均为无此项，无法计算综合得分")
-    else:
-        score = None
-        issues.append("综合计分口径待确认，暂不输出综合得分和等级")
-    grade = risk_rules.grade_of(score) if score is not None else None
-    narrative = _narrative(unfit, risks, score, grade, llm_used=False)
+    with stage('score'):
+        if basis == "applicable_items":
+            score = risk_rules.score_of([r["category"] for r in risks.values()]) if risks else None
+            if not risks:
+                issues.append("所有项目均为无此项，无法计算综合得分")
+        else:
+            score = None
+            issues.append("综合计分口径待确认，暂不输出综合得分和等级")
+        grade = risk_rules.grade_of(score) if score is not None else None
+        narrative = _narrative(unfit, risks, score, grade, llm_used=False)
     llm_used, llm_error = False, ""
     if use_llm:
         try:
-            text = (await model_text(_narrative_prompt(report, unfit, risks, score, grade)) or "").strip()
+            with stage('prompt_build', purpose='overview'):
+                prompt = _narrative_prompt(report, unfit, risks, score, grade)
+            with stage('overview'):
+                text = (await model_text(prompt) or "").strip()
             if text:
-                narrative = _grounded_overview(text, _overview_facts(unfit, risks, score, grade))
+                with stage('model_result_validate', purpose='overview'):
+                    narrative = _grounded_overview(text, _overview_facts(unfit, risks, score, grade))
                 llm_used = True
             else:
                 llm_error = "模型返回空内容，已采用原始数据摘要"
@@ -358,7 +372,7 @@ async def generate(report_id: int | str, *, use_llm: bool = False,
         "input_digest": _input_digest(report),
         "elapsed_ms": int((monotonic() - started) * 1000),
     }
-    with db.get_conn() as conn:
+    with stage('db_commit'), db.get_conn() as conn:
         current = report_repo.lock_for_generation(conn, rid)
         if current is None:
             raise LookupError("报告不存在")

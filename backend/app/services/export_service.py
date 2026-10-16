@@ -26,6 +26,7 @@ import re
 import shutil
 import subprocess
 import tempfile
+from time import perf_counter
 from datetime import datetime
 from pathlib import Path
 
@@ -190,6 +191,8 @@ table.meta th, table.meta td { padding: 4pt 7pt; font-size: 10pt; }
 
 def export(html_str: str, fmt: str, stem: str) -> dict:
     """把 html_str 转成 fmt(pdf|docx) 并落到 EXPORT_DIR，返回文件信息。"""
+    started = perf_counter()
+    timings = {}
     fmt = (fmt or "").lower().strip()
     if fmt not in ALLOWED_FORMATS:
         raise ValueError("不支持的导出格式：%s（只支持 pdf / docx）" % fmt)
@@ -210,6 +213,7 @@ def export(html_str: str, fmt: str, stem: str) -> dict:
             "--outdir", str(work),
             str(src),
         ]
+        convert_started = perf_counter()
         try:
             proc = subprocess.run(cmd, capture_output=True, timeout=CONVERT_TIMEOUT)
         except subprocess.TimeoutExpired:
@@ -223,11 +227,14 @@ def export(html_str: str, fmt: str, stem: str) -> dict:
                 "请确认板端已安装 LibreOffice，且该路径存在且可执行。" % SOFFICE
             ) from e
 
+        timings['convert_ms'] = (perf_counter()-convert_started)*1000
+
         out = work / (clean_stem + "." + fmt)
         if not out.exists():
             msg = ((proc.stdout or b"") + (proc.stderr or b"")).decode("utf-8", "replace")
             raise RuntimeError("LibreOffice 未产出文件：%s" % msg.strip()[-500:])
 
+        publish_started = perf_counter()
         final = EXPORT_DIR / out.name
         if final.exists():      # 同一秒重复导出时不覆盖
             final = EXPORT_DIR / ("%s_%s.%s" % (clean_stem, datetime.now().strftime("%H%M%S"), fmt))
@@ -239,12 +246,18 @@ def export(html_str: str, fmt: str, stem: str) -> dict:
         except OSError:
             pass
 
-        return {
+        result = {
             "filename": final.name,
             "path": str(final),
             "dir": str(EXPORT_DIR),
             "size": final.stat().st_size,
             "fmt": fmt,
         }
+        timings['publish_ms'] = (perf_counter()-publish_started)*1000
     finally:
+        cleanup_started = perf_counter()
         shutil.rmtree(work, ignore_errors=True)
+        timings['cleanup_ms'] = (perf_counter()-cleanup_started)*1000
+    timings['export_total_ms'] = (perf_counter()-started)*1000
+    result['performance'] = {key:round(value, 3) for key,value in timings.items()}
+    return result

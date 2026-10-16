@@ -1,6 +1,7 @@
 /* 导出逻辑集中在这里：底部操作条上的「导出 PDF / 导出 Word」按钮
    与结果卡片共用同一份状态，避免按钮和提示分处两地。 */
-import { ref } from 'vue'
+import { nextTick, ref } from 'vue'
+import { afterPaint, beginInteraction } from './performance'
 import { openExport } from '@/api/kiosk'
 import { exportReport } from '@/api/report'
 import { useReportStore } from '@/stores/report'
@@ -40,8 +41,9 @@ export function useExport() {
     }
     busy.value = true
     result.value = null
+    const timing = beginInteraction(`export_${fmt}`)
     try {
-      const res = await exportReport({
+      const res = await timing.measure('export_http', () => exportReport({
         fmt,
         title: '在用曳引驱动电梯安全评估报告',
         // 不再单独传抬头表：body_html 里那张 .paper 已经按 JTE 模板把头开好了，
@@ -51,10 +53,13 @@ export function useExport() {
         filename: store.generated?.report_no
           ? `${store.generated.report_no}_${store.form.clientName || '电梯安全评估报告'}`
           : '电梯安全评估报告',
-      })
+      }))
       result.value = { filename: res.filename, path: res.path, size: formatSize(res.size) }
       show('导出成功，可点击「打开文件」直接查看')
+      await timing.measure('render', async () => { await nextTick(); await afterPaint() })
+      timing.finish('ok')
     } catch (err) {
+      timing.finish('error')
       show(err instanceof Error ? err.message : '导出失败')
     } finally {
       busy.value = false

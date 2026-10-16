@@ -54,6 +54,8 @@ export interface ReportSummary {
   grade: Grade | null
   narrative: string
   provenance: Record<string, unknown>
+  /** 本次生成响应的计时，不作为报告业务内容保存 */
+  performance?: Record<string, unknown>
 }
 
 export function createReport(
