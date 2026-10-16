@@ -34,6 +34,10 @@ export function useExport() {
 
   async function run(fmt: 'pdf' | 'docx'): Promise<void> {
     if (busy.value) return
+    if (store.generated?.assessment_issues.length) {
+      show('评定尚有待确认内容，请先核对预览中的具体问题')
+      return
+    }
     busy.value = true
     result.value = null
     try {

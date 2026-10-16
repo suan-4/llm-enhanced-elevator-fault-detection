@@ -1,6 +1,7 @@
 /* 报告作业接口。id 一律当字符串（雪花 ID 超出 JS 安全整数）。 */
 import { request } from '@/utils/http'
 import type { Grade, RiskCategory } from '@/domain/riskScore'
+import type { SelectedRisk } from '@/domain/riskAssign'
 
 export interface ItemAnswer {
   no: string
@@ -11,11 +12,13 @@ export interface ItemAnswer {
 }
 
 export interface RiskValue {
-  severity: number
-  probability: string
+  severity: number | null
+  probability: string | null
   /** 与服务端口径一致：Ⅰ类 / Ⅱ类 / Ⅲ类 */
   category: RiskCategory
   source: string
+  selected_risks?: SelectedRisk[]
+  issue?: string
 }
 
 export interface Counters {
@@ -82,7 +85,7 @@ export function getDraft(id: string): Promise<DraftResponse> {
 export function saveReport(
   id: string,
   body: { form: Record<string, string>; items: ItemAnswer[]; version?: number },
-): Promise<{ success: boolean; counters: Counters; saved_at: string }> {
+): Promise<{ success: boolean; counters: Counters; saved_at: string; version: number; status: ReportSummary['status'] }> {
   return request(`/reports/${id}`, { method: 'PUT', body })
 }
 
@@ -90,7 +93,7 @@ export function generateReport(
   id: string,
   useLlm = false,
 ): Promise<{ success: boolean; report: ReportSummary }> {
-  return request(`/reports/${id}/generate`, { method: 'POST', body: { use_llm: useLlm } })
+  return request(`/reports/${id}/generate`, { method: 'POST', body: { use_llm: useLlm }, timeout: 180_000 })
 }
 
 export function listReports(

@@ -105,7 +105,9 @@ async function seedEmptyDraft(browser) {
   await page.evaluate(() =>
     document.getElementById("row-2-1").querySelector(".chk.is-other input").click(),
   );
-  await page.locator("#row-2-1 textarea").fill("箱体出现裂纹");
+  await page.locator("#row-2-1 textarea").fill(
+    (await page.locator("#row-2-1 .reasons label.chk").first().innerText()).trim(),
+  );
   await step("填完 66 条 + 一条不符合");
 
   // 落库验证：刷新后必须还在（这一条是本批最要紧的行为 —— 以前纯前端状态，一刷新全没）

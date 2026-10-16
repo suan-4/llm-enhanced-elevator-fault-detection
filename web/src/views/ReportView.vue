@@ -5,10 +5,8 @@ import ItemTable from '@/components/report/ItemTable.vue'
 import MissingList from '@/components/report/MissingList.vue'
 import ReportDocument from '@/components/report/ReportDocument.vue'
 import AppDialog from '@/components/AppDialog.vue'
-import type { AppendixRow } from '@/types/report'
-import { assignRiskDemo, type RiskValue } from '@/domain/riskAssign'
-import { computeG, gradeOf, overviewText } from '@/domain/riskScore'
-import { reasonsText } from '@/domain/validation'
+import { overviewText, countByCategory } from '@/domain/riskScore'
+import { buildAppendixRows } from '@/domain/reportResult'
 import { useReportStore } from '@/stores/report'
 import { useShell } from '@/stores/shell'
 import { useExport } from '@/utils/export'
@@ -24,6 +22,7 @@ const showAlert = ref(false)
 const generating = ref(false)
 const confirmNew = ref(false)
 const newBusy = ref(false)
+const confirmExport = ref<'pdf' | 'docx' | null>(null)
 const reportWrap = ref<HTMLElement | null>(null)
 
 /* 侧栏 / 顶栏已上移到 AppShell，本页只管内容。
@@ -34,7 +33,7 @@ function consumeShellRequest(): void {
   if (!want) return
   shell.requested = ''
   if (want === 'report') {
-    generate()
+    void showPreview()
   } else {
     view.value = 'input'
   }
@@ -66,7 +65,7 @@ async function startDraft(): Promise<void> {
 
 /* 改动后防抖自动保存：现场最怕录了半天，一刷新或一掉电全没了。
    store.ready 之前不保存 —— 否则刚读回来的内容会被立刻写回去。 */
-watch([() => store.form, () => store.states], () => store.scheduleSave(), { deep: true })
+watch([() => store.form, () => store.states], () => store.scheduleSave(), { deep: true, flush: 'sync' })
 
 /* 页面切到后台/被关闭时，尽量把防抖里还压着的改动写下去。
    防抖窗口（800ms）内掉电仍可能丢最后一次改动，所以悬浮岛会显示保存状态。 */
@@ -87,40 +86,48 @@ onBeforeUnmount(() => {
   document.removeEventListener('visibilitychange', flushOnHide)
 })
 
-/* ── 风险评定值与得分：以**服务端生成结果**为准 ──
-   还没生成过时用本地占位值（domain/riskAssign）保证预览不空；
-   生成之后一律用后端返回的值 —— 报告上的数字必须与服务端一致。 */
+/* 风险值只使用服务端专家查表结果，不用演示值填补未确认数据。 */
 const riskRows = computed(() =>
   store.items
     .filter((item) => store.stateOf(item.no).result === '不符合')
-    .map((item, index) => ({
+    .map((item) => ({
       item,
       state: store.stateOf(item.no),
-      risk: store.generated?.risks?.[item.no] ?? assignRiskDemo(index),
+      risk: store.generated?.risks?.[item.no],
     })),
 )
 
-const riskByNo = computed(() => {
-  const map: Record<string, RiskValue> = {}
-  for (const row of riskRows.value) map[row.item.no] = row.risk
-  return map
-})
+const riskByNo = computed(() => store.generated?.risks ?? {})
 
-const categories = computed(() => riskRows.value.map((row) => row.risk.category))
-const g = computed(() => store.generated?.score ?? computeG(categories.value))
-const grade = computed(() => store.generated?.grade ?? gradeOf(g.value))
+const categories = computed(() => Object.values(riskByNo.value).map(risk => risk.category))
+const g = computed(() => store.generated?.score ?? null)
+const grade = computed(() => store.generated?.grade ?? null)
+const assessmentIssues = computed(() => store.generated?.assessment_issues ?? [])
 /* 评估概况 = 模板要求的两行（风险分布 + 得分）+ 大模型写的那段说明。
    规则摘要兜底的那版不往报告上打印 —— 它逐条罗列，附页已经列过了，
    塞进概况会把单元格撑得很长（放哪由 PRD Q7 定，这里先按建议默认放概况）。 */
 const overview = computed(() => {
-  const base = overviewText(categories.value, g.value)
+  const count = countByCategory(categories.value)
+  const base = g.value === null
+    ? `1、存在Ⅰ类风险 ${count['Ⅰ类']} 项，Ⅱ类风险 ${count['Ⅱ类']} 项。\n2、综合评定暂不可用，详见评定提示。`
+    : overviewText(categories.value, g.value)
   const ai = store.generated?.llm_used ? store.generated.narrative.trim() : ''
   return ai ? `${base}\n${ai}` : base
 })
-const conclusion = computed(() => `综合安全状况等级：${grade.value}`)
-const appendixRows = computed<AppendixRow[]>(() =>
-  riskRows.value.map((row) => ({ no: row.item.no, risk: row.risk, text: reasonsText(row.state) })),
-)
+const conclusion = computed(() => `综合安全状况等级：${grade.value ?? '待确认'}`)
+const appendixRows = computed(() => buildAppendixRows(store.items, store.stateOf, riskByNo.value))
+
+function requestExport(fmt: 'pdf' | 'docx'): void {
+  if (assessmentIssues.value.length) return
+  if (store.generated?.other_matches.length) confirmExport.value = fmt
+  else void exp.run(fmt)
+}
+
+function approveExport(): void {
+  const fmt = confirmExport.value
+  confirmExport.value = null
+  if (fmt) void exp.run(fmt)
+}
 
 /* ── 交互 ── */
 /** 滚动容器是 .main（body 不滚动），因此回到顶部要滚它而不是 window */
@@ -195,6 +202,16 @@ async function generate(): Promise<void> {
   } finally {
     generating.value = false
   }
+}
+
+async function showPreview(): Promise<void> {
+  if (!store.generated) {
+    await generate()
+    return
+  }
+  await store.ensurePreview()
+  view.value = 'report'
+  nextTick(fitPapers)
 }
 
 function jump(key: string, kind: 'field' | 'item'): void {
@@ -284,8 +301,16 @@ function fitPapers(): void {
                 <template v-if="store.generated?.report_no">
                   报告编号 {{ store.generated.report_no }}　
                 </template>
-                JTE-09-R02-3.00　不符合 {{ riskRows.length }} 项　综合安全状况等级 {{ grade }}
+                JTE-09-R02-3.00　不符合 {{ riskRows.length }} 项　综合安全状况等级 {{ grade ?? '待确认' }}
               </span>
+            </div>
+            <div v-if="assessmentIssues.length" class="notes" role="status">
+              <b>待确认预览，尚不能作为正式报告导出。</b>
+              <div v-for="issue in assessmentIssues" :key="issue">{{ issue }}</div>
+            </div>
+            <div v-for="match in store.generated?.other_matches ?? []" :key="match.no" class="notes">
+              项目 {{ match.no }} 其他原文：{{ match.original_text }}<br />
+              模型匹配：{{ match.risks.join('；') }}。请核对后采用。
             </div>
           </div>
 
@@ -342,16 +367,16 @@ function fitPapers(): void {
               <button
                 class="btn btn-lg btn-primary"
                 type="button"
-                :disabled="exp.busy.value"
-                @click="exp.run('pdf')"
+                :disabled="exp.busy.value || assessmentIssues.length > 0"
+                @click="requestExport('pdf')"
               >
                 {{ exp.busy.value ? '导出中…' : '导出 PDF' }}
               </button>
               <button
                 class="btn btn-lg btn-primary"
                 type="button"
-                :disabled="exp.busy.value"
-                @click="exp.run('docx')"
+                :disabled="exp.busy.value || assessmentIssues.length > 0"
+                @click="requestExport('docx')"
               >
                 导出 Word
               </button>
@@ -375,6 +400,14 @@ function fitPapers(): void {
           新建后它不会丢，仍留在「报告管理」里，随时可以点「继续编辑」接着填。
         </p>
         <p class="dialog-p">确定新建一份空白评估吗？</p>
+      </AppDialog>
+      <AppDialog :open="confirmExport !== null" title="核对自然语言匹配" confirm-text="确认并导出"
+        @close="confirmExport = null" @confirm="approveExport">
+        <p v-for="match in store.generated?.other_matches ?? []" :key="match.no" class="dialog-p">
+          项目 {{ match.no }} 原文：{{ match.original_text }}<br />
+          匹配风险：{{ match.risks.join('；') }}
+        </p>
+        <p class="dialog-p">请核对匹配风险及附页措施。存在错误时返回录入页修改。</p>
       </AppDialog>
 </template>
 

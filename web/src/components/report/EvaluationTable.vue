@@ -42,8 +42,8 @@ function resultText(no: string): string {
         </td>
         <td>{{ resultText(item.no) }}</td>
         <template v-if="riskByNo[item.no]">
-          <td class="ctr">{{ riskByNo[item.no].severity }}</td>
-          <td class="ctr">{{ riskByNo[item.no].probability }}</td>
+          <td class="ctr">{{ riskByNo[item.no].severity ?? '待确认' }}</td>
+          <td class="ctr">{{ riskByNo[item.no].probability ?? '待确认' }}</td>
           <td class="ctr">{{ riskByNo[item.no].category }}</td>
         </template>
         <template v-else>

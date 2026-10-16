@@ -1,0 +1,517 @@
+{
+  "status": "review_only_not_for_production",
+  "sources": [
+    {
+      "file": "docs/规范与模板/总表-安全评估项目汇总-v1.docx",
+      "sha256": "03e13adaef58c9e4dfbaa0aa4e7aa277c1045cbae67e64985837222892613898"
+    },
+    {
+      "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+      "sha256": "7a0fc957bee2390cc67cce24fcf0cdcbcaf0ac629cb78170e4ed393e6b39c112"
+    }
+  ],
+  "appendix_n_evidence": {
+    "source": {
+      "file": "docs/规范与模板/JTE-09-R02-3.00 在用曳引驱动电梯安全评估报告 -.docx",
+      "sha256": "7e8a08ef45da9099ac019c4fb2dcaba8ee248ebc8a7ee529d1c805e81c1a84c9"
+    },
+    "text": "a)将三种风险类别分别按照表A.1所示规则赋值，假设vi(i=1,2,⋯,n)为对应于第i个风险情节的风险类别取值，其中n为进行评价的风险情节的总数。",
+    "scope": "n definition only; equation layout not verified"
+  },
+  "summary": {
+    "item_count": 66,
+    "risk_record_count": 484,
+    "category_counts": {
+      "II": 205,
+      "I": 240,
+      "III": 39
+    },
+    "evaluation_record_count": 132,
+    "matrix_cell_count": 24,
+    "excluded_header_rows": [
+      1,
+      258
+    ],
+    "category_mismatch_records": 42
+  },
+  "confirmed_rule": {
+    "multi_risk_item_category": "most_severe",
+    "severity_order": [
+      "I",
+      "II",
+      "III"
+    ]
+  },
+  "category_mismatches": [
+    {
+      "review_key": "8.6:01",
+      "item_no": "8.6",
+      "risk_category": "III",
+      "evaluation_category": "II",
+      "risk_source_row": 82,
+      "evaluation_source_row": 46
+    },
+    {
+      "review_key": "9.1:01",
+      "item_no": "9.1",
+      "risk_category": "III",
+      "evaluation_category": "II",
+      "risk_source_row": 88,
+      "evaluation_source_row": 48
+    },
+    {
+      "review_key": "9.2:01",
+      "item_no": "9.2",
+      "risk_category": "III",
+      "evaluation_category": "II",
+      "risk_source_row": 101,
+      "evaluation_source_row": 50
+    },
+    {
+      "review_key": "9.6:01",
+      "item_no": "9.6",
+      "risk_category": "III",
+      "evaluation_category": "II",
+      "risk_source_row": 110,
+      "evaluation_source_row": 52
+    },
+    {
+      "review_key": "9.8:01",
+      "item_no": "9.8",
+      "risk_category": "III",
+      "evaluation_category": "II",
+      "risk_source_row": 117,
+      "evaluation_source_row": 54
+    },
+    {
+      "review_key": "9.12:01",
+      "item_no": "9.12",
+      "risk_category": "III",
+      "evaluation_category": "II",
+      "risk_source_row": 125,
+      "evaluation_source_row": 56
+    },
+    {
+      "review_key": "10.2:01",
+      "item_no": "10.2",
+      "risk_category": "III",
+      "evaluation_category": "I",
+      "risk_source_row": 131,
+      "evaluation_source_row": 58
+    },
+    {
+      "review_key": "10.3:01",
+      "item_no": "10.3",
+      "risk_category": "III",
+      "evaluation_category": "I",
+      "risk_source_row": 137,
+      "evaluation_source_row": 60
+    },
+    {
+      "review_key": "10.5:01",
+      "item_no": "10.5",
+      "risk_category": "III",
+      "evaluation_category": "II",
+      "risk_source_row": 143,
+      "evaluation_source_row": 62
+    },
+    {
+      "review_key": "11.1:01",
+      "item_no": "11.1",
+      "risk_category": "III",
+      "evaluation_category": "I",
+      "risk_source_row": 148,
+      "evaluation_source_row": 64
+    },
+    {
+      "review_key": "11.4:01",
+      "item_no": "11.4",
+      "risk_category": "III",
+      "evaluation_category": "II",
+      "risk_source_row": 155,
+      "evaluation_source_row": 66
+    },
+    {
+      "review_key": "12.1:01",
+      "item_no": "12.1",
+      "risk_category": "III",
+      "evaluation_category": "I",
+      "risk_source_row": 162,
+      "evaluation_source_row": 68
+    },
+    {
+      "review_key": "12.1:05",
+      "item_no": "12.1",
+      "risk_category": "II",
+      "evaluation_category": "I",
+      "risk_source_row": 166,
+      "evaluation_source_row": 68
+    },
+    {
+      "review_key": "12.2:01",
+      "item_no": "12.2",
+      "risk_category": "III",
+      "evaluation_category": "I",
+      "risk_source_row": 167,
+      "evaluation_source_row": 70
+    },
+    {
+      "review_key": "12.3:01",
+      "item_no": "12.3",
+      "risk_category": "III",
+      "evaluation_category": "I",
+      "risk_source_row": 174,
+      "evaluation_source_row": 72
+    },
+    {
+      "review_key": "12.4:01",
+      "item_no": "12.4",
+      "risk_category": "III",
+      "evaluation_category": "I",
+      "risk_source_row": 179,
+      "evaluation_source_row": 74
+    },
+    {
+      "review_key": "12.5:01",
+      "item_no": "12.5",
+      "risk_category": "III",
+      "evaluation_category": "II",
+      "risk_source_row": 188,
+      "evaluation_source_row": 76
+    },
+    {
+      "review_key": "12.8:01",
+      "item_no": "12.8",
+      "risk_category": "III",
+      "evaluation_category": "I",
+      "risk_source_row": 193,
+      "evaluation_source_row": 78
+    },
+    {
+      "review_key": "12.9:01",
+      "item_no": "12.9",
+      "risk_category": "III",
+      "evaluation_category": "I",
+      "risk_source_row": 201,
+      "evaluation_source_row": 80
+    },
+    {
+      "review_key": "12.10:11",
+      "item_no": "12.10",
+      "risk_category": "III",
+      "evaluation_category": "I",
+      "risk_source_row": 216,
+      "evaluation_source_row": 82
+    },
+    {
+      "review_key": "14.9:20",
+      "item_no": "14.9",
+      "risk_category": "III",
+      "evaluation_category": "II",
+      "risk_source_row": 278,
+      "evaluation_source_row": 96
+    },
+    {
+      "review_key": "16.1:32",
+      "item_no": "16.1",
+      "risk_category": "II",
+      "evaluation_category": "I",
+      "risk_source_row": 310,
+      "evaluation_source_row": 98
+    },
+    {
+      "review_key": "16.1:33",
+      "item_no": "16.1",
+      "risk_category": "III",
+      "evaluation_category": "I",
+      "risk_source_row": 311,
+      "evaluation_source_row": 98
+    },
+    {
+      "review_key": "16.6:13",
+      "item_no": "16.6",
+      "risk_category": "I",
+      "evaluation_category": "II",
+      "risk_source_row": 324,
+      "evaluation_source_row": 100
+    },
+    {
+      "review_key": "16.6:14",
+      "item_no": "16.6",
+      "risk_category": "III",
+      "evaluation_category": "II",
+      "risk_source_row": 325,
+      "evaluation_source_row": 100
+    },
+    {
+      "review_key": "16.8:15",
+      "item_no": "16.8",
+      "risk_category": "III",
+      "evaluation_category": "II",
+      "risk_source_row": 340,
+      "evaluation_source_row": 102
+    },
+    {
+      "review_key": "16.11:12",
+      "item_no": "16.11",
+      "risk_category": "III",
+      "evaluation_category": "I",
+      "risk_source_row": 352,
+      "evaluation_source_row": 104
+    },
+    {
+      "review_key": "16.12:09",
+      "item_no": "16.12",
+      "risk_category": "III",
+      "evaluation_category": "I",
+      "risk_source_row": 361,
+      "evaluation_source_row": 106
+    },
+    {
+      "review_key": "17.1:09",
+      "item_no": "17.1",
+      "risk_category": "III",
+      "evaluation_category": "I",
+      "risk_source_row": 370,
+      "evaluation_source_row": 108
+    },
+    {
+      "review_key": "17.2:08",
+      "item_no": "17.2",
+      "risk_category": "III",
+      "evaluation_category": "I",
+      "risk_source_row": 378,
+      "evaluation_source_row": 110
+    },
+    {
+      "review_key": "17.3:10",
+      "item_no": "17.3",
+      "risk_category": "III",
+      "evaluation_category": "I",
+      "risk_source_row": 388,
+      "evaluation_source_row": 112
+    },
+    {
+      "review_key": "17.4:13",
+      "item_no": "17.4",
+      "risk_category": "III",
+      "evaluation_category": "I",
+      "risk_source_row": 401,
+      "evaluation_source_row": 114
+    },
+    {
+      "review_key": "17.5:15",
+      "item_no": "17.5",
+      "risk_category": "III",
+      "evaluation_category": "II",
+      "risk_source_row": 416,
+      "evaluation_source_row": 116
+    },
+    {
+      "review_key": "17.6:19",
+      "item_no": "17.6",
+      "risk_category": "III",
+      "evaluation_category": "II",
+      "risk_source_row": 435,
+      "evaluation_source_row": 118
+    },
+    {
+      "review_key": "17.8:05",
+      "item_no": "17.8",
+      "risk_category": "III",
+      "evaluation_category": "I",
+      "risk_source_row": 440,
+      "evaluation_source_row": 120
+    },
+    {
+      "review_key": "17.9:04",
+      "item_no": "17.9",
+      "risk_category": "III",
+      "evaluation_category": "I",
+      "risk_source_row": 444,
+      "evaluation_source_row": 122
+    },
+    {
+      "review_key": "17.10:03",
+      "item_no": "17.10",
+      "risk_category": "III",
+      "evaluation_category": "I",
+      "risk_source_row": 447,
+      "evaluation_source_row": 124
+    },
+    {
+      "review_key": "17.11:08",
+      "item_no": "17.11",
+      "risk_category": "III",
+      "evaluation_category": "I",
+      "risk_source_row": 455,
+      "evaluation_source_row": 126
+    },
+    {
+      "review_key": "18.1:10",
+      "item_no": "18.1",
+      "risk_category": "III",
+      "evaluation_category": "II",
+      "risk_source_row": 465,
+      "evaluation_source_row": 128
+    },
+    {
+      "review_key": "18.2:07",
+      "item_no": "18.2",
+      "risk_category": "III",
+      "evaluation_category": "II",
+      "risk_source_row": 472,
+      "evaluation_source_row": 130
+    },
+    {
+      "review_key": "18.3:06",
+      "item_no": "18.3",
+      "risk_category": "III",
+      "evaluation_category": "II",
+      "risk_source_row": 478,
+      "evaluation_source_row": 132
+    },
+    {
+      "review_key": "18.4:08",
+      "item_no": "18.4",
+      "risk_category": "III",
+      "evaluation_category": "II",
+      "risk_source_row": 486,
+      "evaluation_source_row": 134
+    }
+  ],
+  "context_inferred_project_rows": [
+    {
+      "row": 216,
+      "inferred_item_no": "12.10",
+      "basis": "same sequence cell; adjacent project context",
+      "status": "requires_confirmation"
+    }
+  ],
+  "non_III_category_mismatches": [
+    {
+      "review_key": "12.1:05",
+      "item_no": "12.1",
+      "risk_category": "II",
+      "evaluation_category": "I",
+      "risk_source_row": 166,
+      "evaluation_source_row": 68
+    },
+    {
+      "review_key": "16.1:32",
+      "item_no": "16.1",
+      "risk_category": "II",
+      "evaluation_category": "I",
+      "risk_source_row": 310,
+      "evaluation_source_row": 98
+    },
+    {
+      "review_key": "16.6:13",
+      "item_no": "16.6",
+      "risk_category": "I",
+      "evaluation_category": "II",
+      "risk_source_row": 324,
+      "evaluation_source_row": 100
+    }
+  ],
+  "III_records_for_semantic_review": [
+    "8.6:01",
+    "9.1:01",
+    "9.2:01",
+    "9.6:01",
+    "9.8:01",
+    "9.12:01",
+    "10.2:01",
+    "10.3:01",
+    "10.5:01",
+    "11.1:01",
+    "11.4:01",
+    "12.1:01",
+    "12.2:01",
+    "12.3:01",
+    "12.4:01",
+    "12.5:01",
+    "12.8:01",
+    "12.9:01",
+    "12.10:11",
+    "14.9:20",
+    "16.1:33",
+    "16.6:14",
+    "16.8:15",
+    "16.11:12",
+    "16.12:09",
+    "17.1:09",
+    "17.2:08",
+    "17.3:10",
+    "17.4:13",
+    "17.5:15",
+    "17.6:19",
+    "17.8:05",
+    "17.9:04",
+    "17.10:03",
+    "17.11:08",
+    "18.1:10",
+    "18.2:07",
+    "18.3:06",
+    "18.4:08"
+  ],
+  "requirement_differences_from_current_catalog": [
+    "12.4"
+  ],
+  "name_differences_from_current_catalog": [],
+  "total_vs_evaluation_name_differences": [
+    {
+      "item_no": "3.2",
+      "total_name": "联轴器联接情况",
+      "evaluation_name": "联轴器联结情况"
+    },
+    {
+      "item_no": "17.4",
+      "total_name": "限速器—安全钳联动试验",
+      "evaluation_name": "限速器-安全钳(包括轿厢和对重或平衡重)联动试验"
+    }
+  ],
+  "exact_duplicate_records": [],
+  "not_applicable_source_rows": [
+    [
+      "项目编号",
+      "项目",
+      "评价内容与要求",
+      "评价结果",
+      "风险评定值"
+    ],
+    [
+      "",
+      "",
+      "",
+      "",
+      "严重程度",
+      "概率等级",
+      "风险类别"
+    ],
+    [
+      "",
+      "无此项",
+      "-",
+      "-",
+      "-",
+      "-",
+      "-"
+    ]
+  ],
+  "evaluation_document_body_paragraphs": [
+    "表1 风险类别",
+    "注：当输入项目不在表3检索范围内时，按表2输出报告。",
+    "表2 无此项对应报告",
+    "表3 评价项目与要求"
+  ],
+  "checks": [
+    "all source data rows accounted for",
+    "every risk has category and measure",
+    "each item has exactly one compliant and one noncompliant evaluation",
+    "all evaluation triplets agree with the 24-cell matrix",
+    "66-item template order matches",
+    "merged group/subitem names resolved",
+    "nested requirement tables retained"
+  ]
+}

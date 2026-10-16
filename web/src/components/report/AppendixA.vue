@@ -3,8 +3,8 @@ import { CAT_VALUE, type Grade, type RiskCategory } from '@/domain/riskScore'
 
 const props = defineProps<{
   categories: RiskCategory[]
-  g: number
-  grade: Grade
+  g: number | null
+  grade: Grade | null
 }>()
 
 function sum(categories: RiskCategory[]): number {
@@ -42,9 +42,10 @@ function sum(categories: RiskCategory[]): number {
     G = 100 × ( Σ<sub>i=1..n</sub> v<sub>i</sub> ) / (2n)　　（∀v<sub>i</sub>≠0）<br />
     G = 0　　（∃v<sub>i</sub>=0，或 Σ<sub>i=1..n</sub> v<sub>i</sub> &lt; 0）
   </p>
-  <p class="ctr">
+  <p v-if="props.g !== null" class="ctr">
     本次计算：n = {{ props.categories.length }}，Σv = {{ sum(props.categories) }}，G = {{ props.g }}
   </p>
+  <p v-else>本次尚无有效综合评定，暂不输出综合得分和等级。</p>
   <p>c) 根据得分情况，按照表A.2判断电梯综合安全状况等级</p>
   <p class="ctr">表A.2　电梯综合安全状况等级</p>
   <table>
@@ -65,7 +66,7 @@ function sum(categories: RiskCategory[]): number {
       </tr>
     </tbody>
   </table>
-  <p>本次判定结果：<b>{{ props.grade }}</b></p>
+  <p v-if="props.grade !== null">本次判定结果：<b>{{ props.grade }}</b></p>
 </template>
 
 <style scoped>

@@ -17,7 +17,10 @@ from __future__ import annotations
 import os
 import sys
 import tempfile
+from html.parser import HTMLParser
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -25,27 +28,24 @@ from app.services import export_service  # noqa: E402
 
 
 class _temp_export_dir:
-    """临时替换导出目录；Windows 上没有 os.chown，补一个空实现以模拟板端。"""
+    """只替换导出目录，不伪造操作系统具备的能力。"""
 
     def __init__(self, export_dir: Path) -> None:
         self.export_dir = export_dir
 
     def __enter__(self) -> None:
         self._dir = export_service.EXPORT_DIR
-        self._chown = getattr(os, "chown", None)
         export_service.EXPORT_DIR = self.export_dir
-        if self._chown is None:
-            os.chown = lambda *a, **k: None  # type: ignore[attr-defined]
 
     def __exit__(self, *exc) -> None:
         export_service.EXPORT_DIR = self._dir
-        if self._chown is None and hasattr(os, "chown"):
-            del os.chown  # type: ignore[attr-defined]
 
 
 def test_missing_libreoffice_message_is_actionable() -> None:
     """本机若无 LibreOffice，抛出的提示必须可定位、不泄漏内部异常。"""
-    with _temp_export_dir(Path(tempfile.mkdtemp(prefix="test_export_"))):
+    with tempfile.TemporaryDirectory(prefix="test_export_") as tmp, \
+            _temp_export_dir(Path(tmp)), \
+            patch.object(export_service, "SOFFICE", str(Path(tmp) / "missing-soffice")):
         try:
             export_service.export("<p>x</p>", "pdf", "用例")
         except Exception as e:  # noqa: BLE001 - 这里就是要检查任意异常的内容
@@ -59,16 +59,60 @@ def test_missing_libreoffice_message_is_actionable() -> None:
 
 def test_export_dir_failure_is_visible() -> None:
     """导出目录无法创建时必须立刻报错，不能静默继续。"""
-    bad = Path("Z:/不存在的盘符/导出") if os.name == "nt" else Path("/proc/1/不存在的目录/导出")
-    with _temp_export_dir(bad):
-        try:
-            export_service.ensure_export_dir()
-        except Exception as e:  # noqa: BLE001
-            msg = str(e)
-            assert "导出目录" in msg, msg
-            assert not any(k in msg for k in ("WinError", "Traceback", "AttributeError")), msg
-            return
-        raise AssertionError("目录无法创建时不应静默返回")
+    with tempfile.TemporaryDirectory(prefix="test_export_bad_") as tmp:
+        blocked = Path(tmp) / "not-a-directory"
+        blocked.touch()
+        bad = blocked / "exports"
+        with _temp_export_dir(bad):
+            try:
+                export_service.ensure_export_dir()
+            except Exception as e:  # noqa: BLE001
+                msg = str(e)
+                assert "导出目录" in msg, msg
+                assert not any(k in msg for k in ("WinError", "Traceback", "AttributeError")), msg
+                return
+            raise AssertionError("目录无法创建时不应静默返回")
+
+
+def test_export_directory_does_not_require_posix_chown() -> None:
+    """没有chown的平台也能创建可写导出目录，不能用测试替身补上该能力。"""
+    with tempfile.TemporaryDirectory(prefix="test_export_caps_") as tmp, \
+            _temp_export_dir(Path(tmp) / "exports"), \
+            patch.object(export_service, "os", SimpleNamespace(chmod=os.chmod)):
+        export_service.ensure_export_dir()
+        probe = export_service.EXPORT_DIR / "probe"
+        probe.write_bytes(b"writable")
+        assert probe.read_bytes() == b"writable"
+
+
+def test_completed_export_does_not_require_posix_chown() -> None:
+    """外部转换器产出文件后，不得在最终文件权限设置阶段再次崩溃。"""
+    def converted(cmd, **kwargs):
+        out = Path(cmd[cmd.index("--outdir") + 1])
+        fmt = cmd[cmd.index("--convert-to") + 1]
+        (out / (Path(cmd[-1]).stem + "." + fmt)).write_bytes(b"converter-fixture")
+        return SimpleNamespace(stdout=b"", stderr=b"", returncode=0)
+
+    with tempfile.TemporaryDirectory(prefix="test_export_output_") as tmp, \
+            _temp_export_dir(Path(tmp) / "exports"), \
+            patch.object(export_service, "os", SimpleNamespace(chmod=os.chmod)), \
+            patch.object(export_service.subprocess, "run", converted):
+        result = export_service.export("<p>fixture</p>", "docx", "report")
+        final = Path(result["path"])
+        assert final.parent == export_service.EXPORT_DIR
+        assert final.read_bytes() == b"converter-fixture"
+        assert result["fmt"] == "docx" and result["size"] > 0
+
+
+def test_posix_ownership_is_still_attempted() -> None:
+    """兼容Windows不能取消板端原本需要的目录属主设置。"""
+    calls = []
+    with tempfile.TemporaryDirectory(prefix="test_export_posix_") as tmp, \
+            _temp_export_dir(Path(tmp) / "exports"), \
+            patch.object(export_service, "os", SimpleNamespace(
+                chown=lambda *args: calls.append(args), chmod=os.chmod)):
+        export_service.ensure_export_dir()
+        assert calls == [(export_service.EXPORT_DIR, 1002, 1002)]
 
 
 PAPER_BODY = (
@@ -112,12 +156,49 @@ def test_build_html_still_works_without_body() -> None:
     assert 'class="meta"' in html
 
 
+def test_document_sections_and_header_columns_survive_export() -> None:
+    """导出HTML须显式传递分节和列宽，不能依赖没有随正文传入的网页CSS。"""
+    class Tags(HTMLParser):
+        def __init__(self):
+            super().__init__()
+            self.columns = []
+            self.breaks = []
+
+        def handle_starttag(self, tag, attrs):
+            attrs = dict(attrs)
+            if tag == 'col':
+                self.columns.append(attrs.get('width'))
+            if tag == 'p' and 'page-break-before' in attrs.get('style', ''):
+                self.breaks.append(attrs['style'])
+
+    body = PAPER_BODY + '<div class="paper"><p>Evaluation</p></div><div class="paper"><p>Appendix</p></div>'
+    parser = Tags()
+    html = export_service.build_html('Report', [], body)
+    parser.feed(html)
+    assert parser.columns == ['15%', '35%', '15%', '35%'], parser.columns
+    assert len(parser.breaks) == 2, parser.breaks
+    assert html.count('class="paper"') == 3
+    assert html.index('page-break-before') > html.index('某某公司')
+
+
+def test_existing_header_columns_are_not_duplicated() -> None:
+    body = PAPER_BODY.replace('<tbody>', '<colgroup><col width="25%"><col width="75%"></colgroup><tbody>')
+    html = export_service.build_html('Report', [], body)
+    assert html.count('<colgroup>') == 1
+    assert '<col width="25%">' in html
+
+
 def _main() -> int:
     tests = [
         ("正文已是完整文档时不再补标题/抬头表", test_build_html_keeps_the_document_as_is),
         ("没有正文时仍能出标题+抬头表", test_build_html_still_works_without_body),
         ("缺少 LibreOffice 时提示可读", test_missing_libreoffice_message_is_actionable),
         ("导出目录不可用时必须报错", test_export_dir_failure_is_visible),
+        ("缺少chown也能创建导出目录", test_export_directory_does_not_require_posix_chown),
+        ("转换完成后无chown也能发布文件", test_completed_export_does_not_require_posix_chown),
+        ("板端仍设置POSIX属主", test_posix_ownership_is_still_attempted),
+        ("导出保留分节与抬头表列宽", test_document_sections_and_header_columns_survive_export),
+        ("已有列宽不重复注入", test_existing_header_columns_are_not_duplicated),
     ]
     failed = 0
     for name, fn in tests:

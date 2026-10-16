@@ -1,0 +1,3985 @@
+{
+  "status": "review_only",
+  "source": {
+    "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+    "sha256": "7a0fc957bee2390cc67cce24fcf0cdcbcaf0ac629cb78170e4ed393e6b39c112"
+  },
+  "matrix": {
+    "1A": "I",
+    "1B": "I",
+    "1C": "I",
+    "1D": "I",
+    "2A": "I",
+    "2B": "I",
+    "2C": "I",
+    "3A": "I",
+    "3B": "I",
+    "1E": "II",
+    "2D": "II",
+    "2E": "II",
+    "3C": "II",
+    "3D": "II",
+    "4A": "II",
+    "4B": "II",
+    "1F": "III",
+    "2F": "III",
+    "3E": "III",
+    "3F": "III",
+    "4C": "III",
+    "4D": "III",
+    "4E": "III",
+    "4F": "III"
+  },
+  "category_actions": {
+    "I": {
+      "text": "需要采取保护措施来降低风险",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 1,
+        "row": 2
+      }
+    },
+    "II": {
+      "text": "需要复查，在考虑解决方案和社会价值 的实用性后，确定进一步采取保护措施是否适当a",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 1,
+        "row": 3
+      }
+    },
+    "III": {
+      "text": "不需要任何行动",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 1,
+        "row": 4
+      }
+    }
+  },
+  "records": [
+    {
+      "item_no": "1.7",
+      "name_raw": "机房工作安全空间",
+      "sub_raw": "",
+      "requirements": "a)机房应有足够的空间，符合GB/T 7588.1—2020 中5.2.6.3.2.1的要求，以允许人员安全和容易地对有关设备进行作业，尤其是对电气设备的作业\nb)活动区域的净高度,以及通道宽度应符合GB/T 7588.1—2020中5.2.6.3.2.2的要求\nc)在无防护的电梯驱动主机旋转部件及滑轮的上方的净垂直距离应符合 GB/T 7588.1—2020中5.2.6.3.2.3的要求",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "a)机房应有足够的空间，符合GB/T 7588.1—2020 中5.2.6.3.2.1的要求，以允许人员安全和容易地对有关设备进行作业，尤其是对电气设备的作业"
+        },
+        {
+          "type": "paragraph",
+          "text": "b)活动区域的净高度,以及通道宽度应符合GB/T 7588.1—2020中5.2.6.3.2.2的要求"
+        },
+        {
+          "type": "paragraph",
+          "text": "c)在无防护的电梯驱动主机旋转部件及滑轮的上方的净垂直距离应符合 GB/T 7588.1—2020中5.2.6.3.2.3的要求"
+        }
+      ],
+      "result": "符合",
+      "severity": 2,
+      "probability": "F",
+      "category_raw": "Ⅲ",
+      "category": "III",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 3
+      }
+    },
+    {
+      "item_no": "1.7",
+      "name_raw": "机房工作安全空间",
+      "sub_raw": "",
+      "requirements": "a)机房应有足够的空间，符合GB/T 7588.1—2020 中5.2.6.3.2.1的要求，以允许人员安全和容易地对有关设备进行作业，尤其是对电气设备的作业\nb)活动区域的净高度,以及通道宽度应符合GB/T 7588.1—2020中5.2.6.3.2.2的要求\nc)在无防护的电梯驱动主机旋转部件及滑轮的上方的净垂直距离应符合 GB/T 7588.1—2020中5.2.6.3.2.3的要求",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "a)机房应有足够的空间，符合GB/T 7588.1—2020 中5.2.6.3.2.1的要求，以允许人员安全和容易地对有关设备进行作业，尤其是对电气设备的作业"
+        },
+        {
+          "type": "paragraph",
+          "text": "b)活动区域的净高度,以及通道宽度应符合GB/T 7588.1—2020中5.2.6.3.2.2的要求"
+        },
+        {
+          "type": "paragraph",
+          "text": "c)在无防护的电梯驱动主机旋转部件及滑轮的上方的净垂直距离应符合 GB/T 7588.1—2020中5.2.6.3.2.3的要求"
+        }
+      ],
+      "result": "不符合",
+      "severity": 2,
+      "probability": "D",
+      "category_raw": "Ⅱ",
+      "category": "II",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 4
+      }
+    },
+    {
+      "item_no": "1.9",
+      "name_raw": "限速器",
+      "sub_raw": "",
+      "requirements": "限速器应有有效期内的校验证书，且不应出现下列情况之一：\na)运行中有异响\nb)传动部件严重锈蚀\nc)轴承损坏导致限速器轮转动不灵活\nd)限速器座变形\ne)限速器绳表面油污严重\nf)限速器绳达到或接近达到GB/T 31821—2015中4.4.2的报废技术条件\ng)限速器的动作速度和限速器绳的提拉力不符合GB/T 7588.1—2020中5.6.2.2.1.1的要求",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "限速器应有有效期内的校验证书，且不应出现下列情况之一："
+        },
+        {
+          "type": "paragraph",
+          "text": "a)运行中有异响"
+        },
+        {
+          "type": "paragraph",
+          "text": "b)传动部件严重锈蚀"
+        },
+        {
+          "type": "paragraph",
+          "text": "c)轴承损坏导致限速器轮转动不灵活"
+        },
+        {
+          "type": "paragraph",
+          "text": "d)限速器座变形"
+        },
+        {
+          "type": "paragraph",
+          "text": "e)限速器绳表面油污严重"
+        },
+        {
+          "type": "paragraph",
+          "text": "f)限速器绳达到或接近达到GB/T 31821—2015中4.4.2的报废技术条件"
+        },
+        {
+          "type": "paragraph",
+          "text": "g)限速器的动作速度和限速器绳的提拉力不符合GB/T 7588.1—2020中5.6.2.2.1.1的要求"
+        }
+      ],
+      "result": "符合",
+      "severity": 1,
+      "probability": "F",
+      "category_raw": "Ⅲ",
+      "category": "III",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 5
+      }
+    },
+    {
+      "item_no": "1.9",
+      "name_raw": "限速器",
+      "sub_raw": "",
+      "requirements": "限速器应有有效期内的校验证书，且不应出现下列情况之一：\na)运行中有异响\nb)传动部件严重锈蚀\nc)轴承损坏导致限速器轮转动不灵活\nd)限速器座变形\ne)限速器绳表面油污严重\nf)限速器绳达到或接近达到GB/T 31821—2015中4.4.2的报废技术条件\ng)限速器的动作速度和限速器绳的提拉力不符合GB/T 7588.1—2020中5.6.2.2.1.1的要求",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "限速器应有有效期内的校验证书，且不应出现下列情况之一："
+        },
+        {
+          "type": "paragraph",
+          "text": "a)运行中有异响"
+        },
+        {
+          "type": "paragraph",
+          "text": "b)传动部件严重锈蚀"
+        },
+        {
+          "type": "paragraph",
+          "text": "c)轴承损坏导致限速器轮转动不灵活"
+        },
+        {
+          "type": "paragraph",
+          "text": "d)限速器座变形"
+        },
+        {
+          "type": "paragraph",
+          "text": "e)限速器绳表面油污严重"
+        },
+        {
+          "type": "paragraph",
+          "text": "f)限速器绳达到或接近达到GB/T 31821—2015中4.4.2的报废技术条件"
+        },
+        {
+          "type": "paragraph",
+          "text": "g)限速器的动作速度和限速器绳的提拉力不符合GB/T 7588.1—2020中5.6.2.2.1.1的要求"
+        }
+      ],
+      "result": "不符合",
+      "severity": 1,
+      "probability": "C",
+      "category_raw": "Ⅰ",
+      "category": "I",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 6
+      }
+    },
+    {
+      "item_no": "1.10",
+      "name_raw": "作用于钢丝绳系统的减速元件(如夹绳器等)",
+      "sub_raw": "",
+      "requirements": "作用于钢丝绳系统的减速元件不应出现下列情况之一：\na)触发联动机构卡阻或损坏\nb)钳体或制动弹簧出现塑性变形、裂纹或断裂\nc)夹紧件严重磨损或锈蚀\nd)夹紧件擦碰钢丝绳\ne)复位装置卡阻或损坏",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "作用于钢丝绳系统的减速元件不应出现下列情况之一："
+        },
+        {
+          "type": "paragraph",
+          "text": "a)触发联动机构卡阻或损坏"
+        },
+        {
+          "type": "paragraph",
+          "text": "b)钳体或制动弹簧出现塑性变形、裂纹或断裂"
+        },
+        {
+          "type": "paragraph",
+          "text": "c)夹紧件严重磨损或锈蚀"
+        },
+        {
+          "type": "paragraph",
+          "text": "d)夹紧件擦碰钢丝绳"
+        },
+        {
+          "type": "paragraph",
+          "text": "e)复位装置卡阻或损坏"
+        }
+      ],
+      "result": "符合",
+      "severity": 2,
+      "probability": "F",
+      "category_raw": "Ⅲ",
+      "category": "III",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 7
+      }
+    },
+    {
+      "item_no": "1.10",
+      "name_raw": "作用于钢丝绳系统的减速元件(如夹绳器等)",
+      "sub_raw": "",
+      "requirements": "作用于钢丝绳系统的减速元件不应出现下列情况之一：\na)触发联动机构卡阻或损坏\nb)钳体或制动弹簧出现塑性变形、裂纹或断裂\nc)夹紧件严重磨损或锈蚀\nd)夹紧件擦碰钢丝绳\ne)复位装置卡阻或损坏",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "作用于钢丝绳系统的减速元件不应出现下列情况之一："
+        },
+        {
+          "type": "paragraph",
+          "text": "a)触发联动机构卡阻或损坏"
+        },
+        {
+          "type": "paragraph",
+          "text": "b)钳体或制动弹簧出现塑性变形、裂纹或断裂"
+        },
+        {
+          "type": "paragraph",
+          "text": "c)夹紧件严重磨损或锈蚀"
+        },
+        {
+          "type": "paragraph",
+          "text": "d)夹紧件擦碰钢丝绳"
+        },
+        {
+          "type": "paragraph",
+          "text": "e)复位装置卡阻或损坏"
+        }
+      ],
+      "result": "不符合",
+      "severity": 2,
+      "probability": "D",
+      "category_raw": "Ⅱ",
+      "category": "II",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 8
+      }
+    },
+    {
+      "item_no": "1.11",
+      "name_raw": "机房和滑轮间的专用",
+      "sub_raw": "",
+      "requirements": "机房和滑轮间不应用于电梯以外的其他用途，也不应设置非电梯用的线槽、电缆或装置",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "机房和滑轮间不应用于电梯以外的其他用途，也不应设置非电梯用的线槽、电缆或装置"
+        }
+      ],
+      "result": "符合",
+      "severity": 2,
+      "probability": "F",
+      "category_raw": "Ⅲ",
+      "category": "III",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 9
+      }
+    },
+    {
+      "item_no": "1.11",
+      "name_raw": "机房和滑轮间的专用",
+      "sub_raw": "",
+      "requirements": "机房和滑轮间不应用于电梯以外的其他用途，也不应设置非电梯用的线槽、电缆或装置",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "机房和滑轮间不应用于电梯以外的其他用途，也不应设置非电梯用的线槽、电缆或装置"
+        }
+      ],
+      "result": "不符合",
+      "severity": 2,
+      "probability": "D",
+      "category_raw": "Ⅱ",
+      "category": "II",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 10
+      }
+    },
+    {
+      "item_no": "2.1",
+      "name_raw": "减速箱箱体",
+      "sub_raw": "",
+      "requirements": "不应出现裂纹",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "不应出现裂纹"
+        }
+      ],
+      "result": "符合",
+      "severity": 2,
+      "probability": "F",
+      "category_raw": "Ⅲ",
+      "category": "III",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 11
+      }
+    },
+    {
+      "item_no": "2.1",
+      "name_raw": "减速箱箱体",
+      "sub_raw": "",
+      "requirements": "不应出现裂纹",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "不应出现裂纹"
+        }
+      ],
+      "result": "不符合",
+      "severity": 2,
+      "probability": "D",
+      "category_raw": "Ⅱ",
+      "category": "II",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 12
+      }
+    },
+    {
+      "item_no": "2.2",
+      "name_raw": "减速箱固定",
+      "sub_raw": "",
+      "requirements": "固定结构牢固无严重锈蚀，或无影响安全运行的损坏",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "固定结构牢固无严重锈蚀，或无影响安全运行的损坏"
+        }
+      ],
+      "result": "符合",
+      "severity": 1,
+      "probability": "F",
+      "category_raw": "Ⅲ",
+      "category": "III",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 13
+      }
+    },
+    {
+      "item_no": "2.2",
+      "name_raw": "减速箱固定",
+      "sub_raw": "",
+      "requirements": "固定结构牢固无严重锈蚀，或无影响安全运行的损坏",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "固定结构牢固无严重锈蚀，或无影响安全运行的损坏"
+        }
+      ],
+      "result": "不符合",
+      "severity": 1,
+      "probability": "C",
+      "category_raw": "Ⅰ",
+      "category": "I",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 14
+      }
+    },
+    {
+      "item_no": "2.3",
+      "name_raw": "减速箱传动结构",
+      "sub_raw": "",
+      "requirements": "a)传动轴、轴承、键或键槽无影响安全运行的损坏，无异常噪声\nb)蜗轮副、斜齿轮、行星齿轮无影响安全运行的轮齿塑性变形、折断、裂纹、齿面点蚀、胶合或磨损等形式的严重失效",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "a)传动轴、轴承、键或键槽无影响安全运行的损坏，无异常噪声"
+        },
+        {
+          "type": "paragraph",
+          "text": "b)蜗轮副、斜齿轮、行星齿轮无影响安全运行的轮齿塑性变形、折断、裂纹、齿面点蚀、胶合或磨损等形式的严重失效"
+        }
+      ],
+      "result": "符合",
+      "severity": 1,
+      "probability": "F",
+      "category_raw": "Ⅲ",
+      "category": "III",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 15
+      }
+    },
+    {
+      "item_no": "2.3",
+      "name_raw": "减速箱传动结构",
+      "sub_raw": "",
+      "requirements": "a)传动轴、轴承、键或键槽无影响安全运行的损坏，无异常噪声\nb)蜗轮副、斜齿轮、行星齿轮无影响安全运行的轮齿塑性变形、折断、裂纹、齿面点蚀、胶合或磨损等形式的严重失效",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "a)传动轴、轴承、键或键槽无影响安全运行的损坏，无异常噪声"
+        },
+        {
+          "type": "paragraph",
+          "text": "b)蜗轮副、斜齿轮、行星齿轮无影响安全运行的轮齿塑性变形、折断、裂纹、齿面点蚀、胶合或磨损等形式的严重失效"
+        }
+      ],
+      "result": "不符合",
+      "severity": 1,
+      "probability": "C",
+      "category_raw": "Ⅰ",
+      "category": "I",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 16
+      }
+    },
+    {
+      "item_no": "2.4",
+      "name_raw": "减速箱渗漏油情况",
+      "sub_raw": "",
+      "requirements": "有齿轮曳引机的箱体分割面、观察窗(孔)盖等处应紧密连接，不应渗漏油",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "有齿轮曳引机的箱体分割面、观察窗(孔)盖等处应紧密连接，不应渗漏油"
+        }
+      ],
+      "result": "符合",
+      "severity": 3,
+      "probability": "F",
+      "category_raw": "Ⅲ",
+      "category": "III",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 17
+      }
+    },
+    {
+      "item_no": "2.4",
+      "name_raw": "减速箱渗漏油情况",
+      "sub_raw": "",
+      "requirements": "有齿轮曳引机的箱体分割面、观察窗(孔)盖等处应紧密连接，不应渗漏油",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "有齿轮曳引机的箱体分割面、观察窗(孔)盖等处应紧密连接，不应渗漏油"
+        }
+      ],
+      "result": "不符合",
+      "severity": 3,
+      "probability": "D",
+      "category_raw": "Ⅱ",
+      "category": "II",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 18
+      }
+    },
+    {
+      "item_no": "3.2",
+      "name_raw": "联轴器联结情况",
+      "sub_raw": "",
+      "requirements": "a)联轴器与电动机输出轴端、减速箱联结装置应固定可靠\nb)运转中联轴器不应有振动、冲击和异响\nc)联轴器挡圈、柱销等组件应完好",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "a)联轴器与电动机输出轴端、减速箱联结装置应固定可靠"
+        },
+        {
+          "type": "paragraph",
+          "text": "b)运转中联轴器不应有振动、冲击和异响"
+        },
+        {
+          "type": "paragraph",
+          "text": "c)联轴器挡圈、柱销等组件应完好"
+        }
+      ],
+      "result": "符合",
+      "severity": 2,
+      "probability": "F",
+      "category_raw": "Ⅲ",
+      "category": "III",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 19
+      }
+    },
+    {
+      "item_no": "3.2",
+      "name_raw": "联轴器联结情况",
+      "sub_raw": "",
+      "requirements": "a)联轴器与电动机输出轴端、减速箱联结装置应固定可靠\nb)运转中联轴器不应有振动、冲击和异响\nc)联轴器挡圈、柱销等组件应完好",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "a)联轴器与电动机输出轴端、减速箱联结装置应固定可靠"
+        },
+        {
+          "type": "paragraph",
+          "text": "b)运转中联轴器不应有振动、冲击和异响"
+        },
+        {
+          "type": "paragraph",
+          "text": "c)联轴器挡圈、柱销等组件应完好"
+        }
+      ],
+      "result": "不符合",
+      "severity": 2,
+      "probability": "D",
+      "category_raw": "Ⅱ",
+      "category": "II",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 20
+      }
+    },
+    {
+      "item_no": "4.3",
+      "name_raw": "电动机运转状况",
+      "sub_raw": "",
+      "requirements": "电动机不应出现下列情况之一：\na)绕组短路、断路、烧毁\nb)外壳或基座有影响安全的破裂\nc)轴承出现碎裂或影响运行的磨损\nd)定子与转子发生碰擦\ne)定子的温升或绝缘不符合GB/T 24478—2009 中4.2.1.2的要求\nf)噪声不符合GB/T 24478—2009中4.2.3.3的要求\ng)三相异步电动机定子绕组不平衡,或永磁同步电动机出现退磁，不能满足110%超载试验的扭矩要求\nh)永磁同步电动机转子磁性材料脱落",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "电动机不应出现下列情况之一："
+        },
+        {
+          "type": "paragraph",
+          "text": "a)绕组短路、断路、烧毁"
+        },
+        {
+          "type": "paragraph",
+          "text": "b)外壳或基座有影响安全的破裂"
+        },
+        {
+          "type": "paragraph",
+          "text": "c)轴承出现碎裂或影响运行的磨损"
+        },
+        {
+          "type": "paragraph",
+          "text": "d)定子与转子发生碰擦"
+        },
+        {
+          "type": "paragraph",
+          "text": "e)定子的温升或绝缘不符合GB/T 24478—2009 中4.2.1.2的要求"
+        },
+        {
+          "type": "paragraph",
+          "text": "f)噪声不符合GB/T 24478—2009中4.2.3.3的要求"
+        },
+        {
+          "type": "paragraph",
+          "text": "g)三相异步电动机定子绕组不平衡,或永磁同步电动机出现退磁，不能满足110%超载试验的扭矩要求"
+        },
+        {
+          "type": "paragraph",
+          "text": "h)永磁同步电动机转子磁性材料脱落"
+        }
+      ],
+      "result": "符合",
+      "severity": 2,
+      "probability": "F",
+      "category_raw": "Ⅲ",
+      "category": "III",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 21
+      }
+    },
+    {
+      "item_no": "4.3",
+      "name_raw": "电动机运转状况",
+      "sub_raw": "",
+      "requirements": "电动机不应出现下列情况之一：\na)绕组短路、断路、烧毁\nb)外壳或基座有影响安全的破裂\nc)轴承出现碎裂或影响运行的磨损\nd)定子与转子发生碰擦\ne)定子的温升或绝缘不符合GB/T 24478—2009 中4.2.1.2的要求\nf)噪声不符合GB/T 24478—2009中4.2.3.3的要求\ng)三相异步电动机定子绕组不平衡,或永磁同步电动机出现退磁，不能满足110%超载试验的扭矩要求\nh)永磁同步电动机转子磁性材料脱落",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "电动机不应出现下列情况之一："
+        },
+        {
+          "type": "paragraph",
+          "text": "a)绕组短路、断路、烧毁"
+        },
+        {
+          "type": "paragraph",
+          "text": "b)外壳或基座有影响安全的破裂"
+        },
+        {
+          "type": "paragraph",
+          "text": "c)轴承出现碎裂或影响运行的磨损"
+        },
+        {
+          "type": "paragraph",
+          "text": "d)定子与转子发生碰擦"
+        },
+        {
+          "type": "paragraph",
+          "text": "e)定子的温升或绝缘不符合GB/T 24478—2009 中4.2.1.2的要求"
+        },
+        {
+          "type": "paragraph",
+          "text": "f)噪声不符合GB/T 24478—2009中4.2.3.3的要求"
+        },
+        {
+          "type": "paragraph",
+          "text": "g)三相异步电动机定子绕组不平衡,或永磁同步电动机出现退磁，不能满足110%超载试验的扭矩要求"
+        },
+        {
+          "type": "paragraph",
+          "text": "h)永磁同步电动机转子磁性材料脱落"
+        }
+      ],
+      "result": "不符合",
+      "severity": 2,
+      "probability": "C",
+      "category_raw": "Ⅰ",
+      "category": "I",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 22
+      }
+    },
+    {
+      "item_no": "4.5",
+      "name_raw": "电动机编码器",
+      "sub_raw": "",
+      "requirements": "a)编码器应结构完整, 安装可靠\nb)编码器信号输出应正常",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "a)编码器应结构完整, 安装可靠"
+        },
+        {
+          "type": "paragraph",
+          "text": "b)编码器信号输出应正常"
+        }
+      ],
+      "result": "符合",
+      "severity": 3,
+      "probability": "F",
+      "category_raw": "Ⅲ",
+      "category": "III",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 23
+      }
+    },
+    {
+      "item_no": "4.5",
+      "name_raw": "电动机编码器",
+      "sub_raw": "",
+      "requirements": "a)编码器应结构完整, 安装可靠\nb)编码器信号输出应正常",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "a)编码器应结构完整, 安装可靠"
+        },
+        {
+          "type": "paragraph",
+          "text": "b)编码器信号输出应正常"
+        }
+      ],
+      "result": "不符合",
+      "severity": 3,
+      "probability": "D",
+      "category_raw": "Ⅱ",
+      "category": "II",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 24
+      }
+    },
+    {
+      "item_no": "5.1",
+      "name_raw": "制动器型式",
+      "sub_raw": "",
+      "requirements": "机电式制动器应符合下列要求：\na)所有参与向制动面施加制动力的制动器机械部件应至少分两组设置\nb)电梯正常运行时，切断制动器电流应至少用两个独立的电气装置来实现，当电梯停止时,如果其中一个接触器的主触点未打开，最迟到下一次运行方向改变时，应防止电梯再运行",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "机电式制动器应符合下列要求："
+        },
+        {
+          "type": "paragraph",
+          "text": "a)所有参与向制动面施加制动力的制动器机械部件应至少分两组设置"
+        },
+        {
+          "type": "paragraph",
+          "text": "b)电梯正常运行时，切断制动器电流应至少用两个独立的电气装置来实现，当电梯停止时,如果其中一个接触器的主触点未打开，最迟到下一次运行方向改变时，应防止电梯再运行"
+        }
+      ],
+      "result": "符合",
+      "severity": 1,
+      "probability": "F",
+      "category_raw": "Ⅲ",
+      "category": "III",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 25
+      }
+    },
+    {
+      "item_no": "5.1",
+      "name_raw": "制动器型式",
+      "sub_raw": "",
+      "requirements": "机电式制动器应符合下列要求：\na)所有参与向制动面施加制动力的制动器机械部件应至少分两组设置\nb)电梯正常运行时，切断制动器电流应至少用两个独立的电气装置来实现，当电梯停止时,如果其中一个接触器的主触点未打开，最迟到下一次运行方向改变时，应防止电梯再运行",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "机电式制动器应符合下列要求："
+        },
+        {
+          "type": "paragraph",
+          "text": "a)所有参与向制动面施加制动力的制动器机械部件应至少分两组设置"
+        },
+        {
+          "type": "paragraph",
+          "text": "b)电梯正常运行时，切断制动器电流应至少用两个独立的电气装置来实现，当电梯停止时,如果其中一个接触器的主触点未打开，最迟到下一次运行方向改变时，应防止电梯再运行"
+        }
+      ],
+      "result": "不符合",
+      "severity": 1,
+      "probability": "C",
+      "category_raw": "Ⅰ",
+      "category": "I",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 26
+      }
+    },
+    {
+      "item_no": "5.2",
+      "name_raw": "制动器结构检查",
+      "sub_raw": "",
+      "requirements": "制动器不应出现下列情况之一：\na)制动衬块严重磨损或者制动弹簧失效，导致制动力不足\nb)受力结构件出现裂纹或者严重磨损\nc)制动器电磁线圈防尘件破损\nd)制动衬块(制动钳)以及制动面上有油污",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "制动器不应出现下列情况之一："
+        },
+        {
+          "type": "paragraph",
+          "text": "a)制动衬块严重磨损或者制动弹簧失效，导致制动力不足"
+        },
+        {
+          "type": "paragraph",
+          "text": "b)受力结构件出现裂纹或者严重磨损"
+        },
+        {
+          "type": "paragraph",
+          "text": "c)制动器电磁线圈防尘件破损"
+        },
+        {
+          "type": "paragraph",
+          "text": "d)制动衬块(制动钳)以及制动面上有油污"
+        }
+      ],
+      "result": "符合",
+      "severity": 1,
+      "probability": "F",
+      "category_raw": "Ⅲ",
+      "category": "III",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 27
+      }
+    },
+    {
+      "item_no": "5.2",
+      "name_raw": "制动器结构检查",
+      "sub_raw": "",
+      "requirements": "制动器不应出现下列情况之一：\na)制动衬块严重磨损或者制动弹簧失效，导致制动力不足\nb)受力结构件出现裂纹或者严重磨损\nc)制动器电磁线圈防尘件破损\nd)制动衬块(制动钳)以及制动面上有油污",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "制动器不应出现下列情况之一："
+        },
+        {
+          "type": "paragraph",
+          "text": "a)制动衬块严重磨损或者制动弹簧失效，导致制动力不足"
+        },
+        {
+          "type": "paragraph",
+          "text": "b)受力结构件出现裂纹或者严重磨损"
+        },
+        {
+          "type": "paragraph",
+          "text": "c)制动器电磁线圈防尘件破损"
+        },
+        {
+          "type": "paragraph",
+          "text": "d)制动衬块(制动钳)以及制动面上有油污"
+        }
+      ],
+      "result": "不符合",
+      "severity": 1,
+      "probability": "B",
+      "category_raw": "Ⅰ",
+      "category": "I",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 28
+      }
+    },
+    {
+      "item_no": "5.4",
+      "name_raw": "制动器工作状况",
+      "sub_raw": "",
+      "requirements": "制动器应动作灵活，制动时制动衬块(制动钳)应紧密、均匀地贴合在制动面上；电梯运行时制动衬块(制动钳)不应与制动面发生摩擦",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "制动器应动作灵活，制动时制动衬块(制动钳)应紧密、均匀地贴合在制动面上；电梯运行时制动衬块(制动钳)不应与制动面发生摩擦"
+        }
+      ],
+      "result": "符合",
+      "severity": 2,
+      "probability": "F",
+      "category_raw": "Ⅲ",
+      "category": "III",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 29
+      }
+    },
+    {
+      "item_no": "5.4",
+      "name_raw": "制动器工作状况",
+      "sub_raw": "",
+      "requirements": "制动器应动作灵活，制动时制动衬块(制动钳)应紧密、均匀地贴合在制动面上；电梯运行时制动衬块(制动钳)不应与制动面发生摩擦",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "制动器应动作灵活，制动时制动衬块(制动钳)应紧密、均匀地贴合在制动面上；电梯运行时制动衬块(制动钳)不应与制动面发生摩擦"
+        }
+      ],
+      "result": "不符合",
+      "severity": 2,
+      "probability": "C",
+      "category_raw": "Ⅰ",
+      "category": "I",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 30
+      }
+    },
+    {
+      "item_no": "6.5",
+      "name_raw": "制动器手动机械操作装置",
+      "sub_raw": "",
+      "requirements": "手动机械操作装置制动器扳手不应出现严重变形 或裂纹，制动器扳手组件不应出现严重锈蚀、变形或裂纹，拉索元件不应出现严重锈蚀、卡阻或断裂",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "手动机械操作装置制动器扳手不应出现严重变形 或裂纹，制动器扳手组件不应出现严重锈蚀、变形或裂纹，拉索元件不应出现严重锈蚀、卡阻或断裂"
+        }
+      ],
+      "result": "符合",
+      "severity": 3,
+      "probability": "E",
+      "category_raw": "Ⅲ",
+      "category": "III",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 31
+      }
+    },
+    {
+      "item_no": "6.5",
+      "name_raw": "制动器手动机械操作装置",
+      "sub_raw": "",
+      "requirements": "手动机械操作装置制动器扳手不应出现严重变形 或裂纹，制动器扳手组件不应出现严重锈蚀、变形或裂纹，拉索元件不应出现严重锈蚀、卡阻或断裂",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "手动机械操作装置制动器扳手不应出现严重变形 或裂纹，制动器扳手组件不应出现严重锈蚀、变形或裂纹，拉索元件不应出现严重锈蚀、卡阻或断裂"
+        }
+      ],
+      "result": "不符合",
+      "severity": 3,
+      "probability": "D",
+      "category_raw": "Ⅱ",
+      "category": "II",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 32
+      }
+    },
+    {
+      "item_no": "6.6",
+      "name_raw": "手动盘车装置",
+      "sub_raw": "",
+      "requirements": "a)对于可拆卸盘车手轮，设有一个电气安全装置，最迟在盘车手轮装上电梯驱动主机时动作\nb)盘车手轮不应出现严重锈蚀、变形、裂纹或缺损，焊接部位不应出现裂纹,盘车齿轮副啮合有效，盘车齿轮无裂纹或断齿",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "a)对于可拆卸盘车手轮，设有一个电气安全装置，最迟在盘车手轮装上电梯驱动主机时动作"
+        },
+        {
+          "type": "paragraph",
+          "text": "b)盘车手轮不应出现严重锈蚀、变形、裂纹或缺损，焊接部位不应出现裂纹,盘车齿轮副啮合有效，盘车齿轮无裂纹或断齿"
+        }
+      ],
+      "result": "符合",
+      "severity": 3,
+      "probability": "E",
+      "category_raw": "Ⅲ",
+      "category": "III",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 33
+      }
+    },
+    {
+      "item_no": "6.6",
+      "name_raw": "手动盘车装置",
+      "sub_raw": "",
+      "requirements": "a)对于可拆卸盘车手轮，设有一个电气安全装置，最迟在盘车手轮装上电梯驱动主机时动作\nb)盘车手轮不应出现严重锈蚀、变形、裂纹或缺损，焊接部位不应出现裂纹,盘车齿轮副啮合有效，盘车齿轮无裂纹或断齿",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "a)对于可拆卸盘车手轮，设有一个电气安全装置，最迟在盘车手轮装上电梯驱动主机时动作"
+        },
+        {
+          "type": "paragraph",
+          "text": "b)盘车手轮不应出现严重锈蚀、变形、裂纹或缺损，焊接部位不应出现裂纹,盘车齿轮副啮合有效，盘车齿轮无裂纹或断齿"
+        }
+      ],
+      "result": "不符合",
+      "severity": 3,
+      "probability": "D",
+      "category_raw": "Ⅱ",
+      "category": "II",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 34
+      }
+    },
+    {
+      "item_no": "7.2",
+      "name_raw": "门扇",
+      "sub_raw": "",
+      "requirements": "门扇不应出现下列情况之一：\na)门扇严重锈蚀穿孔或破损穿孔\nb)门扇背部加强筋脱落\nc)门扇严重变形，不符合GB/T 7588.1—2020中 5.3.1.4的要求 ;\nd)门扇外包层脱离(落)，导致开关门受阻或门扇强度不符合GB/T 7588.1—2020中5.3.5.3的要求\ne)玻璃门扇出现裂纹或玻璃门扇边缘出现锋利缺口\nf)玻璃固定件不符合GB/T 7588.1—2020中5.3. 5.3.6的要求",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "门扇不应出现下列情况之一："
+        },
+        {
+          "type": "paragraph",
+          "text": "a)门扇严重锈蚀穿孔或破损穿孔"
+        },
+        {
+          "type": "paragraph",
+          "text": "b)门扇背部加强筋脱落"
+        },
+        {
+          "type": "paragraph",
+          "text": "c)门扇严重变形，不符合GB/T 7588.1—2020中 5.3.1.4的要求 ;"
+        },
+        {
+          "type": "paragraph",
+          "text": "d)门扇外包层脱离(落)，导致开关门受阻或门扇强度不符合GB/T 7588.1—2020中5.3.5.3的要求"
+        },
+        {
+          "type": "paragraph",
+          "text": "e)玻璃门扇出现裂纹或玻璃门扇边缘出现锋利缺口"
+        },
+        {
+          "type": "paragraph",
+          "text": "f)玻璃固定件不符合GB/T 7588.1—2020中5.3. 5.3.6的要求"
+        }
+      ],
+      "result": "符合",
+      "severity": 2,
+      "probability": "F",
+      "category_raw": "Ⅲ",
+      "category": "III",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 35
+      }
+    },
+    {
+      "item_no": "7.2",
+      "name_raw": "门扇",
+      "sub_raw": "",
+      "requirements": "门扇不应出现下列情况之一：\na)门扇严重锈蚀穿孔或破损穿孔\nb)门扇背部加强筋脱落\nc)门扇严重变形，不符合GB/T 7588.1—2020中 5.3.1.4的要求 ;\nd)门扇外包层脱离(落)，导致开关门受阻或门扇强度不符合GB/T 7588.1—2020中5.3.5.3的要求\ne)玻璃门扇出现裂纹或玻璃门扇边缘出现锋利缺口\nf)玻璃固定件不符合GB/T 7588.1—2020中5.3. 5.3.6的要求",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "门扇不应出现下列情况之一："
+        },
+        {
+          "type": "paragraph",
+          "text": "a)门扇严重锈蚀穿孔或破损穿孔"
+        },
+        {
+          "type": "paragraph",
+          "text": "b)门扇背部加强筋脱落"
+        },
+        {
+          "type": "paragraph",
+          "text": "c)门扇严重变形，不符合GB/T 7588.1—2020中 5.3.1.4的要求 ;"
+        },
+        {
+          "type": "paragraph",
+          "text": "d)门扇外包层脱离(落)，导致开关门受阻或门扇强度不符合GB/T 7588.1—2020中5.3.5.3的要求"
+        },
+        {
+          "type": "paragraph",
+          "text": "e)玻璃门扇出现裂纹或玻璃门扇边缘出现锋利缺口"
+        },
+        {
+          "type": "paragraph",
+          "text": "f)玻璃固定件不符合GB/T 7588.1—2020中5.3. 5.3.6的要求"
+        }
+      ],
+      "result": "不符合",
+      "severity": 2,
+      "probability": "C",
+      "category_raw": "Ⅰ",
+      "category": "I",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 36
+      }
+    },
+    {
+      "item_no": "7.3",
+      "name_raw": "层门门套",
+      "sub_raw": "",
+      "requirements": "层门门套不应出现下列情况之一：\na)层门门套严重变形，与门扇间隙不符合GB/T 7588.1—2020中5.3.1.4的要求\nb)层门门套严重锈蚀\nc)层门门套松动",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "层门门套不应出现下列情况之一："
+        },
+        {
+          "type": "paragraph",
+          "text": "a)层门门套严重变形，与门扇间隙不符合GB/T 7588.1—2020中5.3.1.4的要求"
+        },
+        {
+          "type": "paragraph",
+          "text": "b)层门门套严重锈蚀"
+        },
+        {
+          "type": "paragraph",
+          "text": "c)层门门套松动"
+        }
+      ],
+      "result": "符合",
+      "severity": 3,
+      "probability": "F",
+      "category_raw": "Ⅲ",
+      "category": "III",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 37
+      }
+    },
+    {
+      "item_no": "7.3",
+      "name_raw": "层门门套",
+      "sub_raw": "",
+      "requirements": "层门门套不应出现下列情况之一：\na)层门门套严重变形，与门扇间隙不符合GB/T 7588.1—2020中5.3.1.4的要求\nb)层门门套严重锈蚀\nc)层门门套松动",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "层门门套不应出现下列情况之一："
+        },
+        {
+          "type": "paragraph",
+          "text": "a)层门门套严重变形，与门扇间隙不符合GB/T 7588.1—2020中5.3.1.4的要求"
+        },
+        {
+          "type": "paragraph",
+          "text": "b)层门门套严重锈蚀"
+        },
+        {
+          "type": "paragraph",
+          "text": "c)层门门套松动"
+        }
+      ],
+      "result": "不符合",
+      "severity": 3,
+      "probability": "D",
+      "category_raw": "Ⅱ",
+      "category": "II",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 38
+      }
+    },
+    {
+      "item_no": "7.4",
+      "name_raw": "层门地坎",
+      "sub_raw": "",
+      "requirements": "层门地坎不应出现下列情况之一：\na)地坎变形，与门扇间隙不符合GB/T 7588.1—2020中5.3.1.4的要求\nb)地坎滑槽变形，影响门扇正常运行或导致门导靴脱轨\nc)地坎出现断裂、开焊、严重磨损或腐蚀，影响层门和轿门正常运行",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "层门地坎不应出现下列情况之一："
+        },
+        {
+          "type": "paragraph",
+          "text": "a)地坎变形，与门扇间隙不符合GB/T 7588.1—2020中5.3.1.4的要求"
+        },
+        {
+          "type": "paragraph",
+          "text": "b)地坎滑槽变形，影响门扇正常运行或导致门导靴脱轨"
+        },
+        {
+          "type": "paragraph",
+          "text": "c)地坎出现断裂、开焊、严重磨损或腐蚀，影响层门和轿门正常运行"
+        }
+      ],
+      "result": "符合",
+      "severity": 3,
+      "probability": "F",
+      "category_raw": "Ⅲ",
+      "category": "III",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 39
+      }
+    },
+    {
+      "item_no": "7.4",
+      "name_raw": "层门地坎",
+      "sub_raw": "",
+      "requirements": "层门地坎不应出现下列情况之一：\na)地坎变形，与门扇间隙不符合GB/T 7588.1—2020中5.3.1.4的要求\nb)地坎滑槽变形，影响门扇正常运行或导致门导靴脱轨\nc)地坎出现断裂、开焊、严重磨损或腐蚀，影响层门和轿门正常运行",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "层门地坎不应出现下列情况之一："
+        },
+        {
+          "type": "paragraph",
+          "text": "a)地坎变形，与门扇间隙不符合GB/T 7588.1—2020中5.3.1.4的要求"
+        },
+        {
+          "type": "paragraph",
+          "text": "b)地坎滑槽变形，影响门扇正常运行或导致门导靴脱轨"
+        },
+        {
+          "type": "paragraph",
+          "text": "c)地坎出现断裂、开焊、严重磨损或腐蚀，影响层门和轿门正常运行"
+        }
+      ],
+      "result": "不符合",
+      "severity": 3,
+      "probability": "D",
+      "category_raw": "Ⅱ",
+      "category": "II",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 40
+      }
+    },
+    {
+      "item_no": "7.13",
+      "name_raw": "层门、轿门运动相关的保护",
+      "sub_raw": "",
+      "requirements": "为了避免运行期间发生剪切的危险，动力驱动的自动滑动门外表面不应有大于3 mm 的凹进或凸出部分，这些凹进或凸出部分的边缘应在开门运行方向上倒角",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "为了避免运行期间发生剪切的危险，动力驱动的自动滑动门外表面不应有大于3 mm 的凹进或凸出部分，这些凹进或凸出部分的边缘应在开门运行方向上倒角"
+        }
+      ],
+      "result": "符合",
+      "severity": 2,
+      "probability": "F",
+      "category_raw": "Ⅲ",
+      "category": "III",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 41
+      }
+    },
+    {
+      "item_no": "7.13",
+      "name_raw": "层门、轿门运动相关的保护",
+      "sub_raw": "",
+      "requirements": "为了避免运行期间发生剪切的危险，动力驱动的自动滑动门外表面不应有大于3 mm 的凹进或凸出部分，这些凹进或凸出部分的边缘应在开门运行方向上倒角",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "为了避免运行期间发生剪切的危险，动力驱动的自动滑动门外表面不应有大于3 mm 的凹进或凸出部分，这些凹进或凸出部分的边缘应在开门运行方向上倒角"
+        }
+      ],
+      "result": "不符合",
+      "severity": 2,
+      "probability": "D",
+      "category_raw": "Ⅱ",
+      "category": "II",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 42
+      }
+    },
+    {
+      "item_no": "8.3",
+      "name_raw": "接地",
+      "sub_raw": "",
+      "requirements": "a)供电电源自进入机房(机器设备间)起，中性导 体(N，零线)与保护导体(PE，地线)应始终分开\nb)所有电气设备及线管、线槽的外露可以导电部分应与保护导体(PE，地线)可靠连接\nc)除36V及以下安全电压外的电气设备金属罩壳均应设有易于识别的接地端，且应有良好的接地\nd)接地线应采用黄绿双色绝缘电线分别直接接至接地端上，不应互相串接后再接地",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "a)供电电源自进入机房(机器设备间)起，中性导 体(N，零线)与保护导体(PE，地线)应始终分开"
+        },
+        {
+          "type": "paragraph",
+          "text": "b)所有电气设备及线管、线槽的外露可以导电部分应与保护导体(PE，地线)可靠连接"
+        },
+        {
+          "type": "paragraph",
+          "text": "c)除36V及以下安全电压外的电气设备金属罩壳均应设有易于识别的接地端，且应有良好的接地"
+        },
+        {
+          "type": "paragraph",
+          "text": "d)接地线应采用黄绿双色绝缘电线分别直接接至接地端上，不应互相串接后再接地"
+        }
+      ],
+      "result": "符合",
+      "severity": 2,
+      "probability": "F",
+      "category_raw": "Ⅲ",
+      "category": "III",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 43
+      }
+    },
+    {
+      "item_no": "8.3",
+      "name_raw": "接地",
+      "sub_raw": "",
+      "requirements": "a)供电电源自进入机房(机器设备间)起，中性导 体(N，零线)与保护导体(PE，地线)应始终分开\nb)所有电气设备及线管、线槽的外露可以导电部分应与保护导体(PE，地线)可靠连接\nc)除36V及以下安全电压外的电气设备金属罩壳均应设有易于识别的接地端，且应有良好的接地\nd)接地线应采用黄绿双色绝缘电线分别直接接至接地端上，不应互相串接后再接地",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "a)供电电源自进入机房(机器设备间)起，中性导 体(N，零线)与保护导体(PE，地线)应始终分开"
+        },
+        {
+          "type": "paragraph",
+          "text": "b)所有电气设备及线管、线槽的外露可以导电部分应与保护导体(PE，地线)可靠连接"
+        },
+        {
+          "type": "paragraph",
+          "text": "c)除36V及以下安全电压外的电气设备金属罩壳均应设有易于识别的接地端，且应有良好的接地"
+        },
+        {
+          "type": "paragraph",
+          "text": "d)接地线应采用黄绿双色绝缘电线分别直接接至接地端上，不应互相串接后再接地"
+        }
+      ],
+      "result": "不符合",
+      "severity": 2,
+      "probability": "D",
+      "category_raw": "Ⅱ",
+      "category": "II",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 44
+      }
+    },
+    {
+      "item_no": "8.6",
+      "name_raw": "接线",
+      "sub_raw": "",
+      "requirements": "电梯动力线路和控制线路宜分离敷设或者采取屏蔽措施",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "电梯动力线路和控制线路宜分离敷设或者采取屏蔽措施"
+        }
+      ],
+      "result": "符合",
+      "severity": 3,
+      "probability": "F",
+      "category_raw": "Ⅲ",
+      "category": "III",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 45
+      }
+    },
+    {
+      "item_no": "8.6",
+      "name_raw": "接线",
+      "sub_raw": "",
+      "requirements": "电梯动力线路和控制线路宜分离敷设或者采取屏蔽措施",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "电梯动力线路和控制线路宜分离敷设或者采取屏蔽措施"
+        }
+      ],
+      "result": "不符合",
+      "severity": 3,
+      "probability": "C",
+      "category_raw": "Ⅱ",
+      "category": "II",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 46
+      }
+    },
+    {
+      "item_no": "9.1",
+      "name_raw": "随行电缆",
+      "sub_raw": "",
+      "requirements": "a)随行电缆(含监控线)不应出现下列情况之一：\n1)护套出现开裂，导致线芯外露\n2)绝缘材料发生破损、老化，导致线芯外露或绝缘电阻不符合GB/T 7588.1—2020中5.10.1.3的要求\n3)线芯发生断裂或短路，电缆的备用线无法满 足需要\n4)电缆严重变形、扭曲\nb)随行电缆应固定良好，避免与限速器绳、选层器钢带、限位与极限开关等装置干涉，当轿厢压实在缓冲器上时，随行电缆活动部分不应与地面和轿厢底边框接触",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "a)随行电缆(含监控线)不应出现下列情况之一："
+        },
+        {
+          "type": "paragraph",
+          "text": "1)护套出现开裂，导致线芯外露"
+        },
+        {
+          "type": "paragraph",
+          "text": "2)绝缘材料发生破损、老化，导致线芯外露或绝缘电阻不符合GB/T 7588.1—2020中5.10.1.3的要求"
+        },
+        {
+          "type": "paragraph",
+          "text": "3)线芯发生断裂或短路，电缆的备用线无法满 足需要"
+        },
+        {
+          "type": "paragraph",
+          "text": "4)电缆严重变形、扭曲"
+        },
+        {
+          "type": "paragraph",
+          "text": "b)随行电缆应固定良好，避免与限速器绳、选层器钢带、限位与极限开关等装置干涉，当轿厢压实在缓冲器上时，随行电缆活动部分不应与地面和轿厢底边框接触"
+        }
+      ],
+      "result": "符合",
+      "severity": 3,
+      "probability": "F",
+      "category_raw": "Ⅲ",
+      "category": "III",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 47
+      }
+    },
+    {
+      "item_no": "9.1",
+      "name_raw": "随行电缆",
+      "sub_raw": "",
+      "requirements": "a)随行电缆(含监控线)不应出现下列情况之一：\n1)护套出现开裂，导致线芯外露\n2)绝缘材料发生破损、老化，导致线芯外露或绝缘电阻不符合GB/T 7588.1—2020中5.10.1.3的要求\n3)线芯发生断裂或短路，电缆的备用线无法满 足需要\n4)电缆严重变形、扭曲\nb)随行电缆应固定良好，避免与限速器绳、选层器钢带、限位与极限开关等装置干涉，当轿厢压实在缓冲器上时，随行电缆活动部分不应与地面和轿厢底边框接触",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "a)随行电缆(含监控线)不应出现下列情况之一："
+        },
+        {
+          "type": "paragraph",
+          "text": "1)护套出现开裂，导致线芯外露"
+        },
+        {
+          "type": "paragraph",
+          "text": "2)绝缘材料发生破损、老化，导致线芯外露或绝缘电阻不符合GB/T 7588.1—2020中5.10.1.3的要求"
+        },
+        {
+          "type": "paragraph",
+          "text": "3)线芯发生断裂或短路，电缆的备用线无法满 足需要"
+        },
+        {
+          "type": "paragraph",
+          "text": "4)电缆严重变形、扭曲"
+        },
+        {
+          "type": "paragraph",
+          "text": "b)随行电缆应固定良好，避免与限速器绳、选层器钢带、限位与极限开关等装置干涉，当轿厢压实在缓冲器上时，随行电缆活动部分不应与地面和轿厢底边框接触"
+        }
+      ],
+      "result": "不符合",
+      "severity": 3,
+      "probability": "D",
+      "category_raw": "Ⅱ",
+      "category": "II",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 48
+      }
+    },
+    {
+      "item_no": "9.2",
+      "name_raw": "补偿链(缆)及导向装置",
+      "sub_raw": "",
+      "requirements": "补偿链(缆)及导向装置不应出现下列情况之一：\na)全包覆型补偿链(缆)表面包裹材料出现脱落、严重开裂或磨损\nb)补偿链(缆)导向装置滚轮变形、缺损、严重磨损或出现卡阻\nc)链环表面有严重的锈蚀或脱焊，存在破断风险",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "补偿链(缆)及导向装置不应出现下列情况之一："
+        },
+        {
+          "type": "paragraph",
+          "text": "a)全包覆型补偿链(缆)表面包裹材料出现脱落、严重开裂或磨损"
+        },
+        {
+          "type": "paragraph",
+          "text": "b)补偿链(缆)导向装置滚轮变形、缺损、严重磨损或出现卡阻"
+        },
+        {
+          "type": "paragraph",
+          "text": "c)链环表面有严重的锈蚀或脱焊，存在破断风险"
+        }
+      ],
+      "result": "符合",
+      "severity": 2,
+      "probability": "F",
+      "category_raw": "Ⅲ",
+      "category": "III",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 49
+      }
+    },
+    {
+      "item_no": "9.2",
+      "name_raw": "补偿链(缆)及导向装置",
+      "sub_raw": "",
+      "requirements": "补偿链(缆)及导向装置不应出现下列情况之一：\na)全包覆型补偿链(缆)表面包裹材料出现脱落、严重开裂或磨损\nb)补偿链(缆)导向装置滚轮变形、缺损、严重磨损或出现卡阻\nc)链环表面有严重的锈蚀或脱焊，存在破断风险",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "补偿链(缆)及导向装置不应出现下列情况之一："
+        },
+        {
+          "type": "paragraph",
+          "text": "a)全包覆型补偿链(缆)表面包裹材料出现脱落、严重开裂或磨损"
+        },
+        {
+          "type": "paragraph",
+          "text": "b)补偿链(缆)导向装置滚轮变形、缺损、严重磨损或出现卡阻"
+        },
+        {
+          "type": "paragraph",
+          "text": "c)链环表面有严重的锈蚀或脱焊，存在破断风险"
+        }
+      ],
+      "result": "不符合",
+      "severity": 2,
+      "probability": "D",
+      "category_raw": "Ⅱ",
+      "category": "II",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 50
+      }
+    },
+    {
+      "item_no": "9.6",
+      "name_raw": "层门地坎下的井道壁凸出物",
+      "sub_raw": "",
+      "requirements": "每个层门地坎下的井道壁的任何凸出物不应超过 5mm，超过2mm的凸出物应倒角，倒角与水平的夹角至少为75°",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "每个层门地坎下的井道壁的任何凸出物不应超过 5mm，超过2mm的凸出物应倒角，倒角与水平的夹角至少为75°"
+        }
+      ],
+      "result": "符合",
+      "severity": 3,
+      "probability": "F",
+      "category_raw": "Ⅲ",
+      "category": "III",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 51
+      }
+    },
+    {
+      "item_no": "9.6",
+      "name_raw": "层门地坎下的井道壁凸出物",
+      "sub_raw": "",
+      "requirements": "每个层门地坎下的井道壁的任何凸出物不应超过 5mm，超过2mm的凸出物应倒角，倒角与水平的夹角至少为75°",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "每个层门地坎下的井道壁的任何凸出物不应超过 5mm，超过2mm的凸出物应倒角，倒角与水平的夹角至少为75°"
+        }
+      ],
+      "result": "不符合",
+      "severity": 3,
+      "probability": "D",
+      "category_raw": "Ⅱ",
+      "category": "II",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 52
+      }
+    },
+    {
+      "item_no": "9.8",
+      "name_raw": "平层感应装置",
+      "sub_raw": "",
+      "requirements": "电梯平层感应装置功能应工作可靠。平层准确度 宜在±10mm的范围内，平层保持精度宜在±20mm的范围内",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "电梯平层感应装置功能应工作可靠。平层准确度 宜在±10mm的范围内，平层保持精度宜在±20mm的范围内"
+        }
+      ],
+      "result": "符合",
+      "severity": 3,
+      "probability": "F",
+      "category_raw": "Ⅲ",
+      "category": "III",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 53
+      }
+    },
+    {
+      "item_no": "9.8",
+      "name_raw": "平层感应装置",
+      "sub_raw": "",
+      "requirements": "电梯平层感应装置功能应工作可靠。平层准确度 宜在±10mm的范围内，平层保持精度宜在±20mm的范围内",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "电梯平层感应装置功能应工作可靠。平层准确度 宜在±10mm的范围内，平层保持精度宜在±20mm的范围内"
+        }
+      ],
+      "result": "不符合",
+      "severity": 3,
+      "probability": "D",
+      "category_raw": "Ⅱ",
+      "category": "II",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 54
+      }
+    },
+    {
+      "item_no": "9.12",
+      "name_raw": "旋转部件防护",
+      "sub_raw": "",
+      "requirements": "对可能产生危险并可能接近的旋转部件，应提供 有效的防护",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "对可能产生危险并可能接近的旋转部件，应提供 有效的防护"
+        }
+      ],
+      "result": "符合",
+      "severity": 2,
+      "probability": "F",
+      "category_raw": "Ⅲ",
+      "category": "III",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 55
+      }
+    },
+    {
+      "item_no": "9.12",
+      "name_raw": "旋转部件防护",
+      "sub_raw": "",
+      "requirements": "对可能产生危险并可能接近的旋转部件，应提供 有效的防护",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "对可能产生危险并可能接近的旋转部件，应提供 有效的防护"
+        }
+      ],
+      "result": "不符合",
+      "severity": 2,
+      "probability": "D",
+      "category_raw": "Ⅱ",
+      "category": "II",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 56
+      }
+    },
+    {
+      "item_no": "10.2",
+      "name_raw": "对重架",
+      "sub_raw": "",
+      "requirements": "对重架不应出现下列情况之一：\na)严重变形，导致导靴或对重安全钳不能正常工作\nb)直梁、底部横梁发生变形，不能保证对重块在对重架内的可靠固定\nc)严重腐蚀，主要受力构件断面壁厚腐蚀达设计 厚度的10%",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "对重架不应出现下列情况之一："
+        },
+        {
+          "type": "paragraph",
+          "text": "a)严重变形，导致导靴或对重安全钳不能正常工作"
+        },
+        {
+          "type": "paragraph",
+          "text": "b)直梁、底部横梁发生变形，不能保证对重块在对重架内的可靠固定"
+        },
+        {
+          "type": "paragraph",
+          "text": "c)严重腐蚀，主要受力构件断面壁厚腐蚀达设计 厚度的10%"
+        }
+      ],
+      "result": "符合",
+      "severity": 1,
+      "probability": "F",
+      "category_raw": "Ⅲ",
+      "category": "III",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 57
+      }
+    },
+    {
+      "item_no": "10.2",
+      "name_raw": "对重架",
+      "sub_raw": "",
+      "requirements": "对重架不应出现下列情况之一：\na)严重变形，导致导靴或对重安全钳不能正常工作\nb)直梁、底部横梁发生变形，不能保证对重块在对重架内的可靠固定\nc)严重腐蚀，主要受力构件断面壁厚腐蚀达设计 厚度的10%",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "对重架不应出现下列情况之一："
+        },
+        {
+          "type": "paragraph",
+          "text": "a)严重变形，导致导靴或对重安全钳不能正常工作"
+        },
+        {
+          "type": "paragraph",
+          "text": "b)直梁、底部横梁发生变形，不能保证对重块在对重架内的可靠固定"
+        },
+        {
+          "type": "paragraph",
+          "text": "c)严重腐蚀，主要受力构件断面壁厚腐蚀达设计 厚度的10%"
+        }
+      ],
+      "result": "不符合",
+      "severity": 1,
+      "probability": "B",
+      "category_raw": "Ⅰ",
+      "category": "I",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 58
+      }
+    },
+    {
+      "item_no": "10.3",
+      "name_raw": "对重(平衡重)块",
+      "sub_raw": "",
+      "requirements": "对重(平衡重)块不应出现下列情况之一：\na)开裂、严重变形或断裂\nb)外包材料出现破损且内部材质可能向外泄露\nc)固定不可靠",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "对重(平衡重)块不应出现下列情况之一："
+        },
+        {
+          "type": "paragraph",
+          "text": "a)开裂、严重变形或断裂"
+        },
+        {
+          "type": "paragraph",
+          "text": "b)外包材料出现破损且内部材质可能向外泄露"
+        },
+        {
+          "type": "paragraph",
+          "text": "c)固定不可靠"
+        }
+      ],
+      "result": "符合",
+      "severity": 2,
+      "probability": "F",
+      "category_raw": "Ⅲ",
+      "category": "III",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 59
+      }
+    },
+    {
+      "item_no": "10.3",
+      "name_raw": "对重(平衡重)块",
+      "sub_raw": "",
+      "requirements": "对重(平衡重)块不应出现下列情况之一：\na)开裂、严重变形或断裂\nb)外包材料出现破损且内部材质可能向外泄露\nc)固定不可靠",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "对重(平衡重)块不应出现下列情况之一："
+        },
+        {
+          "type": "paragraph",
+          "text": "a)开裂、严重变形或断裂"
+        },
+        {
+          "type": "paragraph",
+          "text": "b)外包材料出现破损且内部材质可能向外泄露"
+        },
+        {
+          "type": "paragraph",
+          "text": "c)固定不可靠"
+        }
+      ],
+      "result": "不符合",
+      "severity": 2,
+      "probability": "B",
+      "category_raw": "Ⅰ",
+      "category": "I",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 60
+      }
+    },
+    {
+      "item_no": "10.5",
+      "name_raw": "对重导靴",
+      "sub_raw": "",
+      "requirements": "对重导靴应保持清洁，不应出现变形、开裂、严重磨损",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "对重导靴应保持清洁，不应出现变形、开裂、严重磨损"
+        }
+      ],
+      "result": "符合",
+      "severity": 3,
+      "probability": "F",
+      "category_raw": "Ⅲ",
+      "category": "III",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 61
+      }
+    },
+    {
+      "item_no": "10.5",
+      "name_raw": "对重导靴",
+      "sub_raw": "",
+      "requirements": "对重导靴应保持清洁，不应出现变形、开裂、严重磨损",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "对重导靴应保持清洁，不应出现变形、开裂、严重磨损"
+        }
+      ],
+      "result": "不符合",
+      "severity": 3,
+      "probability": "D",
+      "category_raw": "Ⅱ",
+      "category": "II",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 62
+      }
+    },
+    {
+      "item_no": "11.1",
+      "name_raw": "导轨固定情况",
+      "sub_raw": "",
+      "requirements": "a)导轨和导轨支架在建筑物上的固定，应能自动地或者采用简单的调节方法，对因建筑物的正常沉降和混凝土的收缩予以补偿，应防止因导轨附件的转动造成导轨的松动\nb)导轨与导轨支架之间应用压板固定",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "a)导轨和导轨支架在建筑物上的固定，应能自动地或者采用简单的调节方法，对因建筑物的正常沉降和混凝土的收缩予以补偿，应防止因导轨附件的转动造成导轨的松动"
+        },
+        {
+          "type": "paragraph",
+          "text": "b)导轨与导轨支架之间应用压板固定"
+        }
+      ],
+      "result": "符合",
+      "severity": 1,
+      "probability": "F",
+      "category_raw": "Ⅲ",
+      "category": "III",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 63
+      }
+    },
+    {
+      "item_no": "11.1",
+      "name_raw": "导轨固定情况",
+      "sub_raw": "",
+      "requirements": "a)导轨和导轨支架在建筑物上的固定，应能自动地或者采用简单的调节方法，对因建筑物的正常沉降和混凝土的收缩予以补偿，应防止因导轨附件的转动造成导轨的松动\nb)导轨与导轨支架之间应用压板固定",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "a)导轨和导轨支架在建筑物上的固定，应能自动地或者采用简单的调节方法，对因建筑物的正常沉降和混凝土的收缩予以补偿，应防止因导轨附件的转动造成导轨的松动"
+        },
+        {
+          "type": "paragraph",
+          "text": "b)导轨与导轨支架之间应用压板固定"
+        }
+      ],
+      "result": "不符合",
+      "severity": 1,
+      "probability": "B",
+      "category_raw": "Ⅰ",
+      "category": "I",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 64
+      }
+    },
+    {
+      "item_no": "11.4",
+      "name_raw": "导轨表面",
+      "sub_raw": "",
+      "requirements": "导轨表面质量的变化不应影响电梯的安全运行(包括不应出现强度的下降及导致安全钳的制动性能的下降)：\na)T型导轨工作面不应出现影响电梯正常运行的严重损伤，空心导轨防腐保护层不应出现起皮、起瘤或脱落\nb)导轨不应出现严重锈蚀现象\nc)导轨不应出现严重磨损",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "导轨表面质量的变化不应影响电梯的安全运行(包括不应出现强度的下降及导致安全钳的制动性能的下降)："
+        },
+        {
+          "type": "paragraph",
+          "text": "a)T型导轨工作面不应出现影响电梯正常运行的严重损伤，空心导轨防腐保护层不应出现起皮、起瘤或脱落"
+        },
+        {
+          "type": "paragraph",
+          "text": "b)导轨不应出现严重锈蚀现象"
+        },
+        {
+          "type": "paragraph",
+          "text": "c)导轨不应出现严重磨损"
+        }
+      ],
+      "result": "符合",
+      "severity": 3,
+      "probability": "F",
+      "category_raw": "Ⅲ",
+      "category": "III",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 65
+      }
+    },
+    {
+      "item_no": "11.4",
+      "name_raw": "导轨表面",
+      "sub_raw": "",
+      "requirements": "导轨表面质量的变化不应影响电梯的安全运行(包括不应出现强度的下降及导致安全钳的制动性能的下降)：\na)T型导轨工作面不应出现影响电梯正常运行的严重损伤，空心导轨防腐保护层不应出现起皮、起瘤或脱落\nb)导轨不应出现严重锈蚀现象\nc)导轨不应出现严重磨损",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "导轨表面质量的变化不应影响电梯的安全运行(包括不应出现强度的下降及导致安全钳的制动性能的下降)："
+        },
+        {
+          "type": "paragraph",
+          "text": "a)T型导轨工作面不应出现影响电梯正常运行的严重损伤，空心导轨防腐保护层不应出现起皮、起瘤或脱落"
+        },
+        {
+          "type": "paragraph",
+          "text": "b)导轨不应出现严重锈蚀现象"
+        },
+        {
+          "type": "paragraph",
+          "text": "c)导轨不应出现严重磨损"
+        }
+      ],
+      "result": "不符合",
+      "severity": 3,
+      "probability": "C",
+      "category_raw": "Ⅱ",
+      "category": "II",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 66
+      }
+    },
+    {
+      "item_no": "12.1",
+      "name_raw": "钢  丝  绳",
+      "sub_raw": "绳径减小",
+      "requirements": "直径不应小于或等于其公称直径的90%",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "直径不应小于或等于其公称直径的90%"
+        }
+      ],
+      "result": "符合",
+      "severity": 1,
+      "probability": "F",
+      "category_raw": "Ⅲ",
+      "category": "III",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 67
+      }
+    },
+    {
+      "item_no": "12.1",
+      "name_raw": "钢  丝  绳",
+      "sub_raw": "绳径减小",
+      "requirements": "直径不应小于或等于其公称直径的90%",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "直径不应小于或等于其公称直径的90%"
+        }
+      ],
+      "result": "不符合",
+      "severity": 1,
+      "probability": "C",
+      "category_raw": "Ⅰ",
+      "category": "I",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 68
+      }
+    },
+    {
+      "item_no": "12.2",
+      "name_raw": "钢  丝  绳",
+      "sub_raw": "变形或损伤",
+      "requirements": "不应出现笼状畸变、绳股挤出、扭结、部分压扁或弯折",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "不应出现笼状畸变、绳股挤出、扭结、部分压扁或弯折"
+        }
+      ],
+      "result": "符合",
+      "severity": 1,
+      "probability": "F",
+      "category_raw": "Ⅲ",
+      "category": "III",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 69
+      }
+    },
+    {
+      "item_no": "12.2",
+      "name_raw": "钢  丝  绳",
+      "sub_raw": "变形或损伤",
+      "requirements": "不应出现笼状畸变、绳股挤出、扭结、部分压扁或弯折",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "不应出现笼状畸变、绳股挤出、扭结、部分压扁或弯折"
+        }
+      ],
+      "result": "不符合",
+      "severity": 1,
+      "probability": "C",
+      "category_raw": "Ⅰ",
+      "category": "I",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 70
+      }
+    },
+    {
+      "item_no": "12.3",
+      "name_raw": "钢  丝  绳",
+      "sub_raw": "锈蚀",
+      "requirements": "不应出现严重锈蚀、铁锈填满绳股间隙",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "不应出现严重锈蚀、铁锈填满绳股间隙"
+        }
+      ],
+      "result": "符合",
+      "severity": 1,
+      "probability": "F",
+      "category_raw": "Ⅲ",
+      "category": "III",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 71
+      }
+    },
+    {
+      "item_no": "12.3",
+      "name_raw": "钢  丝  绳",
+      "sub_raw": "锈蚀",
+      "requirements": "不应出现严重锈蚀、铁锈填满绳股间隙",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "不应出现严重锈蚀、铁锈填满绳股间隙"
+        }
+      ],
+      "result": "不符合",
+      "severity": 1,
+      "probability": "C",
+      "category_raw": "Ⅰ",
+      "category": "I",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 72
+      }
+    },
+    {
+      "item_no": "12.4",
+      "name_raw": "钢  丝  绳",
+      "sub_raw": "断丝",
+      "requirements": "钢丝绳外层绳股在一个捻距内断丝总数不应大于下表的规定：\n断丝的形式 | 钢丝绳类型\n | 6×19 | 8×19 | 9×19\n均布在外层绳股上 | 24 | 30 | 34\n集中在一根或两根外层绳股上 | 8 | 10 | 11\n一根外层绳股上相邻的断丝 | 4 | 4 | 4\n股谷(缝)断丝 | 1 | 1 | 1\n注：上述断丝数的参考长度为一个捻距，约为6d(d表示钢丝绳的公称直径)。",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "钢丝绳外层绳股在一个捻距内断丝总数不应大于下表的规定："
+        },
+        {
+          "type": "table",
+          "rows": [
+            [
+              "断丝的形式",
+              "钢丝绳类型"
+            ],
+            [
+              "",
+              "6×19",
+              "8×19",
+              "9×19"
+            ],
+            [
+              "均布在外层绳股上",
+              "24",
+              "30",
+              "34"
+            ],
+            [
+              "集中在一根或两根外层绳股上",
+              "8",
+              "10",
+              "11"
+            ],
+            [
+              "一根外层绳股上相邻的断丝",
+              "4",
+              "4",
+              "4"
+            ],
+            [
+              "股谷(缝)断丝",
+              "1",
+              "1",
+              "1"
+            ],
+            [
+              "注：上述断丝数的参考长度为一个捻距，约为6d(d表示钢丝绳的公称直径)。"
+            ]
+          ]
+        }
+      ],
+      "result": "符合",
+      "severity": 1,
+      "probability": "F",
+      "category_raw": "Ⅲ",
+      "category": "III",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 73
+      }
+    },
+    {
+      "item_no": "12.4",
+      "name_raw": "钢  丝  绳",
+      "sub_raw": "断丝",
+      "requirements": "钢丝绳外层绳股在一个捻距内断丝总数不应大于下表的规定：\n断丝的形式 | 钢丝绳类型\n | 6×19 | 8×19 | 9×19\n均布在外层绳股上 | 24 | 30 | 34\n集中在一根或两根外层绳股上 | 8 | 10 | 11\n一根外层绳股上相邻的断丝 | 4 | 4 | 4\n股谷(缝)断丝 | 1 | 1 | 1\n注：上述断丝数的参考长度为一个捻距，约为6d(d表示钢丝绳的公称直径)。",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "钢丝绳外层绳股在一个捻距内断丝总数不应大于下表的规定："
+        },
+        {
+          "type": "table",
+          "rows": [
+            [
+              "断丝的形式",
+              "钢丝绳类型"
+            ],
+            [
+              "",
+              "6×19",
+              "8×19",
+              "9×19"
+            ],
+            [
+              "均布在外层绳股上",
+              "24",
+              "30",
+              "34"
+            ],
+            [
+              "集中在一根或两根外层绳股上",
+              "8",
+              "10",
+              "11"
+            ],
+            [
+              "一根外层绳股上相邻的断丝",
+              "4",
+              "4",
+              "4"
+            ],
+            [
+              "股谷(缝)断丝",
+              "1",
+              "1",
+              "1"
+            ],
+            [
+              "注：上述断丝数的参考长度为一个捻距，约为6d(d表示钢丝绳的公称直径)。"
+            ]
+          ]
+        }
+      ],
+      "result": "不符合",
+      "severity": 1,
+      "probability": "C",
+      "category_raw": "Ⅰ",
+      "category": "I",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 74
+      }
+    },
+    {
+      "item_no": "12.5",
+      "name_raw": "钢  丝  绳",
+      "sub_raw": "表面油污",
+      "requirements": "表面不应有明显油污",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "表面不应有明显油污"
+        }
+      ],
+      "result": "符合",
+      "severity": 3,
+      "probability": "F",
+      "category_raw": "Ⅲ",
+      "category": "III",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 75
+      }
+    },
+    {
+      "item_no": "12.5",
+      "name_raw": "钢  丝  绳",
+      "sub_raw": "表面油污",
+      "requirements": "表面不应有明显油污",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "表面不应有明显油污"
+        }
+      ],
+      "result": "不符合",
+      "severity": 3,
+      "probability": "C",
+      "category_raw": "Ⅱ",
+      "category": "II",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 76
+      }
+    },
+    {
+      "item_no": "12.8",
+      "name_raw": "包  覆          绳   (带)",
+      "sub_raw": "破损",
+      "requirements": "端接装置之间包覆绳(带)不应出现下列情况之 一：\na)包覆层变形(如鼓包、压痕、折痕、凹陷等)\nb)因包覆层裂纹或磨损导致承载体外露\nc)包覆层表面有承载体刺出\nd)承载体断裂",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "端接装置之间包覆绳(带)不应出现下列情况之 一："
+        },
+        {
+          "type": "paragraph",
+          "text": "a)包覆层变形(如鼓包、压痕、折痕、凹陷等)"
+        },
+        {
+          "type": "paragraph",
+          "text": "b)因包覆层裂纹或磨损导致承载体外露"
+        },
+        {
+          "type": "paragraph",
+          "text": "c)包覆层表面有承载体刺出"
+        },
+        {
+          "type": "paragraph",
+          "text": "d)承载体断裂"
+        }
+      ],
+      "result": "符合",
+      "severity": 1,
+      "probability": "F",
+      "category_raw": "Ⅲ",
+      "category": "III",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 77
+      }
+    },
+    {
+      "item_no": "12.8",
+      "name_raw": "包  覆          绳   (带)",
+      "sub_raw": "破损",
+      "requirements": "端接装置之间包覆绳(带)不应出现下列情况之 一：\na)包覆层变形(如鼓包、压痕、折痕、凹陷等)\nb)因包覆层裂纹或磨损导致承载体外露\nc)包覆层表面有承载体刺出\nd)承载体断裂",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "端接装置之间包覆绳(带)不应出现下列情况之 一："
+        },
+        {
+          "type": "paragraph",
+          "text": "a)包覆层变形(如鼓包、压痕、折痕、凹陷等)"
+        },
+        {
+          "type": "paragraph",
+          "text": "b)因包覆层裂纹或磨损导致承载体外露"
+        },
+        {
+          "type": "paragraph",
+          "text": "c)包覆层表面有承载体刺出"
+        },
+        {
+          "type": "paragraph",
+          "text": "d)承载体断裂"
+        }
+      ],
+      "result": "不符合",
+      "severity": 1,
+      "probability": "C",
+      "category_raw": "Ⅰ",
+      "category": "I",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 78
+      }
+    },
+    {
+      "item_no": "12.9",
+      "name_raw": "包  覆          绳   (带)",
+      "sub_raw": "直径或厚度减小",
+      "requirements": "包覆绳(带)的实测直径(实测厚度)相对公称直径(公称厚度)不应减少到制造商提供的值",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "包覆绳(带)的实测直径(实测厚度)相对公称直径(公称厚度)不应减少到制造商提供的值"
+        }
+      ],
+      "result": "符合",
+      "severity": 1,
+      "probability": "F",
+      "category_raw": "Ⅲ",
+      "category": "III",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 79
+      }
+    },
+    {
+      "item_no": "12.9",
+      "name_raw": "包  覆          绳   (带)",
+      "sub_raw": "直径或厚度减小",
+      "requirements": "包覆绳(带)的实测直径(实测厚度)相对公称直径(公称厚度)不应减少到制造商提供的值",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "包覆绳(带)的实测直径(实测厚度)相对公称直径(公称厚度)不应减少到制造商提供的值"
+        }
+      ],
+      "result": "不符合",
+      "severity": 1,
+      "probability": "C",
+      "category_raw": "Ⅰ",
+      "category": "I",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 80
+      }
+    },
+    {
+      "item_no": "12.10",
+      "name_raw": "端接装置",
+      "sub_raw": "",
+      "requirements": "a)自锁楔形端接装置应安全可靠，其锁紧螺母均应安装有锁紧销，且不应出现下列情况之一：\n1)锥套、楔形套、楔块或拉杆出现裂纹\n2)楔形套无法锁紧或固定\n3)螺纹失效\n4)弹簧出现断裂、永久变形或压并圈\n5)严重锈蚀\n6)复合材料弹性部件老化、开裂\nb)采用其他类型悬挂装置的，其端部固定应符合 制造单位的规定",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "a)自锁楔形端接装置应安全可靠，其锁紧螺母均应安装有锁紧销，且不应出现下列情况之一："
+        },
+        {
+          "type": "paragraph",
+          "text": "1)锥套、楔形套、楔块或拉杆出现裂纹"
+        },
+        {
+          "type": "paragraph",
+          "text": "2)楔形套无法锁紧或固定"
+        },
+        {
+          "type": "paragraph",
+          "text": "3)螺纹失效"
+        },
+        {
+          "type": "paragraph",
+          "text": "4)弹簧出现断裂、永久变形或压并圈"
+        },
+        {
+          "type": "paragraph",
+          "text": "5)严重锈蚀"
+        },
+        {
+          "type": "paragraph",
+          "text": "6)复合材料弹性部件老化、开裂"
+        },
+        {
+          "type": "paragraph",
+          "text": "b)采用其他类型悬挂装置的，其端部固定应符合 制造单位的规定"
+        }
+      ],
+      "result": "符合",
+      "severity": 1,
+      "probability": "F",
+      "category_raw": "Ⅲ",
+      "category": "III",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 81
+      }
+    },
+    {
+      "item_no": "12.10",
+      "name_raw": "端接装置",
+      "sub_raw": "",
+      "requirements": "a)自锁楔形端接装置应安全可靠，其锁紧螺母均应安装有锁紧销，且不应出现下列情况之一：\n1)锥套、楔形套、楔块或拉杆出现裂纹\n2)楔形套无法锁紧或固定\n3)螺纹失效\n4)弹簧出现断裂、永久变形或压并圈\n5)严重锈蚀\n6)复合材料弹性部件老化、开裂\nb)采用其他类型悬挂装置的，其端部固定应符合 制造单位的规定",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "a)自锁楔形端接装置应安全可靠，其锁紧螺母均应安装有锁紧销，且不应出现下列情况之一："
+        },
+        {
+          "type": "paragraph",
+          "text": "1)锥套、楔形套、楔块或拉杆出现裂纹"
+        },
+        {
+          "type": "paragraph",
+          "text": "2)楔形套无法锁紧或固定"
+        },
+        {
+          "type": "paragraph",
+          "text": "3)螺纹失效"
+        },
+        {
+          "type": "paragraph",
+          "text": "4)弹簧出现断裂、永久变形或压并圈"
+        },
+        {
+          "type": "paragraph",
+          "text": "5)严重锈蚀"
+        },
+        {
+          "type": "paragraph",
+          "text": "6)复合材料弹性部件老化、开裂"
+        },
+        {
+          "type": "paragraph",
+          "text": "b)采用其他类型悬挂装置的，其端部固定应符合 制造单位的规定"
+        }
+      ],
+      "result": "不符合",
+      "severity": 1,
+      "probability": "C",
+      "category_raw": "Ⅰ",
+      "category": "I",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 82
+      }
+    },
+    {
+      "item_no": "13.7",
+      "name_raw": "轿架",
+      "sub_raw": "",
+      "requirements": "轿架不应出现下列情况之一：\na)轿架变形导致轿底倾斜大于其正常位置5%\nb)轿架严重变形，导致导靴或安全钳不能正常工作\nc)轿架出现脱焊或材料开裂，影响电梯安全运行\nd)轿架严重腐蚀，主要受力构件断面壁厚腐蚀达设计厚度的10%",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "轿架不应出现下列情况之一："
+        },
+        {
+          "type": "paragraph",
+          "text": "a)轿架变形导致轿底倾斜大于其正常位置5%"
+        },
+        {
+          "type": "paragraph",
+          "text": "b)轿架严重变形，导致导靴或安全钳不能正常工作"
+        },
+        {
+          "type": "paragraph",
+          "text": "c)轿架出现脱焊或材料开裂，影响电梯安全运行"
+        },
+        {
+          "type": "paragraph",
+          "text": "d)轿架严重腐蚀，主要受力构件断面壁厚腐蚀达设计厚度的10%"
+        }
+      ],
+      "result": "符合",
+      "severity": 1,
+      "probability": "F",
+      "category_raw": "Ⅲ",
+      "category": "III",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 83
+      }
+    },
+    {
+      "item_no": "13.7",
+      "name_raw": "轿架",
+      "sub_raw": "",
+      "requirements": "轿架不应出现下列情况之一：\na)轿架变形导致轿底倾斜大于其正常位置5%\nb)轿架严重变形，导致导靴或安全钳不能正常工作\nc)轿架出现脱焊或材料开裂，影响电梯安全运行\nd)轿架严重腐蚀，主要受力构件断面壁厚腐蚀达设计厚度的10%",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "轿架不应出现下列情况之一："
+        },
+        {
+          "type": "paragraph",
+          "text": "a)轿架变形导致轿底倾斜大于其正常位置5%"
+        },
+        {
+          "type": "paragraph",
+          "text": "b)轿架严重变形，导致导靴或安全钳不能正常工作"
+        },
+        {
+          "type": "paragraph",
+          "text": "c)轿架出现脱焊或材料开裂，影响电梯安全运行"
+        },
+        {
+          "type": "paragraph",
+          "text": "d)轿架严重腐蚀，主要受力构件断面壁厚腐蚀达设计厚度的10%"
+        }
+      ],
+      "result": "不符合",
+      "severity": 1,
+      "probability": "B",
+      "category_raw": "Ⅰ",
+      "category": "I",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 84
+      }
+    },
+    {
+      "item_no": "13.8",
+      "name_raw": "轿壁、轿顶和轿底",
+      "sub_raw": "",
+      "requirements": "轿壁、轿顶和轿底不应出现下列情况之一：\na)轿壁、轿顶严重锈蚀穿孔或破损穿孔，孔的直径大于10mm\nb)轿壁、轿顶严重变形或破损，加强筋脱落\nc)轿壁的强度不符合GB/T 7588.1—2020中5.4. 3.2.2的要求\nd)轿底严重变形、开裂、锈蚀或穿孔\ne)玻璃轿壁、轿顶出现裂纹\nf)轿厢吊顶装饰固定不良，存在掉落风险",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "轿壁、轿顶和轿底不应出现下列情况之一："
+        },
+        {
+          "type": "paragraph",
+          "text": "a)轿壁、轿顶严重锈蚀穿孔或破损穿孔，孔的直径大于10mm"
+        },
+        {
+          "type": "paragraph",
+          "text": "b)轿壁、轿顶严重变形或破损，加强筋脱落"
+        },
+        {
+          "type": "paragraph",
+          "text": "c)轿壁的强度不符合GB/T 7588.1—2020中5.4. 3.2.2的要求"
+        },
+        {
+          "type": "paragraph",
+          "text": "d)轿底严重变形、开裂、锈蚀或穿孔"
+        },
+        {
+          "type": "paragraph",
+          "text": "e)玻璃轿壁、轿顶出现裂纹"
+        },
+        {
+          "type": "paragraph",
+          "text": "f)轿厢吊顶装饰固定不良，存在掉落风险"
+        }
+      ],
+      "result": "符合",
+      "severity": 1,
+      "probability": "F",
+      "category_raw": "Ⅲ",
+      "category": "III",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 85
+      }
+    },
+    {
+      "item_no": "13.8",
+      "name_raw": "轿壁、轿顶和轿底",
+      "sub_raw": "",
+      "requirements": "轿壁、轿顶和轿底不应出现下列情况之一：\na)轿壁、轿顶严重锈蚀穿孔或破损穿孔，孔的直径大于10mm\nb)轿壁、轿顶严重变形或破损，加强筋脱落\nc)轿壁的强度不符合GB/T 7588.1—2020中5.4. 3.2.2的要求\nd)轿底严重变形、开裂、锈蚀或穿孔\ne)玻璃轿壁、轿顶出现裂纹\nf)轿厢吊顶装饰固定不良，存在掉落风险",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "轿壁、轿顶和轿底不应出现下列情况之一："
+        },
+        {
+          "type": "paragraph",
+          "text": "a)轿壁、轿顶严重锈蚀穿孔或破损穿孔，孔的直径大于10mm"
+        },
+        {
+          "type": "paragraph",
+          "text": "b)轿壁、轿顶严重变形或破损，加强筋脱落"
+        },
+        {
+          "type": "paragraph",
+          "text": "c)轿壁的强度不符合GB/T 7588.1—2020中5.4. 3.2.2的要求"
+        },
+        {
+          "type": "paragraph",
+          "text": "d)轿底严重变形、开裂、锈蚀或穿孔"
+        },
+        {
+          "type": "paragraph",
+          "text": "e)玻璃轿壁、轿顶出现裂纹"
+        },
+        {
+          "type": "paragraph",
+          "text": "f)轿厢吊顶装饰固定不良，存在掉落风险"
+        }
+      ],
+      "result": "不符合",
+      "severity": 1,
+      "probability": "C",
+      "category_raw": "Ⅰ",
+      "category": "I",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 86
+      }
+    },
+    {
+      "item_no": "14.2",
+      "name_raw": "缓冲器固定",
+      "sub_raw": "",
+      "requirements": "缓冲器应固定可靠、无明显倾斜",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "缓冲器应固定可靠、无明显倾斜"
+        }
+      ],
+      "result": "符合",
+      "severity": 2,
+      "probability": "F",
+      "category_raw": "Ⅲ",
+      "category": "III",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 87
+      }
+    },
+    {
+      "item_no": "14.2",
+      "name_raw": "缓冲器固定",
+      "sub_raw": "",
+      "requirements": "缓冲器应固定可靠、无明显倾斜",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "缓冲器应固定可靠、无明显倾斜"
+        }
+      ],
+      "result": "不符合",
+      "severity": 2,
+      "probability": "C",
+      "category_raw": "Ⅰ",
+      "category": "I",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 88
+      }
+    },
+    {
+      "item_no": "14.3",
+      "name_raw": "线性缓冲器(弹簧缓冲器)",
+      "sub_raw": "",
+      "requirements": "线性缓冲器(弹簧缓冲器)不应出现下列情况之 一：\na)弹簧严重锈蚀或出现裂纹\nb)缓冲器动作后，有影响正常工作的永久变形或损坏",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "线性缓冲器(弹簧缓冲器)不应出现下列情况之 一："
+        },
+        {
+          "type": "paragraph",
+          "text": "a)弹簧严重锈蚀或出现裂纹"
+        },
+        {
+          "type": "paragraph",
+          "text": "b)缓冲器动作后，有影响正常工作的永久变形或损坏"
+        }
+      ],
+      "result": "符合",
+      "severity": 2,
+      "probability": "F",
+      "category_raw": "Ⅲ",
+      "category": "III",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 89
+      }
+    },
+    {
+      "item_no": "14.3",
+      "name_raw": "线性缓冲器(弹簧缓冲器)",
+      "sub_raw": "",
+      "requirements": "线性缓冲器(弹簧缓冲器)不应出现下列情况之 一：\na)弹簧严重锈蚀或出现裂纹\nb)缓冲器动作后，有影响正常工作的永久变形或损坏",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "线性缓冲器(弹簧缓冲器)不应出现下列情况之 一："
+        },
+        {
+          "type": "paragraph",
+          "text": "a)弹簧严重锈蚀或出现裂纹"
+        },
+        {
+          "type": "paragraph",
+          "text": "b)缓冲器动作后，有影响正常工作的永久变形或损坏"
+        }
+      ],
+      "result": "不符合",
+      "severity": 2,
+      "probability": "C",
+      "category_raw": "Ⅰ",
+      "category": "I",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 90
+      }
+    },
+    {
+      "item_no": "14.4",
+      "name_raw": "非线性缓冲器",
+      "sub_raw": "",
+      "requirements": "非线性缓冲器不应出现下列情况之一：\na)非金属材料出现开裂、剥落等老化现象\nb)缓冲器动作后，有影响正常工作的永久变形或损坏",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "非线性缓冲器不应出现下列情况之一："
+        },
+        {
+          "type": "paragraph",
+          "text": "a)非金属材料出现开裂、剥落等老化现象"
+        },
+        {
+          "type": "paragraph",
+          "text": "b)缓冲器动作后，有影响正常工作的永久变形或损坏"
+        }
+      ],
+      "result": "符合",
+      "severity": 2,
+      "probability": "F",
+      "category_raw": "Ⅲ",
+      "category": "III",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 91
+      }
+    },
+    {
+      "item_no": "14.4",
+      "name_raw": "非线性缓冲器",
+      "sub_raw": "",
+      "requirements": "非线性缓冲器不应出现下列情况之一：\na)非金属材料出现开裂、剥落等老化现象\nb)缓冲器动作后，有影响正常工作的永久变形或损坏",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "非线性缓冲器不应出现下列情况之一："
+        },
+        {
+          "type": "paragraph",
+          "text": "a)非金属材料出现开裂、剥落等老化现象"
+        },
+        {
+          "type": "paragraph",
+          "text": "b)缓冲器动作后，有影响正常工作的永久变形或损坏"
+        }
+      ],
+      "result": "不符合",
+      "severity": 2,
+      "probability": "C",
+      "category_raw": "Ⅰ",
+      "category": "I",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 92
+      }
+    },
+    {
+      "item_no": "14.5",
+      "name_raw": "耗能型缓冲器(液压缓冲器)",
+      "sub_raw": "",
+      "requirements": "耗能型缓冲器(液压缓冲器)液位应正确，便于检查，且有验证柱塞复位的电气安全装置，且不应 出现下列情况之一：\na)缸体有裂纹\nb)漏油，不能保证正常的工作液面高度\nc)柱塞锈蚀，影响正常工作\nd)复位弹簧失效，缓冲器复位不符合GB/T 7588. 2—2020中5.5.3.1.6.2的要求\ne)缓冲器动作后，有影响正常工作的永久变形或损坏",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "耗能型缓冲器(液压缓冲器)液位应正确，便于检查，且有验证柱塞复位的电气安全装置，且不应 出现下列情况之一："
+        },
+        {
+          "type": "paragraph",
+          "text": "a)缸体有裂纹"
+        },
+        {
+          "type": "paragraph",
+          "text": "b)漏油，不能保证正常的工作液面高度"
+        },
+        {
+          "type": "paragraph",
+          "text": "c)柱塞锈蚀，影响正常工作"
+        },
+        {
+          "type": "paragraph",
+          "text": "d)复位弹簧失效，缓冲器复位不符合GB/T 7588. 2—2020中5.5.3.1.6.2的要求"
+        },
+        {
+          "type": "paragraph",
+          "text": "e)缓冲器动作后，有影响正常工作的永久变形或损坏"
+        }
+      ],
+      "result": "符合",
+      "severity": 2,
+      "probability": "F",
+      "category_raw": "Ⅲ",
+      "category": "III",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 93
+      }
+    },
+    {
+      "item_no": "14.5",
+      "name_raw": "耗能型缓冲器(液压缓冲器)",
+      "sub_raw": "",
+      "requirements": "耗能型缓冲器(液压缓冲器)液位应正确，便于检查，且有验证柱塞复位的电气安全装置，且不应 出现下列情况之一：\na)缸体有裂纹\nb)漏油，不能保证正常的工作液面高度\nc)柱塞锈蚀，影响正常工作\nd)复位弹簧失效，缓冲器复位不符合GB/T 7588. 2—2020中5.5.3.1.6.2的要求\ne)缓冲器动作后，有影响正常工作的永久变形或损坏",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "耗能型缓冲器(液压缓冲器)液位应正确，便于检查，且有验证柱塞复位的电气安全装置，且不应 出现下列情况之一："
+        },
+        {
+          "type": "paragraph",
+          "text": "a)缸体有裂纹"
+        },
+        {
+          "type": "paragraph",
+          "text": "b)漏油，不能保证正常的工作液面高度"
+        },
+        {
+          "type": "paragraph",
+          "text": "c)柱塞锈蚀，影响正常工作"
+        },
+        {
+          "type": "paragraph",
+          "text": "d)复位弹簧失效，缓冲器复位不符合GB/T 7588. 2—2020中5.5.3.1.6.2的要求"
+        },
+        {
+          "type": "paragraph",
+          "text": "e)缓冲器动作后，有影响正常工作的永久变形或损坏"
+        }
+      ],
+      "result": "不符合",
+      "severity": 2,
+      "probability": "C",
+      "category_raw": "Ⅰ",
+      "category": "I",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 94
+      }
+    },
+    {
+      "item_no": "14.9",
+      "name_raw": "底坑环境",
+      "sub_raw": "",
+      "requirements": "底坑地面应平整，不应有积水、油污和杂物",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "底坑地面应平整，不应有积水、油污和杂物"
+        }
+      ],
+      "result": "符合",
+      "severity": 3,
+      "probability": "F",
+      "category_raw": "Ⅲ",
+      "category": "III",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 95
+      }
+    },
+    {
+      "item_no": "14.9",
+      "name_raw": "底坑环境",
+      "sub_raw": "",
+      "requirements": "底坑地面应平整，不应有积水、油污和杂物",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "底坑地面应平整，不应有积水、油污和杂物"
+        }
+      ],
+      "result": "不符合",
+      "severity": 3,
+      "probability": "D",
+      "category_raw": "Ⅱ",
+      "category": "II",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 96
+      }
+    },
+    {
+      "item_no": "16.1",
+      "name_raw": "控制柜",
+      "sub_raw": "",
+      "requirements": "控制柜不应出现下列情况之一：\na)控制柜柜体严重锈蚀变形、损坏，导致柜内元器件无法固定和正常使用\nb)控制柜内电气元件失效导致电梯不能正常运行，无法更换为同规格参数的元件，或更换替代元件后仍无法正常运行\nc)接线不规范不合理、标识混乱、接线柱松动\nd)控制柜防护等级低于IP2X\n注：包含能量回馈装置、自动救援操作装置、群控柜、轿厢控制部分。",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "控制柜不应出现下列情况之一："
+        },
+        {
+          "type": "paragraph",
+          "text": "a)控制柜柜体严重锈蚀变形、损坏，导致柜内元器件无法固定和正常使用"
+        },
+        {
+          "type": "paragraph",
+          "text": "b)控制柜内电气元件失效导致电梯不能正常运行，无法更换为同规格参数的元件，或更换替代元件后仍无法正常运行"
+        },
+        {
+          "type": "paragraph",
+          "text": "c)接线不规范不合理、标识混乱、接线柱松动"
+        },
+        {
+          "type": "paragraph",
+          "text": "d)控制柜防护等级低于IP2X"
+        },
+        {
+          "type": "paragraph",
+          "text": "注：包含能量回馈装置、自动救援操作装置、群控柜、轿厢控制部分。"
+        }
+      ],
+      "result": "符合",
+      "severity": 2,
+      "probability": "F",
+      "category_raw": "Ⅲ",
+      "category": "III",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 97
+      }
+    },
+    {
+      "item_no": "16.1",
+      "name_raw": "控制柜",
+      "sub_raw": "",
+      "requirements": "控制柜不应出现下列情况之一：\na)控制柜柜体严重锈蚀变形、损坏，导致柜内元器件无法固定和正常使用\nb)控制柜内电气元件失效导致电梯不能正常运行，无法更换为同规格参数的元件，或更换替代元件后仍无法正常运行\nc)接线不规范不合理、标识混乱、接线柱松动\nd)控制柜防护等级低于IP2X\n注：包含能量回馈装置、自动救援操作装置、群控柜、轿厢控制部分。",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "控制柜不应出现下列情况之一："
+        },
+        {
+          "type": "paragraph",
+          "text": "a)控制柜柜体严重锈蚀变形、损坏，导致柜内元器件无法固定和正常使用"
+        },
+        {
+          "type": "paragraph",
+          "text": "b)控制柜内电气元件失效导致电梯不能正常运行，无法更换为同规格参数的元件，或更换替代元件后仍无法正常运行"
+        },
+        {
+          "type": "paragraph",
+          "text": "c)接线不规范不合理、标识混乱、接线柱松动"
+        },
+        {
+          "type": "paragraph",
+          "text": "d)控制柜防护等级低于IP2X"
+        },
+        {
+          "type": "paragraph",
+          "text": "注：包含能量回馈装置、自动救援操作装置、群控柜、轿厢控制部分。"
+        }
+      ],
+      "result": "不符合",
+      "severity": 2,
+      "probability": "B",
+      "category_raw": "Ⅰ",
+      "category": "I",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 98
+      }
+    },
+    {
+      "item_no": "16.6",
+      "name_raw": "安全开关",
+      "sub_raw": "",
+      "requirements": "安全开关不应出现下列情况之一：\na)安全开关的外壳破损，存在触电危险\nb)安全开关触点严重锈蚀，影响正常运行\nc)安全开关触点严重烧灼或接触不良\nd)触发安全开关的机械装置失效\ne)驱动安全触点的结构失效\nf)被短接",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "安全开关不应出现下列情况之一："
+        },
+        {
+          "type": "paragraph",
+          "text": "a)安全开关的外壳破损，存在触电危险"
+        },
+        {
+          "type": "paragraph",
+          "text": "b)安全开关触点严重锈蚀，影响正常运行"
+        },
+        {
+          "type": "paragraph",
+          "text": "c)安全开关触点严重烧灼或接触不良"
+        },
+        {
+          "type": "paragraph",
+          "text": "d)触发安全开关的机械装置失效"
+        },
+        {
+          "type": "paragraph",
+          "text": "e)驱动安全触点的结构失效"
+        },
+        {
+          "type": "paragraph",
+          "text": "f)被短接"
+        }
+      ],
+      "result": "符合",
+      "severity": 2,
+      "probability": "F",
+      "category_raw": "Ⅲ",
+      "category": "III",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 99
+      }
+    },
+    {
+      "item_no": "16.6",
+      "name_raw": "安全开关",
+      "sub_raw": "",
+      "requirements": "安全开关不应出现下列情况之一：\na)安全开关的外壳破损，存在触电危险\nb)安全开关触点严重锈蚀，影响正常运行\nc)安全开关触点严重烧灼或接触不良\nd)触发安全开关的机械装置失效\ne)驱动安全触点的结构失效\nf)被短接",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "安全开关不应出现下列情况之一："
+        },
+        {
+          "type": "paragraph",
+          "text": "a)安全开关的外壳破损，存在触电危险"
+        },
+        {
+          "type": "paragraph",
+          "text": "b)安全开关触点严重锈蚀，影响正常运行"
+        },
+        {
+          "type": "paragraph",
+          "text": "c)安全开关触点严重烧灼或接触不良"
+        },
+        {
+          "type": "paragraph",
+          "text": "d)触发安全开关的机械装置失效"
+        },
+        {
+          "type": "paragraph",
+          "text": "e)驱动安全触点的结构失效"
+        },
+        {
+          "type": "paragraph",
+          "text": "f)被短接"
+        }
+      ],
+      "result": "不符合",
+      "severity": 2,
+      "probability": "D",
+      "category_raw": "Ⅱ",
+      "category": "II",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 100
+      }
+    },
+    {
+      "item_no": "16.8",
+      "name_raw": "导线和电缆",
+      "sub_raw": "",
+      "requirements": "导线和电缆不应出现下列情况之一：\na)护套出现开裂，导致导线外露\nb)绝缘材料发生破损、老化，导致导体外露或绝缘电阻不符合GB/T 7588.1—2020中5.10.1.3.1的要求\nc)导线发生断裂或短路",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "导线和电缆不应出现下列情况之一："
+        },
+        {
+          "type": "paragraph",
+          "text": "a)护套出现开裂，导致导线外露"
+        },
+        {
+          "type": "paragraph",
+          "text": "b)绝缘材料发生破损、老化，导致导体外露或绝缘电阻不符合GB/T 7588.1—2020中5.10.1.3.1的要求"
+        },
+        {
+          "type": "paragraph",
+          "text": "c)导线发生断裂或短路"
+        }
+      ],
+      "result": "符合",
+      "severity": 2,
+      "probability": "F",
+      "category_raw": "Ⅲ",
+      "category": "III",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 101
+      }
+    },
+    {
+      "item_no": "16.8",
+      "name_raw": "导线和电缆",
+      "sub_raw": "",
+      "requirements": "导线和电缆不应出现下列情况之一：\na)护套出现开裂，导致导线外露\nb)绝缘材料发生破损、老化，导致导体外露或绝缘电阻不符合GB/T 7588.1—2020中5.10.1.3.1的要求\nc)导线发生断裂或短路",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "导线和电缆不应出现下列情况之一："
+        },
+        {
+          "type": "paragraph",
+          "text": "a)护套出现开裂，导致导线外露"
+        },
+        {
+          "type": "paragraph",
+          "text": "b)绝缘材料发生破损、老化，导致导体外露或绝缘电阻不符合GB/T 7588.1—2020中5.10.1.3.1的要求"
+        },
+        {
+          "type": "paragraph",
+          "text": "c)导线发生断裂或短路"
+        }
+      ],
+      "result": "不符合",
+      "severity": 2,
+      "probability": "D",
+      "category_raw": "Ⅱ",
+      "category": "II",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 102
+      }
+    },
+    {
+      "item_no": "16.11",
+      "name_raw": "层门和轿门旁路装置",
+      "sub_raw": "",
+      "requirements": "层门和轿门旁路装置应符合GB/T 7588.1—2020中5.12.1.8的要求",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "层门和轿门旁路装置应符合GB/T 7588.1—2020中5.12.1.8的要求"
+        }
+      ],
+      "result": "符合",
+      "severity": 1,
+      "probability": "F",
+      "category_raw": "Ⅲ",
+      "category": "III",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 103
+      }
+    },
+    {
+      "item_no": "16.11",
+      "name_raw": "层门和轿门旁路装置",
+      "sub_raw": "",
+      "requirements": "层门和轿门旁路装置应符合GB/T 7588.1—2020中5.12.1.8的要求",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "层门和轿门旁路装置应符合GB/T 7588.1—2020中5.12.1.8的要求"
+        }
+      ],
+      "result": "不符合",
+      "severity": 1,
+      "probability": "D",
+      "category_raw": "Ⅰ",
+      "category": "I",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 104
+      }
+    },
+    {
+      "item_no": "16.12",
+      "name_raw": "门回路监测功能",
+      "sub_raw": "",
+      "requirements": "门触点故障时应防止电梯正常运行，即应符合GB/T 7588.1—2020中5.12.1.9的要求",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "门触点故障时应防止电梯正常运行，即应符合GB/T 7588.1—2020中5.12.1.9的要求"
+        }
+      ],
+      "result": "符合",
+      "severity": 1,
+      "probability": "F",
+      "category_raw": "Ⅲ",
+      "category": "III",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 105
+      }
+    },
+    {
+      "item_no": "16.12",
+      "name_raw": "门回路监测功能",
+      "sub_raw": "",
+      "requirements": "门触点故障时应防止电梯正常运行，即应符合GB/T 7588.1—2020中5.12.1.9的要求",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "门触点故障时应防止电梯正常运行，即应符合GB/T 7588.1—2020中5.12.1.9的要求"
+        }
+      ],
+      "result": "不符合",
+      "severity": 1,
+      "probability": "D",
+      "category_raw": "Ⅰ",
+      "category": "I",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 106
+      }
+    },
+    {
+      "item_no": "17.1",
+      "name_raw": "平衡系数试验",
+      "sub_raw": "",
+      "requirements": "应在0.40～0.50之间，或者符合制造(改造)单位的设计要求",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "应在0.40～0.50之间，或者符合制造(改造)单位的设计要求"
+        }
+      ],
+      "result": "符合",
+      "severity": 1,
+      "probability": "F",
+      "category_raw": "Ⅲ",
+      "category": "III",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 107
+      }
+    },
+    {
+      "item_no": "17.1",
+      "name_raw": "平衡系数试验",
+      "sub_raw": "",
+      "requirements": "应在0.40～0.50之间，或者符合制造(改造)单位的设计要求",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "应在0.40～0.50之间，或者符合制造(改造)单位的设计要求"
+        }
+      ],
+      "result": "不符合",
+      "severity": 1,
+      "probability": "B",
+      "category_raw": "Ⅰ",
+      "category": "I",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 108
+      }
+    },
+    {
+      "item_no": "17.2",
+      "name_raw": "轿厢上行超速保护装置试验",
+      "sub_raw": "",
+      "requirements": "当轿厢上行速度失控时，轿厢上行超速保护装置 应动作，使轿厢制停或者至少使其速度降低至对重缓冲器的设计范围；该装置动作时，应使一个电气安全装置动作",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "当轿厢上行速度失控时，轿厢上行超速保护装置 应动作，使轿厢制停或者至少使其速度降低至对重缓冲器的设计范围；该装置动作时，应使一个电气安全装置动作"
+        }
+      ],
+      "result": "符合",
+      "severity": 1,
+      "probability": "F",
+      "category_raw": "Ⅲ",
+      "category": "III",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 109
+      }
+    },
+    {
+      "item_no": "17.2",
+      "name_raw": "轿厢上行超速保护装置试验",
+      "sub_raw": "",
+      "requirements": "当轿厢上行速度失控时，轿厢上行超速保护装置 应动作，使轿厢制停或者至少使其速度降低至对重缓冲器的设计范围；该装置动作时，应使一个电气安全装置动作",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "当轿厢上行速度失控时，轿厢上行超速保护装置 应动作，使轿厢制停或者至少使其速度降低至对重缓冲器的设计范围；该装置动作时，应使一个电气安全装置动作"
+        }
+      ],
+      "result": "不符合",
+      "severity": 1,
+      "probability": "C",
+      "category_raw": "Ⅰ",
+      "category": "I",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 110
+      }
+    },
+    {
+      "item_no": "17.3",
+      "name_raw": "轿厢意外移动保护装置试验",
+      "sub_raw": "",
+      "requirements": "a)轿厢在井道上部空载，以型式试验证书所给出的试验速度上行并触发制停部件，仅使用制停部件能够使电梯停止，轿厢的移动距离在型式试验证书给出的范围内\nb)如果电梯采用内部冗余的驱动主机制动器作为制停部件，则当制动器机械装置提起(或者释放)失效，或者制动力不足时，应关闭轿门和层门，并且防止电梯的正常启动",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "a)轿厢在井道上部空载，以型式试验证书所给出的试验速度上行并触发制停部件，仅使用制停部件能够使电梯停止，轿厢的移动距离在型式试验证书给出的范围内"
+        },
+        {
+          "type": "paragraph",
+          "text": "b)如果电梯采用内部冗余的驱动主机制动器作为制停部件，则当制动器机械装置提起(或者释放)失效，或者制动力不足时，应关闭轿门和层门，并且防止电梯的正常启动"
+        }
+      ],
+      "result": "符合",
+      "severity": 1,
+      "probability": "F",
+      "category_raw": "Ⅲ",
+      "category": "III",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 111
+      }
+    },
+    {
+      "item_no": "17.3",
+      "name_raw": "轿厢意外移动保护装置试验",
+      "sub_raw": "",
+      "requirements": "a)轿厢在井道上部空载，以型式试验证书所给出的试验速度上行并触发制停部件，仅使用制停部件能够使电梯停止，轿厢的移动距离在型式试验证书给出的范围内\nb)如果电梯采用内部冗余的驱动主机制动器作为制停部件，则当制动器机械装置提起(或者释放)失效，或者制动力不足时，应关闭轿门和层门，并且防止电梯的正常启动",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "a)轿厢在井道上部空载，以型式试验证书所给出的试验速度上行并触发制停部件，仅使用制停部件能够使电梯停止，轿厢的移动距离在型式试验证书给出的范围内"
+        },
+        {
+          "type": "paragraph",
+          "text": "b)如果电梯采用内部冗余的驱动主机制动器作为制停部件，则当制动器机械装置提起(或者释放)失效，或者制动力不足时，应关闭轿门和层门，并且防止电梯的正常启动"
+        }
+      ],
+      "result": "不符合",
+      "severity": 1,
+      "probability": "C",
+      "category_raw": "Ⅰ",
+      "category": "I",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 112
+      }
+    },
+    {
+      "item_no": "17.4",
+      "name_raw": "限速器-安全钳(包括轿厢和对重或平衡重)联动试验",
+      "sub_raw": "",
+      "requirements": "轿厢空载，以检修速度进行限速器—安全钳联动试验，限速器、安全钳动作应可靠",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "轿厢空载，以检修速度进行限速器—安全钳联动试验，限速器、安全钳动作应可靠"
+        }
+      ],
+      "result": "符合",
+      "severity": 1,
+      "probability": "F",
+      "category_raw": "Ⅲ",
+      "category": "III",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 113
+      }
+    },
+    {
+      "item_no": "17.4",
+      "name_raw": "限速器-安全钳(包括轿厢和对重或平衡重)联动试验",
+      "sub_raw": "",
+      "requirements": "轿厢空载，以检修速度进行限速器—安全钳联动试验，限速器、安全钳动作应可靠",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "轿厢空载，以检修速度进行限速器—安全钳联动试验，限速器、安全钳动作应可靠"
+        }
+      ],
+      "result": "不符合",
+      "severity": 1,
+      "probability": "C",
+      "category_raw": "Ⅰ",
+      "category": "I",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 114
+      }
+    },
+    {
+      "item_no": "17.5",
+      "name_raw": "运行试验",
+      "sub_raw": "",
+      "requirements": "a)轿厢分别空载、满载，以正常运行速度上、下运行，呼梯、楼层显示等信号系统功能有效、指示正确、动作无误，轿厢平层良好，无异常现象发生\nb)对于设有IC卡系统的电梯，轿厢内的人员无需通过IC卡系统即可到达建筑物的出口层，并且在电梯退出正常服务时，自动退出IC卡功能",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "a)轿厢分别空载、满载，以正常运行速度上、下运行，呼梯、楼层显示等信号系统功能有效、指示正确、动作无误，轿厢平层良好，无异常现象发生"
+        },
+        {
+          "type": "paragraph",
+          "text": "b)对于设有IC卡系统的电梯，轿厢内的人员无需通过IC卡系统即可到达建筑物的出口层，并且在电梯退出正常服务时，自动退出IC卡功能"
+        }
+      ],
+      "result": "符合",
+      "severity": 3,
+      "probability": "F",
+      "category_raw": "Ⅲ",
+      "category": "III",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 115
+      }
+    },
+    {
+      "item_no": "17.5",
+      "name_raw": "运行试验",
+      "sub_raw": "",
+      "requirements": "a)轿厢分别空载、满载，以正常运行速度上、下运行，呼梯、楼层显示等信号系统功能有效、指示正确、动作无误，轿厢平层良好，无异常现象发生\nb)对于设有IC卡系统的电梯，轿厢内的人员无需通过IC卡系统即可到达建筑物的出口层，并且在电梯退出正常服务时，自动退出IC卡功能",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "a)轿厢分别空载、满载，以正常运行速度上、下运行，呼梯、楼层显示等信号系统功能有效、指示正确、动作无误，轿厢平层良好，无异常现象发生"
+        },
+        {
+          "type": "paragraph",
+          "text": "b)对于设有IC卡系统的电梯，轿厢内的人员无需通过IC卡系统即可到达建筑物的出口层，并且在电梯退出正常服务时，自动退出IC卡功能"
+        }
+      ],
+      "result": "不符合",
+      "severity": 3,
+      "probability": "D",
+      "category_raw": "Ⅱ",
+      "category": "II",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 116
+      }
+    },
+    {
+      "item_no": "17.6",
+      "name_raw": "应急救援试验",
+      "sub_raw": "",
+      "requirements": "a)在机房内或者紧急操作和动态测试装置上设有明晰的应急救援程序，所有救援工具齐全\nb)建筑物内的救援通道保持通畅，以便相关人员无阻碍地抵达实施紧急操作的位置和层站等处\nc)在各种载荷工况下，按照本条a)所述的应急救援程序实施操作，能够安全、及时地解救被困人员",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "a)在机房内或者紧急操作和动态测试装置上设有明晰的应急救援程序，所有救援工具齐全"
+        },
+        {
+          "type": "paragraph",
+          "text": "b)建筑物内的救援通道保持通畅，以便相关人员无阻碍地抵达实施紧急操作的位置和层站等处"
+        },
+        {
+          "type": "paragraph",
+          "text": "c)在各种载荷工况下，按照本条a)所述的应急救援程序实施操作，能够安全、及时地解救被困人员"
+        }
+      ],
+      "result": "符合",
+      "severity": 2,
+      "probability": "F",
+      "category_raw": "Ⅲ",
+      "category": "III",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 117
+      }
+    },
+    {
+      "item_no": "17.6",
+      "name_raw": "应急救援试验",
+      "sub_raw": "",
+      "requirements": "a)在机房内或者紧急操作和动态测试装置上设有明晰的应急救援程序，所有救援工具齐全\nb)建筑物内的救援通道保持通畅，以便相关人员无阻碍地抵达实施紧急操作的位置和层站等处\nc)在各种载荷工况下，按照本条a)所述的应急救援程序实施操作，能够安全、及时地解救被困人员",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "a)在机房内或者紧急操作和动态测试装置上设有明晰的应急救援程序，所有救援工具齐全"
+        },
+        {
+          "type": "paragraph",
+          "text": "b)建筑物内的救援通道保持通畅，以便相关人员无阻碍地抵达实施紧急操作的位置和层站等处"
+        },
+        {
+          "type": "paragraph",
+          "text": "c)在各种载荷工况下，按照本条a)所述的应急救援程序实施操作，能够安全、及时地解救被困人员"
+        }
+      ],
+      "result": "不符合",
+      "severity": 2,
+      "probability": "D",
+      "category_raw": "Ⅱ",
+      "category": "II",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 118
+      }
+    },
+    {
+      "item_no": "17.8",
+      "name_raw": "空载曳引检查",
+      "sub_raw": "",
+      "requirements": "当对重压在缓冲器上而曳引机按电梯上行方向旋转时，应不能提升空载轿厢至危险位置",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "当对重压在缓冲器上而曳引机按电梯上行方向旋转时，应不能提升空载轿厢至危险位置"
+        }
+      ],
+      "result": "符合",
+      "severity": 1,
+      "probability": "F",
+      "category_raw": "Ⅲ",
+      "category": "III",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 119
+      }
+    },
+    {
+      "item_no": "17.8",
+      "name_raw": "空载曳引检查",
+      "sub_raw": "",
+      "requirements": "当对重压在缓冲器上而曳引机按电梯上行方向旋转时，应不能提升空载轿厢至危险位置",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "当对重压在缓冲器上而曳引机按电梯上行方向旋转时，应不能提升空载轿厢至危险位置"
+        }
+      ],
+      "result": "不符合",
+      "severity": 1,
+      "probability": "B",
+      "category_raw": "Ⅰ",
+      "category": "I",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 120
+      }
+    },
+    {
+      "item_no": "17.9",
+      "name_raw": "上行制动工况曳引检查",
+      "sub_raw": "",
+      "requirements": "轿厢空载以正常运行速度上行至行程上部，切断电动机与制动器供电，轿厢应完全停止",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "轿厢空载以正常运行速度上行至行程上部，切断电动机与制动器供电，轿厢应完全停止"
+        }
+      ],
+      "result": "符合",
+      "severity": 1,
+      "probability": "F",
+      "category_raw": "Ⅲ",
+      "category": "III",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 121
+      }
+    },
+    {
+      "item_no": "17.9",
+      "name_raw": "上行制动工况曳引检查",
+      "sub_raw": "",
+      "requirements": "轿厢空载以正常运行速度上行至行程上部，切断电动机与制动器供电，轿厢应完全停止",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "轿厢空载以正常运行速度上行至行程上部，切断电动机与制动器供电，轿厢应完全停止"
+        }
+      ],
+      "result": "不符合",
+      "severity": 1,
+      "probability": "B",
+      "category_raw": "Ⅰ",
+      "category": "I",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 122
+      }
+    },
+    {
+      "item_no": "17.10",
+      "name_raw": "下行制动工况曳引检查",
+      "sub_raw": "",
+      "requirements": "轿厢装载125%额定载重量，以正常运行速度下行至行程下部，切断电动机与制动器供电，轿厢应完全停止",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "轿厢装载125%额定载重量，以正常运行速度下行至行程下部，切断电动机与制动器供电，轿厢应完全停止"
+        }
+      ],
+      "result": "符合",
+      "severity": 1,
+      "probability": "F",
+      "category_raw": "Ⅲ",
+      "category": "III",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 123
+      }
+    },
+    {
+      "item_no": "17.10",
+      "name_raw": "下行制动工况曳引检查",
+      "sub_raw": "",
+      "requirements": "轿厢装载125%额定载重量，以正常运行速度下行至行程下部，切断电动机与制动器供电，轿厢应完全停止",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "轿厢装载125%额定载重量，以正常运行速度下行至行程下部，切断电动机与制动器供电，轿厢应完全停止"
+        }
+      ],
+      "result": "不符合",
+      "severity": 1,
+      "probability": "B",
+      "category_raw": "Ⅰ",
+      "category": "I",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 124
+      }
+    },
+    {
+      "item_no": "17.11",
+      "name_raw": "制动试验",
+      "sub_raw": "",
+      "requirements": "轿厢装载125%额定载重量，以正常运行速度下行时，切断电动机和制动器供电，制动器应能够使驱动主机停止运转且轿厢应完全停止，试验后轿厢应无明显变形和损坏\n注：“制动试验”可以与“下行制动工况曳引检查”一并试验。",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "轿厢装载125%额定载重量，以正常运行速度下行时，切断电动机和制动器供电，制动器应能够使驱动主机停止运转且轿厢应完全停止，试验后轿厢应无明显变形和损坏"
+        },
+        {
+          "type": "paragraph",
+          "text": "注：“制动试验”可以与“下行制动工况曳引检查”一并试验。"
+        }
+      ],
+      "result": "符合",
+      "severity": 1,
+      "probability": "F",
+      "category_raw": "Ⅲ",
+      "category": "III",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 125
+      }
+    },
+    {
+      "item_no": "17.11",
+      "name_raw": "制动试验",
+      "sub_raw": "",
+      "requirements": "轿厢装载125%额定载重量，以正常运行速度下行时，切断电动机和制动器供电，制动器应能够使驱动主机停止运转且轿厢应完全停止，试验后轿厢应无明显变形和损坏\n注：“制动试验”可以与“下行制动工况曳引检查”一并试验。",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "轿厢装载125%额定载重量，以正常运行速度下行时，切断电动机和制动器供电，制动器应能够使驱动主机停止运转且轿厢应完全停止，试验后轿厢应无明显变形和损坏"
+        },
+        {
+          "type": "paragraph",
+          "text": "注：“制动试验”可以与“下行制动工况曳引检查”一并试验。"
+        }
+      ],
+      "result": "不符合",
+      "severity": 1,
+      "probability": "B",
+      "category_raw": "Ⅰ",
+      "category": "I",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 126
+      }
+    },
+    {
+      "item_no": "18.1",
+      "name_raw": "运行噪声",
+      "sub_raw": "",
+      "requirements": "按照GB/T 10059—2009中4.2.5规定方法所测得的乘客电梯运行中轿厢内噪声，开关门过程噪声和机房噪声应符合GB/T 10058—2009中3.3.6的要求",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "按照GB/T 10059—2009中4.2.5规定方法所测得的乘客电梯运行中轿厢内噪声，开关门过程噪声和机房噪声应符合GB/T 10058—2009中3.3.6的要求"
+        }
+      ],
+      "result": "符合",
+      "severity": 4,
+      "probability": "F",
+      "category_raw": "Ⅲ",
+      "category": "III",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 127
+      }
+    },
+    {
+      "item_no": "18.1",
+      "name_raw": "运行噪声",
+      "sub_raw": "",
+      "requirements": "按照GB/T 10059—2009中4.2.5规定方法所测得的乘客电梯运行中轿厢内噪声，开关门过程噪声和机房噪声应符合GB/T 10058—2009中3.3.6的要求",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "按照GB/T 10059—2009中4.2.5规定方法所测得的乘客电梯运行中轿厢内噪声，开关门过程噪声和机房噪声应符合GB/T 10058—2009中3.3.6的要求"
+        }
+      ],
+      "result": "不符合",
+      "severity": 4,
+      "probability": "B",
+      "category_raw": "Ⅱ",
+      "category": "II",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 128
+      }
+    },
+    {
+      "item_no": "18.2",
+      "name_raw": "启动加速度、制停减速度",
+      "sub_raw": "",
+      "requirements": "a)乘客电梯起动加速度和制动减速度最大值不应大于1.5 m/s²\nb)当乘客电梯额定速度为1.0m/s<v≤2.0m/s时，  按GB/T 24474.1—2020中5.2.3测量，A95加、减速度不应小于0.5m/s²\nc)当乘客电梯额定速度为2.0m/s<v≤6.0m/时，按GB/T 24474.1—2020中5.2.3测量，A95加、减速度不应小于0.7m/s²",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "a)乘客电梯起动加速度和制动减速度最大值不应大于1.5 m/s²"
+        },
+        {
+          "type": "paragraph",
+          "text": "b)当乘客电梯额定速度为1.0m/s<v≤2.0m/s时，  按GB/T 24474.1—2020中5.2.3测量，A95加、减速度不应小于0.5m/s²"
+        },
+        {
+          "type": "paragraph",
+          "text": "c)当乘客电梯额定速度为2.0m/s<v≤6.0m/时，按GB/T 24474.1—2020中5.2.3测量，A95加、减速度不应小于0.7m/s²"
+        }
+      ],
+      "result": "符合",
+      "severity": 4,
+      "probability": "F",
+      "category_raw": "Ⅲ",
+      "category": "III",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 129
+      }
+    },
+    {
+      "item_no": "18.2",
+      "name_raw": "启动加速度、制停减速度",
+      "sub_raw": "",
+      "requirements": "a)乘客电梯起动加速度和制动减速度最大值不应大于1.5 m/s²\nb)当乘客电梯额定速度为1.0m/s<v≤2.0m/s时，  按GB/T 24474.1—2020中5.2.3测量，A95加、减速度不应小于0.5m/s²\nc)当乘客电梯额定速度为2.0m/s<v≤6.0m/时，按GB/T 24474.1—2020中5.2.3测量，A95加、减速度不应小于0.7m/s²",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "a)乘客电梯起动加速度和制动减速度最大值不应大于1.5 m/s²"
+        },
+        {
+          "type": "paragraph",
+          "text": "b)当乘客电梯额定速度为1.0m/s<v≤2.0m/s时，  按GB/T 24474.1—2020中5.2.3测量，A95加、减速度不应小于0.5m/s²"
+        },
+        {
+          "type": "paragraph",
+          "text": "c)当乘客电梯额定速度为2.0m/s<v≤6.0m/时，按GB/T 24474.1—2020中5.2.3测量，A95加、减速度不应小于0.7m/s²"
+        }
+      ],
+      "result": "不符合",
+      "severity": 4,
+      "probability": "B",
+      "category_raw": "Ⅱ",
+      "category": "II",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 130
+      }
+    },
+    {
+      "item_no": "18.3",
+      "name_raw": "轿厢最大水平振动",
+      "sub_raw": "",
+      "requirements": "乘客电梯轿厢运行期间水平振动的最大峰峰值不应大于0.20m/s² ，A95峰峰值不应大于0.15m/s²",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "乘客电梯轿厢运行期间水平振动的最大峰峰值不应大于0.20m/s² ，A95峰峰值不应大于0.15m/s²"
+        }
+      ],
+      "result": "符合",
+      "severity": 4,
+      "probability": "F",
+      "category_raw": "Ⅲ",
+      "category": "III",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 131
+      }
+    },
+    {
+      "item_no": "18.3",
+      "name_raw": "轿厢最大水平振动",
+      "sub_raw": "",
+      "requirements": "乘客电梯轿厢运行期间水平振动的最大峰峰值不应大于0.20m/s² ，A95峰峰值不应大于0.15m/s²",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "乘客电梯轿厢运行期间水平振动的最大峰峰值不应大于0.20m/s² ，A95峰峰值不应大于0.15m/s²"
+        }
+      ],
+      "result": "不符合",
+      "severity": 4,
+      "probability": "B",
+      "category_raw": "Ⅱ",
+      "category": "II",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 132
+      }
+    },
+    {
+      "item_no": "18.4",
+      "name_raw": "轿厢最大垂直振动",
+      "sub_raw": "",
+      "requirements": "乘客电梯轿厢运行在恒加速度区域内的垂直振动的最大峰峰值不应大于0.30m/s²，A95峰峰值不 应大于0.20m/s²",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "乘客电梯轿厢运行在恒加速度区域内的垂直振动的最大峰峰值不应大于0.30m/s²，A95峰峰值不 应大于0.20m/s²"
+        }
+      ],
+      "result": "符合",
+      "severity": 4,
+      "probability": "F",
+      "category_raw": "Ⅲ",
+      "category": "III",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 133
+      }
+    },
+    {
+      "item_no": "18.4",
+      "name_raw": "轿厢最大垂直振动",
+      "sub_raw": "",
+      "requirements": "乘客电梯轿厢运行在恒加速度区域内的垂直振动的最大峰峰值不应大于0.30m/s²，A95峰峰值不 应大于0.20m/s²",
+      "requirement_blocks": [
+        {
+          "type": "paragraph",
+          "text": "乘客电梯轿厢运行在恒加速度区域内的垂直振动的最大峰峰值不应大于0.30m/s²，A95峰峰值不 应大于0.20m/s²"
+        }
+      ],
+      "result": "不符合",
+      "severity": 4,
+      "probability": "B",
+      "category_raw": "Ⅱ",
+      "category": "II",
+      "source": {
+        "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+        "table": 3,
+        "row": 134
+      }
+    }
+  ]
+}

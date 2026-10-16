@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { CAT_MEASURE } from '@/domain/riskScore'
 import type { AppendixRow } from '@/types/report'
 
 defineProps<{ rows: AppendixRow[] }>()
@@ -17,12 +16,12 @@ defineProps<{ rows: AppendixRow[] }>()
       </tr>
     </thead>
     <tbody>
-      <tr v-for="(row, i) in rows" :key="row.no">
+      <tr v-for="(row, i) in rows" :key="row.key">
         <td class="ctr">{{ i + 1 }}</td>
         <td class="ctr">{{ row.no }}</td>
         <td>{{ row.text }}{{ row.risk.category === 'Ⅰ类' ? '（见注）' : '' }}</td>
         <td class="ctr">{{ row.risk.category }}</td>
-        <td>{{ CAT_MEASURE[row.risk.category] }}</td>
+        <td>{{ row.measure }}</td>
       </tr>
     </tbody>
   </table>

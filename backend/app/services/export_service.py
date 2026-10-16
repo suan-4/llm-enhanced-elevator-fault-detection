@@ -47,6 +47,31 @@ def _esc(v) -> str:
 
 
 _TABLE_RE = re.compile(r"<table\b([^>]*)>", re.I)
+_PAPER_RE = re.compile(r'''<div\b[^>]*\bclass=["']paper["'][^>]*>''', re.I)
+_INFO_RE = re.compile(
+    r'''(<table\b[^>]*\bclass=["']info["'][^>]*>)(.*?)(</table>)''', re.I | re.S)
+
+
+def _document_layout(body_html: str) -> str:
+    """把网页CSS之外的文档结构显式传给Writer HTML导入器。"""
+    first = True
+
+    def section(match):
+        nonlocal first
+        if first:
+            first = False
+            return match.group(0)
+        # Writer忽略div上的page-break-before，但识别段落上的该属性。
+        return '<p style="page-break-before: always; margin: 0"></p>' + match.group(0)
+
+    def columns(match):
+        if re.match(r'\s*<colgroup\b', match.group(2), re.I):
+            return match.group(0)
+        # info表为标签/值/标签/值四列，跨三列的整行字段保持原有colspan。
+        grid = '<colgroup><col width="15%"><col width="35%"><col width="15%"><col width="35%"></colgroup>'
+        return match.group(1) + grid + match.group(2) + match.group(3)
+
+    return _INFO_RE.sub(columns, _PAPER_RE.sub(section, body_html or ""))
 
 
 def _borderize(html_str: str) -> str:
@@ -89,7 +114,8 @@ def ensure_export_dir() -> None:
         ) from e
     # 属主与权限是给桌面用户取文件用的；改不动不影响导出本身，可以容忍。
     try:
-        os.chown(EXPORT_DIR, EXPORT_UID, EXPORT_GID)
+        if hasattr(os, "chown"):
+            os.chown(EXPORT_DIR, EXPORT_UID, EXPORT_GID)
         os.chmod(EXPORT_DIR, 0o755)
     except OSError:
         pass
@@ -115,9 +141,10 @@ def build_html(title: str, meta_rows, body_html: str,
     return """<!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>%(title)s</title>
 <style>
-@page { size: A4; margin: 20mm 18mm 18mm 18mm; }
+/* Writer HTML导入不识别A4简写，会静默退回Letter，必须使用明确尺寸。 */
+@page { size: 210mm 297mm; margin: 20mm 18mm 18mm 18mm; }
 body  { font-family: "Noto Sans CJK SC","Noto Sans CJK JP","WenQuanYi Zen Hei",sans-serif;
-        font-size: 10.5pt; line-height: 1.75; color: #1a1a1a; }
+        font-size: 10.5pt; line-height: 1.35; color: #1a1a1a; }
 h1    { font-size: 17pt; text-align: center; margin: 0 0 4pt 0; }
 .sub  { text-align: center; font-size: 10pt; color: #5a6b75; margin: 0 0 16pt 0; }
 h2    { font-size: 12.5pt; color: #1b5e7a; margin: 16pt 0 8pt 0;
@@ -136,13 +163,14 @@ table.meta th, table.meta td { border: 1px solid #000; padding: 4pt 7pt; font-si
    实测模板 JTE-09-R02-3.00 的 w:shd 填充全是 FFFFFF（白），没有一处彩色底；
    之前给表头加淡蓝底、后来又改成浅灰底，都是凭空加的（现场反馈「抬头标题有背景色」）。 */
 table { border-collapse: collapse; width: 100%%; margin: 6pt 0 12pt 0; }
-th, td { border: 1px solid #000; padding: 3pt 6pt; font-size: 9.5pt; vertical-align: top; }
+th, td { border: 1px solid #000; padding: 1.5mm 2mm; font-size: 9pt; vertical-align: top; }
 th { font-weight: bold; }
 table.meta th, table.meta td { padding: 4pt 7pt; font-size: 10pt; }
 .card { margin: 0 0 8pt 0; }
 .raw-text { font-size: 10.5pt; }
 .section-title, .card-header { font-weight: bold; }
 .empty { color: #6b7b85; }
+.notes { font-size: 9pt; }
 .foot { margin-top: 22pt; font-size: 9pt; color: #6b7b85; text-align: center; }
 </style></head>
 <body>
@@ -155,7 +183,7 @@ table.meta th, table.meta td { padding: 4pt 7pt; font-size: 10pt; }
         "sub": sub_html,
         "meta": meta_table,
         "head": head_html,
-        "body": _borderize(body_html),
+        "body": _borderize(_document_layout(body_html)),
         "foot": ('<div class="foot">%s</div>' % _esc(footer)) if footer else "",
     }
 
@@ -205,7 +233,8 @@ def export(html_str: str, fmt: str, stem: str) -> dict:
             final = EXPORT_DIR / ("%s_%s.%s" % (clean_stem, datetime.now().strftime("%H%M%S"), fmt))
         shutil.move(str(out), str(final))
         try:
-            os.chown(final, EXPORT_UID, EXPORT_GID)
+            if hasattr(os, "chown"):
+                os.chown(final, EXPORT_UID, EXPORT_GID)
             os.chmod(final, 0o644)
         except OSError:
             pass

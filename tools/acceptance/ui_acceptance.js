@@ -277,7 +277,8 @@ async function seedEmptyDraft(browser) {
     );
     const ta = page.locator("#row-2-1 textarea");
     await ta.waitFor({ state: "visible", timeout: 8000 });
-    await ta.fill("箱体出现裂纹");
+    // 使用本项目清单原文验证“其他”的明确匹配；不依赖板端模型在线。
+    await ta.fill((await page.locator("#row-2-1 .reasons label.chk").first().innerText()).trim());
     await page.waitForTimeout(300);
     const counters = (await page.locator(".actionbar .count").innerText()).replace(/\s+/g, " ");
 
@@ -561,8 +562,9 @@ async function seedEmptyDraft(browser) {
       return [...new Set(bad)];
     });
     const reportClauseOk = reportClauseLeak.length === 0;
-    const grade4 = bodyText.includes("四级");
-    const score0 = bodyText.includes("综合安全状况得分：0");
+    const gradeExpected = bodyText.includes("综合安全状况等级：一级");
+    // 65个符合(Ⅲ类) + 1个减速箱风险(Ⅱ类)：100*(65*2-1)/(66*2)。
+    const scoreExpected = bodyText.includes("综合安全状况得分：97.73");
     const hasAppendix = bodyText.includes("降低风险措施");
     const hasAppendixA = bodyText.includes("附录A");
     const filled = bodyText.includes("44786091");
@@ -664,7 +666,7 @@ async function seedEmptyDraft(browser) {
       paperLayoutOk && cardOk && newBtnOk && actionbarStableOk && defaultsOk &&
       rows === 66 && overflow <= 0 && alertVisible && alertCount > 0 &&
       focusedId.startsWith("f-") && counters.includes("未填 0 项") &&
-      papers === 4 && overflowReport <= 0 && grade4 && score0 &&
+      papers === 4 && overflowReport <= 0 && gradeExpected && scoreExpected &&
       hasAppendix && hasAppendixA && filled &&
       (exportOk || toast.length > 0) && errs.length === 0;
     allOk = allOk && pass;
@@ -715,7 +717,7 @@ async function seedEmptyDraft(browser) {
     console.log(`  跳转定位        ${focusedId}`);
     console.log(`  计数栏          ${counters}`);
     console.log(`  报告页数        ${papers}`);
-    console.log(`  内容校验        四级=${grade4} 得分0=${score0} 附页=${hasAppendix} 附录A=${hasAppendixA} 抬头=${filled}`);
+    console.log(`  内容校验        一级=${gradeExpected} 得分97.73=${scoreExpected} 附页=${hasAppendix} 附录A=${hasAppendixA} 抬头=${filled}`);
     console.log(
       `  纸张版式        ${JSON.stringify(paperLayout)} ${paperLayoutOk ? "✓" : "✗"}`,
     );

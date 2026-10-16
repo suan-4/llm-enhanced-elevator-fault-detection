@@ -15,8 +15,8 @@ defineProps<{
   riskByNo: Record<string, RiskValue>
   appendixRows: AppendixRow[]
   categories: RiskCategory[]
-  g: number
-  grade: Grade
+  g: number | null
+  grade: Grade | null
 }>()
 </script>
 

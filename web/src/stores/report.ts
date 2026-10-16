@@ -35,6 +35,8 @@ export interface GeneratedInfo {
   llm_used: boolean
   risks: Record<string, RiskValue>
   generated_at: string
+  assessment_issues: string[]
+  other_matches: { no: string; original_text: string; risks: string[] }[]
 }
 
 /** 载入时去掉条款编号（a) b) 1) …），数据文件本身保持与模板一致 */
@@ -140,6 +142,8 @@ export const useReportStore = defineStore('report', () => {
     version: number
     status: string
   }): void {
+    const wasReady = ready.value
+    ready.value = false
     /* 必须**就地改**这个对象，不能整体替换：
        报告预览里的只读信息表（InfoTable）在 setup 时就抓住了 form 的引用，
        换成新对象它还是渲染旧的那份，纸面上的抬头就会全空。 */
@@ -159,6 +163,7 @@ export const useReportStore = defineStore('report', () => {
     }
     version.value = draft.version
     status.value = draft.status
+    ready.value = wasReady
   }
 
   /** 进页面时调用：没有当前报告就新建，有就续录 */
@@ -176,7 +181,9 @@ export const useReportStore = defineStore('report', () => {
   /** 悬浮岛「新建评估」：显式开一份空白评估。
       不碰当前这份草稿 —— 它仍在库里，去「报告管理」能继续编辑。 */
   async function createNew(): Promise<string> {
+    await flush()
     const created = await flowApi.createReport()
+    ready.value = false
     reportId.value = created.report.id
     version.value = created.report.version
     status.value = created.report.status
@@ -200,9 +207,7 @@ export const useReportStore = defineStore('report', () => {
       const drafts = await flowApi.listReports({ status: 'draft', mine: true, size: 1 })
       if (drafts.items.length) {
         const id = drafts.items[0].id
-        const draft = await flowApi.getDraft(id)
-        hydrate(draft)
-        reportId.value = id
+        await openReport(id)
         return 'resumed'
       }
       const created = await flowApi.createReport()
@@ -230,6 +235,7 @@ export const useReportStore = defineStore('report', () => {
   async function save(): Promise<void> {
     if (!reportId.value) return
     window.clearTimeout(saveTimer)
+    saveTimer = undefined
     saveState.value = 'saving'
     try {
       const res = await flowApi.saveReport(reportId.value, {
@@ -238,6 +244,8 @@ export const useReportStore = defineStore('report', () => {
         version: version.value,
       })
       savedAt.value = res.saved_at
+      version.value = res.version
+      status.value = res.status
       saveState.value = 'saved'
     } catch (err) {
       saveState.value = 'error'
@@ -248,6 +256,7 @@ export const useReportStore = defineStore('report', () => {
   /** 改动后防抖保存：既保证不丢，又不至于每敲一个字写一次盘 */
   function scheduleSave(delay = 800): void {
     if (!ready.value || !reportId.value) return
+    generated.value = null
     window.clearTimeout(saveTimer)
     saveTimer = window.setTimeout(() => {
       void save().catch(() => undefined)
@@ -258,9 +267,15 @@ export const useReportStore = defineStore('report', () => {
   async function generate(): Promise<ReportSummary> {
     if (!reportId.value) throw new Error('还没有正在编辑的报告')
     await save()
+    const requestedId = reportId.value
+    const inputSnapshot = JSON.stringify({ form: form.value, items: serializeItems() })
     // use_llm=true：模型可用就用模型写概况；不可用后端会自动降级，不影响出报告
     const res = await flowApi.generateReport(reportId.value, true)
     const report = res.report
+    if (reportId.value !== requestedId || inputSnapshot !== JSON.stringify({ form: form.value, items: serializeItems() })) {
+      generated.value = null
+      throw new Error('生成期间输入已修改，请保存后重新生成；没有覆盖新输入')
+    }
     version.value = report.version
     status.value = report.status
     generated.value = {
@@ -271,12 +286,16 @@ export const useReportStore = defineStore('report', () => {
       llm_used: Boolean((report.provenance || {}).llm_used),
       risks: report.risks || {},
       generated_at: report.generated_at || '',
+      assessment_issues: (report.provenance?.assessment_issues as string[]) || [],
+      other_matches: (report.provenance?.other_matches as GeneratedInfo['other_matches']) || [],
     }
     return report
   }
 
   /** 打开某一份历史报告（报告管理页点「打开」） */
   async function openReport(id: string): Promise<ReportSummary> {
+    await flush()
+    await loadItems()
     const res = await flowApi.getReport(id)
     const report = res.report
     hydrate({
@@ -288,7 +307,7 @@ export const useReportStore = defineStore('report', () => {
     reportId.value = report.id
     ready.value = true
     generated.value =
-      report.status === 'draft'
+      !report.generated_at || (report.status === 'draft' && report.provenance?.result_current !== true)
         ? null
         : {
             report_no: report.report_no,
@@ -298,8 +317,15 @@ export const useReportStore = defineStore('report', () => {
             llm_used: Boolean((report.provenance || {}).llm_used),
             risks: report.risks || {},
             generated_at: report.generated_at || '',
+            assessment_issues: (report.provenance?.assessment_issues as string[]) || [],
+            other_matches: (report.provenance?.other_matches as GeneratedInfo['other_matches']) || [],
           }
     return report
+  }
+
+  /** 查看已有快照是只读动作，绝不隐式保存或重新评定历史报告。 */
+  async function ensurePreview(): Promise<void> {
+    if (!generated.value) await generate()
   }
 
   const counters = computed(() => countItems(items.value, stateOf))
@@ -334,6 +360,7 @@ export const useReportStore = defineStore('report', () => {
     save,
     scheduleSave,
     generate,
+    ensurePreview,
     openReport,
   }
 })

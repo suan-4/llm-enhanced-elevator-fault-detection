@@ -10,6 +10,7 @@ from app.models.schemas import ReportRequest, ReportResponse
 from app.services.report_service import generate_report, generate_prompt_only
 from app.services.kg_service import kg_service
 from app.services.llm_service import llm_service
+from app.services import expert_risk
 
 router = APIRouter(prefix="/api/report", tags=["报告生成"])
 
@@ -30,8 +31,12 @@ async def list_jte_items(user: dict = Depends(get_current_user)):
         payload = json.loads(JTE_ITEMS_PATH.read_text(encoding="utf-8"))
     except (OSError, ValueError) as e:
         raise HTTPException(status_code=500, detail=f"条目目录读取失败：{e}")
-    items = payload.get("items", [])
-    return {"success": True, "count": len(items), "items": items}
+    try:
+        items = expert_risk.enrich_items(payload.get("items", []))
+    except (OSError, ValueError) as e:
+        raise HTTPException(status_code=503, detail=f"专家风险清单不可用：{e}")
+    return {"success": True, "count": len(items), "items": items,
+            "risk_catalog_version": expert_risk.knowledge()["version"]}
 
 
 @router.get("/inspection-items")

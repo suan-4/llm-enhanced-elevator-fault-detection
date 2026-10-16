@@ -1,11 +1,6 @@
-"""风险评定值与综合得分（确定性计算）。
+"""附录A 的分值与等级计算；风险类别由 expert_risk 按专家材料查询。
 
-**占位说明（重要）**：严重程度 / 概率等级 / 风险类别的取值体系与二维矩阵
-尚未由机构确认（PRD Q6）。在确认之前，这里按"每 4 项循环"给出可复现的占位值 ——
-与前端原来的演示实现逐项一致，保证两侧算法不打架。
-确认之后**只改本文件**：接口形状、数据库字段、报告结构都不需要动。
-
-综合安全状况得分按模板附录A 计算，这部分是确定的，不属占位：
+是否启用综合计分、哪些项目进入 n，由已确认的计分口径决定：
     G = 100 · Σv / (2n)   当所有 v ≠ 0
     G = 0                 当存在 v = 0（Ⅰ 类，一票否决）或 Σv < 0
     无风险情节时视为 100 分
@@ -21,26 +16,6 @@ CATEGORY_MEASURE = {
     "Ⅱ类": "应采用修理、调整、更换等措施消除或降低风险。",
     "Ⅲ类": "应采用修理、调整、更换等措施消除或降低风险。",
 }
-
-# 占位循环（与 web/src/domain/riskAssign.ts 完全一致，改这里要同步改那边）
-_CYCLE = (
-    (4, "B", "Ⅰ类"),
-    (3, "C", "Ⅱ类"),
-    (4, "B", "Ⅱ类"),
-    (5, "A", "Ⅱ类"),
-)
-
-
-def assign(index: int) -> dict:
-    """给第 index 个不符合项一个风险评定值（占位实现）。"""
-    severity, probability, category = _CYCLE[index % len(_CYCLE)]
-    return {
-        "severity": severity,
-        "probability": probability,
-        "category": category,
-        "source": "rule",  # 可溯源：这一列是谁定的（kg / rule / llm）
-    }
-
 
 def score_of(categories: list[str]) -> float:
     """附录A 综合安全状况得分 G。"""

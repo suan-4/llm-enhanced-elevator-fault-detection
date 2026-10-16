@@ -5,6 +5,7 @@
     BASE=http://127.0.0.1:8081 python tools/acceptance/http_acceptance.py
 
 退出码 0 表示全部通过。
+目录故障注入与备份文件检查使用本机临时文件，脚本须在后端所在主机运行。
 """
 
 from __future__ import annotations
@@ -12,6 +13,8 @@ from __future__ import annotations
 import os
 import re
 import sys
+import tempfile as _tf
+import uuid
 
 import httpx
 
@@ -84,6 +87,7 @@ def main() -> int:
 
         r = c.get("/api/report/jte-items", headers=H)
         items = r.json().get("items", [])
+        catalog = items
         check(3, "条目目录 66 条", r.status_code == 200 and len(items) == 66, f"实际 {len(items)}")
         if items:
             check(3, "条目字段完整",
@@ -115,9 +119,14 @@ def main() -> int:
         outside = r"C:\Windows\win.ini" if os.name == "nt" else "/etc/passwd"
         check(5, "导出目录之外的路径 → 400",
               c.post("/api/report/open", headers=H, json={"target": outside}).status_code == 400)
+        server_info = c.get("/api/system/info", headers=H)
+        export_dir = server_info.json().get("export_dir", "") if server_info.status_code == 200 else ""
+        # 读取服务端实际配置；不能把板端默认目录当成本机或所有部署的目录。
+        missing_path = export_dir.rstrip("/\\") + f"/acceptance-missing-{uuid.uuid4().hex}.pdf"
+        missing_file = c.post("/api/report/open", headers=H, json={"target": missing_path}) if export_dir else None
         check(5, "导出目录内不存在的文件 → 404",
-              c.post("/api/report/open", headers=H,
-                     json={"target": "/home/user/导出/不存在的文件.pdf"}).status_code == 404)
+              missing_file is not None and missing_file.status_code == 404,
+              f"配置目录={export_dir} status={missing_file.status_code if missing_file is not None else '未读取到配置'}")
 
         print("═══ 第 6 层：初始化状态与恢复口令 ═══")
         st = c.get("/api/setup/status")
@@ -206,11 +215,12 @@ def main() -> int:
 
         if rid:
             items = [
-                {"no": f"1.{i}", "result": "fit", "reasons": [], "other_text": ""}
-                for i in range(1, 67)
+                {"no": item["no"], "result": "fit", "reasons": [], "other_text": ""}
+                for item in catalog
             ]
-            items[0] = {"no": "1.1", "result": "unfit", "reasons": ["箱体出现裂纹"],
-                        "other_text": ""}
+            governor = next(item for item in catalog if item["no"] == "1.9")
+            next(item for item in items if item["no"] == "1.9").update(
+                result="unfit", reasons=[governor["opts"][0]])
             saved = c.put(
                 f"/api/reports/{rid}",
                 headers=H,
@@ -240,10 +250,10 @@ def main() -> int:
             check(8, "生成后分配编号",
                   str(rep.get("report_no", "")).startswith("GDSEI-JTE-"), str(rep.get("report_no")))
             check(8, "状态改为已生成", rep.get("status") == "generated")
-            # 第 1 条不符合按占位规则给 Ⅰ类 → 一票否决 → 0 分 / 四级
+            # 限速器首条风险按专家材料为Ⅰ类 → 一票否决 → 0分/四级。
             check(8, "得分与等级按附录A", rep.get("score") == 0 and rep.get("grade") == "四级",
                   f"score={rep.get('score')} grade={rep.get('grade')}")
-            check(8, "风险评定值覆盖不符合项", "1.1" in (rep.get("risks") or {}))
+            check(8, "风险评定值覆盖不符合项", "1.9" in (rep.get("risks") or {}))
             check(8, "叙述文字非空", bool(rep.get("narrative")))
 
             listed = c.get("/api/reports?status=generated", headers=H)
@@ -305,13 +315,14 @@ def main() -> int:
         check(9, "业务库检查通过",
               next((x["status"] for x in checks if x["name"] == "业务库"), "") == "ok")
 
-        bad_backup = c.post("/api/system/backup", headers=H)
+        # 使用真实临时文件充当父目录，确定性地触发目录创建失败。
+        # 不再假定配置的备份目录一定不可写，正常部署的目录本来就应当可用。
+        with _tf.NamedTemporaryFile(prefix="elevator-acc-blocked-") as blocked:
+            bad_backup = c.post("/api/system/backup", headers=H, params={"target_dir": blocked.name})
         check(9, "备份目录不可用时提示可读",
               bad_backup.status_code == 503
               and "备份目录不可用" in str(bad_backup.json().get("detail", "")),
               str(bad_backup.json().get("detail", ""))[:80])
-
-        import tempfile as _tf
 
         target = _tf.mkdtemp(prefix="elevator-acc-backup-")
         ok_backup = c.post(f"/api/system/backup?target_dir={target}", headers=H)

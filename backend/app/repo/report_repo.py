@@ -33,6 +33,12 @@ def find_by_id(conn: Any, report_id: int) -> dict | None:
     return _one(conn, report_id)
 
 
+def lock_for_generation(conn: Any, report_id: int) -> dict | None:
+    """Take a short write lock only after model work, then re-read the report."""
+    conn.execute("BEGIN IMMEDIATE")
+    return _one(conn, report_id)
+
+
 def update_content(conn: Any, report_id: int, *, form: dict, items: list,
                    counters: dict, updated_at: str, promote: dict | None = None) -> bool:
     """保存填写内容。

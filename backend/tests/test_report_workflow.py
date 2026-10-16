@@ -12,13 +12,14 @@ from __future__ import annotations
 
 import sys
 import asyncio
+import json
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from tests._tempdb import TempDB  # noqa: E402
 
-from app.services import auth_service, report_workflow, risk_rules  # noqa: E402
+from app.services import auth_service, report_workflow, risk_rules, expert_risk  # noqa: E402
 from app.services.llm_service import llm_service  # noqa: E402
 
 FORM = {
@@ -39,13 +40,17 @@ def _actor() -> dict:
 
 
 def _items(unfit: int = 0, total: int = 66) -> list[dict]:
+    catalog = json.loads(report_workflow.ITEMS_PATH.read_text(encoding="utf-8"))["items"]
+    # Use real template numbers; put the I-category governor first for veto tests.
+    catalog.sort(key=lambda item: item["no"] != "1.9")
     items = []
-    for i in range(total):
+    for i, entry in enumerate(catalog[:total]):
+        no = entry["no"]
         if i < unfit:
-            items.append({"no": f"1.{i + 1}", "result": "unfit",
-                          "reasons": ["箱体出现裂纹"], "other_text": ""})
+            items.append({"no": no, "result": "unfit",
+                          "reasons": [expert_risk.options(no)[0]["text"]], "other_text": ""})
         else:
-            items.append({"no": f"1.{i + 1}", "result": "fit", "reasons": [], "other_text": ""})
+            items.append({"no": no, "result": "fit", "reasons": [], "other_text": ""})
     return items
 
 
@@ -64,7 +69,7 @@ def test_create_save_and_get_draft() -> None:
 
         draft = report_workflow.get_draft(report["id"])
         assert draft["form"]["clientName"] == "佛山某公司"
-        assert [i["no"] for i in draft["items"]] == ["1.1", "1.2", "1.3"]
+        assert [i["no"] for i in draft["items"]] == ["1.9", "1.7", "1.10"]
         # 提升列（用于列表检索）
         detail = report_workflow.get_report(report["id"])
         assert detail["client_name"] == "佛山某公司"
@@ -77,7 +82,7 @@ def test_generate_assigns_number_and_computes_grade() -> None:
     with TempDB():
         actor = _actor()
         report = report_workflow.create_draft(actor=actor)
-        # 第 1 条不符合 → 占位规则给 Ⅰ类 → 一票否决 → G=0 → 四级
+        # 选择限速器运行异响，专家总表为Ⅰ类 → 一票否决。
         report_workflow.save_content(
             report["id"], form=FORM, items=_items(unfit=1), actor=actor
         )
@@ -88,8 +93,8 @@ def test_generate_assigns_number_and_computes_grade() -> None:
         assert generated["report_no"].endswith("-001"), generated["report_no"]
         assert generated["generated_at"]
         assert generated["score"] == 0 and generated["grade"] == "四级"
-        assert "1.1" in generated["risks"], generated["risks"]
-        assert generated["risks"]["1.1"]["category"] == "Ⅰ类"
+        assert "1.9" in generated["risks"], generated["risks"]
+        assert generated["risks"]["1.9"]["category"] == "Ⅰ类"
         assert generated["narrative"], "叙述文字不能为空（模型不可用时也要有兜底）"
         assert generated["provenance"].get("llm_used") is False
 
@@ -125,7 +130,7 @@ def test_generate_uses_llm_when_available() -> None:
 
         async def fake_generate(prompt_json: str) -> str:
             seen["prompt"] = prompt_json
-            return "本次评估发现两项不符合，属Ⅰ类风险，建议整改后复检。"
+            return '{"overview_keys":["finding","score"]}'
 
         original = llm_service.generate
         llm_service.generate = fake_generate  # type: ignore[assignment]
@@ -134,11 +139,11 @@ def test_generate_uses_llm_when_available() -> None:
         finally:
             llm_service.generate = original  # type: ignore[assignment]
 
-        assert report["narrative"].startswith("本次评估发现两项不符合"), report["narrative"]
+        assert report["narrative"].startswith("本次评估共发现 2 项不符合"), report["narrative"]
         assert report["provenance"]["llm_used"] is True
         # 提示词里必须带上真实数据，否则模型没得可写
         assert "GDSEI" not in seen["prompt"], "提示词里不该出现报告编号（还没分配）"
-        assert "箱体出现裂纹" in seen["prompt"], "不符合情形要进提示词"
+        assert "限速器运行中有异响" in seen["prompt"], "不符合情形要进提示词"
         assert "综合安全状况" in seen["prompt"] or "得分" in seen["prompt"]
 
 
@@ -234,14 +239,12 @@ def test_list_filters_and_pagination() -> None:
         assert result["total"] == 2
 
 
-def test_risk_placeholder_matches_frontend_cycle() -> None:
-    """占位规则的前几项要与前端原来的演示值一致（避免两侧算法打架）。"""
-    assert risk_rules.assign(0) == {"severity": 4, "probability": "B", "category": "Ⅰ类",
-                                    "source": "rule"}
-    assert risk_rules.assign(1)["category"] == "Ⅱ类"
-    assert risk_rules.assign(2)["category"] == "Ⅱ类"
-    assert risk_rules.assign(3)["category"] == "Ⅱ类"
-    assert risk_rules.assign(4)["category"] == "Ⅰ类", "每 4 项循环一次"
+def test_risk_values_follow_expert_material() -> None:
+    """相同风险不因位置改变而变化。"""
+    reason = expert_risk.options("1.7")[0]["text"]
+    selected = expert_risk.select("1.7", [reason])
+    risk = expert_risk.assess("1.7", "unfit", selected)
+    assert (risk["severity"], risk["probability"], risk["category"]) == (2, "D", "Ⅱ类")
 
 
 def test_score_formula_matches_appendix_a() -> None:
@@ -268,7 +271,7 @@ def _main() -> int:
         ("编号不复用", test_number_never_reused_after_void),
         ("复制只带抬头", test_clone_copies_header_only),
         ("列表筛选与分页", test_list_filters_and_pagination),
-        ("风险占位与前端一致", test_risk_placeholder_matches_frontend_cycle),
+        ("风险值来自专家材料", test_risk_values_follow_expert_material),
         ("附录A 公式", test_score_formula_matches_appendix_a),
     ]
     failed = 0
