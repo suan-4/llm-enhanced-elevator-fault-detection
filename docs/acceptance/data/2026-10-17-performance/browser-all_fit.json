@@ -1,0 +1,141 @@
+{
+  "case": "all_fit",
+  "exports": [],
+  "status": "complete",
+  "http_status": 200,
+  "llm_used": true,
+  "score": 100,
+  "backend": {
+    "schema_version": 1,
+    "trace_id": "abd59f8b7e154a22933561abd8ca73e9",
+    "total_ms": 7319.795,
+    "stages": [
+      {
+        "name": "db_read",
+        "depth": 0,
+        "parent": null,
+        "start_ms": 0.562,
+        "duration_ms": 5.338,
+        "status": "ok"
+      },
+      {
+        "name": "catalog_load",
+        "depth": 0,
+        "parent": null,
+        "start_ms": 6.027,
+        "duration_ms": 0.018,
+        "status": "ok",
+        "cache_hit": true
+      },
+      {
+        "name": "validate",
+        "depth": 0,
+        "parent": null,
+        "start_ms": 6.067,
+        "duration_ms": 0.493,
+        "status": "ok"
+      },
+      {
+        "name": "risk_assessment",
+        "depth": 0,
+        "parent": null,
+        "start_ms": 6.68,
+        "duration_ms": 0.911,
+        "status": "ok"
+      },
+      {
+        "name": "score",
+        "depth": 0,
+        "parent": null,
+        "start_ms": 7.658,
+        "duration_ms": 0.154,
+        "status": "ok"
+      },
+      {
+        "name": "prompt_build",
+        "depth": 0,
+        "parent": null,
+        "start_ms": 7.842,
+        "duration_ms": 0.329,
+        "status": "ok",
+        "purpose": "overview"
+      },
+      {
+        "name": "overview",
+        "depth": 0,
+        "parent": null,
+        "start_ms": 8.197,
+        "duration_ms": 7296.832,
+        "status": "ok"
+      },
+      {
+        "name": "model_result_validate",
+        "depth": 0,
+        "parent": null,
+        "start_ms": 7305.064,
+        "duration_ms": 0.561,
+        "status": "ok",
+        "purpose": "overview"
+      },
+      {
+        "name": "db_commit",
+        "depth": 0,
+        "parent": null,
+        "start_ms": 7306.297,
+        "duration_ms": 13.271,
+        "status": "ok"
+      }
+    ],
+    "model_calls": [
+      {
+        "purpose": "overview",
+        "input_chars": 529,
+        "input_utf8_bytes": 931,
+        "request_build_ms": 1.506,
+        "status": "ok",
+        "http_status": 200,
+        "runtime": {
+          "prefill_time_ms": 5642.40576171875,
+          "prefill_tokens": 305,
+          "generate_time_ms": 1508.8060302734375,
+          "generate_tokens": 9,
+          "memory_usage_mb": 4781.0625,
+          "first_output_ms": 5665.307,
+          "model_run_ms": 7173.896,
+          "model_load_ms": 23533.164,
+          "prefill_tokens_per_s": 54.055,
+          "generate_tokens_per_s": 5.965,
+          "perf_source": "rkllm_runtime",
+          "run_status": "finished",
+          "inference_id": "f2a222e9d74a4a24801cbd2173e3260e",
+          "request_total_ms": 7175.257
+        },
+        "http_ms": 7294.651
+      }
+    ]
+  },
+  "generation": {
+    "schema_version": 1,
+    "name": "report_generate",
+    "status": "ok",
+    "total_ms": 7628.699999999953,
+    "stages": [
+      {
+        "name": "save",
+        "duration_ms": 54,
+        "status": "ok"
+      },
+      {
+        "name": "generate_http",
+        "duration_ms": 7357.299999999814,
+        "status": "ok"
+      },
+      {
+        "name": "render",
+        "duration_ms": 212.60000000009313,
+        "status": "ok"
+      }
+    ],
+    "click_to_visible_ms": 7629.40000000014
+  }
+}

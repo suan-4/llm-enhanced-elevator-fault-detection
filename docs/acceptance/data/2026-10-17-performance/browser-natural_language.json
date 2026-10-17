@@ -1,0 +1,525 @@
+{
+  "case": "natural_language",
+  "exports": [
+    {
+      "index": 1,
+      "format": "pdf",
+      "status": 200,
+      "size": 309230,
+      "backend": {
+        "convert_ms": 3440.333,
+        "publish_ms": 0.507,
+        "cleanup_ms": 12.292,
+        "export_total_ms": 3455.485,
+        "html_build_ms": 1.726,
+        "api_total_ms": 3457.341
+      },
+      "browser": {
+        "schema_version": 1,
+        "name": "export_pdf",
+        "status": "ok",
+        "total_ms": 3501.2000000001863,
+        "stages": [
+          {
+            "name": "export_http",
+            "duration_ms": 3495.9000000001397,
+            "status": "ok"
+          },
+          {
+            "name": "render",
+            "duration_ms": 4.7000000001862645,
+            "status": "ok"
+          }
+        ],
+        "click_to_visible_ms": 3547.600000000093
+      }
+    },
+    {
+      "index": 1,
+      "format": "docx",
+      "status": 200,
+      "size": 20353,
+      "backend": {
+        "convert_ms": 2318.871,
+        "publish_ms": 0.461,
+        "cleanup_ms": 11.767,
+        "export_total_ms": 2332.742,
+        "html_build_ms": 1.209,
+        "api_total_ms": 2334.083
+      },
+      "browser": {
+        "schema_version": 1,
+        "name": "export_docx",
+        "status": "ok",
+        "total_ms": 2362.5,
+        "stages": [
+          {
+            "name": "export_http",
+            "duration_ms": 2357.9000000001397,
+            "status": "ok"
+          },
+          {
+            "name": "render",
+            "duration_ms": 4.599999999860302,
+            "status": "ok"
+          }
+        ],
+        "click_to_visible_ms": 2401.6999999999534
+      }
+    },
+    {
+      "index": 2,
+      "format": "pdf",
+      "status": 200,
+      "size": 309230,
+      "backend": {
+        "convert_ms": 2185.399,
+        "publish_ms": 0.644,
+        "cleanup_ms": 11.792,
+        "export_total_ms": 2199.472,
+        "html_build_ms": 1.162,
+        "api_total_ms": 2200.762
+      },
+      "browser": {
+        "schema_version": 1,
+        "name": "export_pdf",
+        "status": "ok",
+        "total_ms": 2230.9000000001397,
+        "stages": [
+          {
+            "name": "export_http",
+            "duration_ms": 2225,
+            "status": "ok"
+          },
+          {
+            "name": "render",
+            "duration_ms": 5.800000000046566,
+            "status": "ok"
+          }
+        ],
+        "click_to_visible_ms": 2258.3000000000466
+      }
+    },
+    {
+      "index": 2,
+      "format": "docx",
+      "status": 200,
+      "size": 20353,
+      "backend": {
+        "convert_ms": 2058.973,
+        "publish_ms": 0.623,
+        "cleanup_ms": 12.245,
+        "export_total_ms": 2073.347,
+        "html_build_ms": 1.168,
+        "api_total_ms": 2074.633
+      },
+      "browser": {
+        "schema_version": 1,
+        "name": "export_docx",
+        "status": "ok",
+        "total_ms": 2107.5,
+        "stages": [
+          {
+            "name": "export_http",
+            "duration_ms": 2098,
+            "status": "ok"
+          },
+          {
+            "name": "render",
+            "duration_ms": 9.399999999906868,
+            "status": "ok"
+          }
+        ],
+        "click_to_visible_ms": 2134.899999999907
+      }
+    },
+    {
+      "index": 3,
+      "format": "pdf",
+      "status": 200,
+      "size": 309230,
+      "backend": {
+        "convert_ms": 2131.183,
+        "publish_ms": 0.627,
+        "cleanup_ms": 11.773,
+        "export_total_ms": 2145.416,
+        "html_build_ms": 1.164,
+        "api_total_ms": 2146.702
+      },
+      "browser": {
+        "schema_version": 1,
+        "name": "export_pdf",
+        "status": "ok",
+        "total_ms": 2180.1999999999534,
+        "stages": [
+          {
+            "name": "export_http",
+            "duration_ms": 2172.5999999998603,
+            "status": "ok"
+          },
+          {
+            "name": "render",
+            "duration_ms": 7.399999999906868,
+            "status": "ok"
+          }
+        ],
+        "click_to_visible_ms": 2221.600000000093
+      }
+    },
+    {
+      "index": 3,
+      "format": "docx",
+      "status": 200,
+      "size": 20353,
+      "backend": {
+        "convert_ms": 2006.103,
+        "publish_ms": 0.689,
+        "cleanup_ms": 12.048,
+        "export_total_ms": 2020.38,
+        "html_build_ms": 1.17,
+        "api_total_ms": 2021.667
+      },
+      "browser": {
+        "schema_version": 1,
+        "name": "export_docx",
+        "status": "ok",
+        "total_ms": 2050,
+        "stages": [
+          {
+            "name": "export_http",
+            "duration_ms": 2045.7000000001863,
+            "status": "ok"
+          },
+          {
+            "name": "render",
+            "duration_ms": 4.199999999953434,
+            "status": "ok"
+          }
+        ],
+        "click_to_visible_ms": 2073.399999999907
+      }
+    },
+    {
+      "index": 4,
+      "format": "pdf",
+      "status": 200,
+      "size": 309230,
+      "backend": {
+        "convert_ms": 2155.981,
+        "publish_ms": 0.264,
+        "cleanup_ms": 3.299,
+        "export_total_ms": 2160.992,
+        "html_build_ms": 1.202,
+        "api_total_ms": 2162.254
+      },
+      "browser": {
+        "schema_version": 1,
+        "name": "export_pdf",
+        "status": "ok",
+        "total_ms": 2194.899999999907,
+        "stages": [
+          {
+            "name": "export_http",
+            "duration_ms": 2187.6999999999534,
+            "status": "ok"
+          },
+          {
+            "name": "render",
+            "duration_ms": 7,
+            "status": "ok"
+          }
+        ],
+        "click_to_visible_ms": 2229.6999999999534
+      }
+    },
+    {
+      "index": 4,
+      "format": "docx",
+      "status": 200,
+      "size": 20353,
+      "backend": {
+        "convert_ms": 2185.195,
+        "publish_ms": 0.635,
+        "cleanup_ms": 11.682,
+        "export_total_ms": 2199.057,
+        "html_build_ms": 1.202,
+        "api_total_ms": 2200.383
+      },
+      "browser": {
+        "schema_version": 1,
+        "name": "export_docx",
+        "status": "ok",
+        "total_ms": 2229.100000000093,
+        "stages": [
+          {
+            "name": "export_http",
+            "duration_ms": 2224.8000000000466,
+            "status": "ok"
+          },
+          {
+            "name": "render",
+            "duration_ms": 4.199999999953434,
+            "status": "ok"
+          }
+        ],
+        "click_to_visible_ms": 2271
+      }
+    },
+    {
+      "index": 5,
+      "format": "pdf",
+      "status": 200,
+      "size": 309230,
+      "backend": {
+        "convert_ms": 2157.564,
+        "publish_ms": 0.276,
+        "cleanup_ms": 3.291,
+        "export_total_ms": 2162.684,
+        "html_build_ms": 1.176,
+        "api_total_ms": 2163.922
+      },
+      "browser": {
+        "schema_version": 1,
+        "name": "export_pdf",
+        "status": "ok",
+        "total_ms": 2193.1999999999534,
+        "stages": [
+          {
+            "name": "export_http",
+            "duration_ms": 2186.899999999907,
+            "status": "ok"
+          },
+          {
+            "name": "render",
+            "duration_ms": 6.199999999953434,
+            "status": "ok"
+          }
+        ],
+        "click_to_visible_ms": 2235.600000000093
+      }
+    },
+    {
+      "index": 5,
+      "format": "docx",
+      "status": 200,
+      "size": 20353,
+      "backend": {
+        "convert_ms": 2092.062,
+        "publish_ms": 0.454,
+        "cleanup_ms": 11.075,
+        "export_total_ms": 2105.046,
+        "html_build_ms": 1.174,
+        "api_total_ms": 2106.307
+      },
+      "browser": {
+        "schema_version": 1,
+        "name": "export_docx",
+        "status": "ok",
+        "total_ms": 2136.3000000000466,
+        "stages": [
+          {
+            "name": "export_http",
+            "duration_ms": 2127.4000000001397,
+            "status": "ok"
+          },
+          {
+            "name": "render",
+            "duration_ms": 8.800000000046566,
+            "status": "ok"
+          }
+        ],
+        "click_to_visible_ms": 2156.899999999907
+      }
+    }
+  ],
+  "status": "complete",
+  "http_status": 200,
+  "llm_used": true,
+  "score": 0,
+  "backend": {
+    "schema_version": 1,
+    "trace_id": "b42c931810164720811292831bafbe3d",
+    "total_ms": 87024.263,
+    "stages": [
+      {
+        "name": "db_read",
+        "depth": 0,
+        "parent": null,
+        "start_ms": 0.172,
+        "duration_ms": 3.019,
+        "status": "ok"
+      },
+      {
+        "name": "catalog_load",
+        "depth": 0,
+        "parent": null,
+        "start_ms": 3.28,
+        "duration_ms": 0.012,
+        "status": "ok",
+        "cache_hit": true
+      },
+      {
+        "name": "validate",
+        "depth": 0,
+        "parent": null,
+        "start_ms": 3.312,
+        "duration_ms": 0.236,
+        "status": "ok"
+      },
+      {
+        "name": "prompt_build",
+        "depth": 1,
+        "parent": "risk_assessment",
+        "start_ms": 11.774,
+        "duration_ms": 0.386,
+        "status": "ok",
+        "purpose": "match_risk",
+        "item_no": "16.1"
+      },
+      {
+        "name": "match_risk",
+        "depth": 1,
+        "parent": "risk_assessment",
+        "start_ms": 12.192,
+        "duration_ms": 42918.652,
+        "status": "ok",
+        "item_no": "16.1"
+      },
+      {
+        "name": "model_result_validate",
+        "depth": 1,
+        "parent": "risk_assessment",
+        "start_ms": 42930.881,
+        "duration_ms": 0.126,
+        "status": "ok",
+        "purpose": "match_risk"
+      },
+      {
+        "name": "risk_assessment",
+        "depth": 0,
+        "parent": null,
+        "start_ms": 3.618,
+        "duration_ms": 42929.032,
+        "status": "ok"
+      },
+      {
+        "name": "score",
+        "depth": 0,
+        "parent": null,
+        "start_ms": 42932.719,
+        "duration_ms": 0.146,
+        "status": "ok"
+      },
+      {
+        "name": "prompt_build",
+        "depth": 0,
+        "parent": null,
+        "start_ms": 42932.891,
+        "duration_ms": 0.39,
+        "status": "ok",
+        "purpose": "overview"
+      },
+      {
+        "name": "overview",
+        "depth": 0,
+        "parent": null,
+        "start_ms": 42933.307,
+        "duration_ms": 44075.658,
+        "status": "ok"
+      },
+      {
+        "name": "model_result_validate",
+        "depth": 0,
+        "parent": null,
+        "start_ms": 87009,
+        "duration_ms": 0.122,
+        "status": "ok",
+        "purpose": "overview"
+      },
+      {
+        "name": "db_commit",
+        "depth": 0,
+        "parent": null,
+        "start_ms": 87009.85,
+        "duration_ms": 14.195,
+        "status": "ok"
+      }
+    ],
+    "model_calls": [
+      {
+        "purpose": "match_risk",
+        "input_chars": 4095,
+        "input_utf8_bytes": 7199,
+        "request_build_ms": 1.073,
+        "status": "ok",
+        "http_status": 200,
+        "runtime": {
+          "prefill_time_ms": 38082.90625,
+          "prefill_tokens": 2178,
+          "generate_time_ms": 4763.3662109375,
+          "generate_tokens": 26,
+          "memory_usage_mb": 4781.0625,
+          "first_output_ms": 38135.795,
+          "model_run_ms": 42899.664,
+          "model_load_ms": 23533.164,
+          "prefill_tokens_per_s": 57.191,
+          "generate_tokens_per_s": 5.458,
+          "perf_source": "rkllm_runtime",
+          "run_status": "finished",
+          "inference_id": "86744e2a5e5f4ed285a9a0c7a0fe2fea",
+          "request_total_ms": 42902.03
+        },
+        "http_ms": 42917.154
+      },
+      {
+        "purpose": "overview",
+        "input_chars": 4499,
+        "input_utf8_bytes": 7289,
+        "request_build_ms": 0.971,
+        "status": "ok",
+        "http_status": 200,
+        "runtime": {
+          "prefill_time_ms": 40518.00390625,
+          "prefill_tokens": 2332,
+          "generate_time_ms": 3509.48095703125,
+          "generate_tokens": 19,
+          "memory_usage_mb": 4781.0625,
+          "first_output_ms": 40551.118,
+          "model_run_ms": 44060.794,
+          "model_load_ms": 23533.164,
+          "prefill_tokens_per_s": 57.555,
+          "generate_tokens_per_s": 5.414,
+          "perf_source": "rkllm_runtime",
+          "run_status": "finished",
+          "inference_id": "9214072081d548c28df1d6db445661c0",
+          "request_total_ms": 44062.065
+        },
+        "http_ms": 44074.326
+      }
+    ]
+  },
+  "generation": {
+    "schema_version": 1,
+    "name": "report_generate",
+    "status": "ok",
+    "total_ms": 87357.90000000014,
+    "stages": [
+      {
+        "name": "save",
+        "duration_ms": 30.600000000093132,
+        "status": "ok"
+      },
+      {
+        "name": "generate_http",
+        "duration_ms": 87050.70000000019,
+        "status": "ok"
+      },
+      {
+        "name": "render",
+        "duration_ms": 269.30000000004657,
+        "status": "ok"
+      }
+    ],
+    "click_to_visible_ms": 87358.6000000001
+  }
+}

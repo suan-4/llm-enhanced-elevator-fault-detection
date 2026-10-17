@@ -1,5 +1,5 @@
 from contextlib import asynccontextmanager
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -129,7 +129,14 @@ async def serve_frontend():
 
 @app.get("/api/health")
 async def health_check():
-    return {"status": "ok", "service": "elevator-report-api"}
+    result = {"status": "ok", "service": "elevator-report-api"}
+    # Only an explicitly isolated benchmark DB can identify itself before login.
+    # Production response remains unchanged; no production path is disclosed.
+    path = PurePosixPath(settings.sqlite_path)
+    if (str(path).startswith('/userdata/releases/') and 'benchmark' in path.parts
+            and path.name == 'performance-benchmark.db' and '..' not in path.parts):
+        result['benchmark_db'] = str(path)
+    return result
 
 
 @app.get("/api/health/ready")

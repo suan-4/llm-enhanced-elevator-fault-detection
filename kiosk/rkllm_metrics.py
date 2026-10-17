@@ -99,10 +99,15 @@ def observe(result, state):
 
 
 def finish_inference():
-    if _sample is not None:
-        _sample.ended = _clock()
-        # Only measurements are logged. No prompt, completion or credentials.
-        print('ELEVATOR_PERF ' + json.dumps(_sample.snapshot(),allow_nan=False),flush=True)
+    try:
+        if _sample is not None:
+            _sample.ended = _clock()
+            if _sample.run_status == 'running':
+                _sample.run_status = 'no_finish_callback'
+            # Observation must never replace a successful result or original error.
+            print('ELEVATOR_PERF ' + json.dumps(_sample.snapshot(),allow_nan=False),flush=True)
+    except Exception:
+        pass
 
 
 def attach_response(response):

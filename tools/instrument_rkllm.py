@@ -17,9 +17,26 @@ def instrument(source: str) -> str:
                 '_elevator_metrics.begin_model_load()', '_elevator_metrics.finish_model_load()',
                 '_elevator_metrics.begin_request()')
     if MARKER in source:
-        if all(source.count(item) == 1 for item in required):
-            return source
-        raise ValueError('Partially instrumented or incompatible model server; refusing to modify')
+        blocks = (
+            'import rkllm_metrics as _elevator_metrics  ' + MARKER + '\n',
+            '    _elevator_metrics.observe(result, state)\n',
+            '        _elevator_metrics.start_inference()\n        try:\n            self.rkllm_run(self.handle, ctypes.byref(rkllm_input), ctypes.byref(self.rkllm_infer_params), None)\n        finally:\n            _elevator_metrics.finish_inference()',
+            '        _elevator_metrics.begin_model_load()\n        ret = self.rkllm_init(ctypes.byref(self.handle), ctypes.byref(rkllm_param), ctypes.byref(self.callback))\n        _elevator_metrics.finish_model_load()',
+            '    global global_text, global_state, system_prompt, is_blocking\n    _elevator_metrics.begin_request()\n',
+        )
+        if not all(source.count(item) == 1 for item in (*required,*blocks)):
+            raise ValueError('Partially instrumented or incompatible model server; refusing to modify')
+        # Rebuild from original anchors and require exact equality. Moving an
+        # injection or losing its context is not an idempotent valid patch.
+        original=source.replace(blocks[0],'')
+        original=original.replace('    _elevator_metrics.observe(result, state)\n','')
+        original=original.replace(blocks[2],'        self.rkllm_run(self.handle, ctypes.byref(rkllm_input), ctypes.byref(self.rkllm_infer_params), None)')
+        original=original.replace(blocks[3],'        ret = self.rkllm_init(ctypes.byref(self.handle), ctypes.byref(rkllm_param), ctypes.byref(self.callback))')
+        original=original.replace('    _elevator_metrics.begin_request()\n','')
+        original=original.replace('jsonify(_elevator_metrics.attach_response(response))','jsonify(response)')
+        if instrument(original) != source:
+            raise ValueError('Instrumentation structure drifted; refusing to modify')
+        return source
 
     def replace_once(old,new):
         nonlocal source

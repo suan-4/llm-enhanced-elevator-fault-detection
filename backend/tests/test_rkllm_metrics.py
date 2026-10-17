@@ -2,6 +2,7 @@
 import importlib.util
 import sys
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -20,6 +21,13 @@ class Clock:
 
 
 class ModelMetricsTests(unittest.TestCase):
+    def test_logging_failure_is_harmless_and_missing_finish_is_terminal(self):
+        metrics.begin_request()
+        metrics.start_inference()
+        with patch('builtins.print',side_effect=BrokenPipeError):
+            metrics.finish_inference()
+        self.assertEqual(metrics.attach_response({})['performance']['run_status'],'no_finish_callback')
+
     def test_prefill_generation_and_first_text_are_distinct(self):
         clock = Clock()
         sample = metrics.InferenceMetrics(clock=clock)
@@ -112,6 +120,12 @@ class InstrumentTests(unittest.TestCase):
         self.assertEqual(instrument(changed),changed)
         with self.assertRaises(ValueError): instrument(FIXTURE.replace('return jsonify(response)','return another(response)'))
         with self.assertRaises(ValueError): instrument('# elevator-performance-profile-v1\n'+FIXTURE)
+
+    def test_partial_import_or_moved_injection_is_rejected(self):
+        changed=instrument(FIXTURE)
+        for broken in (changed.replace('import rkllm_metrics as _elevator_metrics  ',''),
+                       changed.replace('    _elevator_metrics.observe(result, state)\n','')+'\n_elevator_metrics.observe(result, state)\n'):
+            with self.assertRaises(ValueError): instrument(broken)
 
 
 if __name__ == '__main__': unittest.main()
