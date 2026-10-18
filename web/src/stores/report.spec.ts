@@ -26,8 +26,24 @@ describe('saved report preview', () => {
     await store.openReport('123')
     await store.ensurePreview()
     expect(store.generated?.narrative).toBe('历史结果')
+    expect(store.generated?.llm_used).toBeNull()
+    expect(store.generated?.loaded_from_history).toBe(true)
     expect(api.saveReport).not.toHaveBeenCalled()
     expect(api.generateReport).not.toHaveBeenCalled()
+  })
+
+  it('keeps new generation model status and controlled reason codes', async () => {
+    vi.mocked(api.getReport).mockResolvedValue({ report: report('draft', false) } as never)
+    vi.mocked(api.saveReport).mockResolvedValue({ saved_at: 'now', version: 1, status: 'draft' } as never)
+    vi.mocked(api.generateReport).mockResolvedValue({ report: {
+      ...report('generated'), provenance: { llm_used: false, llm_status: 'degraded', llm_error_code: 'context_budget_exceeded' },
+    } } as never)
+    const store = useReportStore()
+    await store.openReport('123')
+    await store.generate()
+    expect(store.generated?.loaded_from_history).toBe(false)
+    expect(store.generated?.llm_status).toBe('degraded')
+    expect(store.generated?.llm_error_code).toBe('context_budget_exceeded')
   })
 
   it('restores an unchanged pending preview, but not a stale result', async () => {

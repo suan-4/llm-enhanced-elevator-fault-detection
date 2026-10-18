@@ -33,7 +33,10 @@ export interface GeneratedInfo {
   grade: Grade | null
   narrative: string
   /** 叙述文字是否真由大模型生成（false = 规则摘要兜底，报告里不打印） */
-  llm_used: boolean
+  llm_used: boolean | null
+  llm_status: string
+  llm_error_code: string
+  loaded_from_history: boolean
   risks: Record<string, RiskValue>
   generated_at: string
   assessment_issues: string[]
@@ -287,7 +290,10 @@ export const useReportStore = defineStore('report', () => {
       score: report.score,
       grade: report.grade,
       narrative: report.narrative,
-      llm_used: Boolean((report.provenance || {}).llm_used),
+      llm_used: typeof report.provenance?.llm_used === 'boolean' ? report.provenance.llm_used : null,
+      llm_status: typeof report.provenance?.llm_status === 'string' ? report.provenance.llm_status : '',
+      llm_error_code: typeof report.provenance?.llm_error_code === 'string' ? report.provenance.llm_error_code : '',
+      loaded_from_history: false,
       risks: report.risks || {},
       generated_at: report.generated_at || '',
       assessment_issues: (report.provenance?.assessment_issues as string[]) || [],
@@ -318,7 +324,10 @@ export const useReportStore = defineStore('report', () => {
             score: report.score,
             grade: report.grade,
             narrative: report.narrative,
-            llm_used: Boolean((report.provenance || {}).llm_used),
+            llm_used: typeof report.provenance?.llm_used === 'boolean' ? report.provenance.llm_used : null,
+            llm_status: typeof report.provenance?.llm_status === 'string' ? report.provenance.llm_status : '',
+            llm_error_code: typeof report.provenance?.llm_error_code === 'string' ? report.provenance.llm_error_code : '',
+            loaded_from_history: true,
             risks: report.risks || {},
             generated_at: report.generated_at || '',
             assessment_issues: (report.provenance?.assessment_issues as string[]) || [],

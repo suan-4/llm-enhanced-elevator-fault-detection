@@ -8,6 +8,7 @@ import ReportDocument from '@/components/report/ReportDocument.vue'
 import AppDialog from '@/components/AppDialog.vue'
 import { overviewText, countByCategory } from '@/domain/riskScore'
 import { buildAppendixRows } from '@/domain/reportResult'
+import { modelStatus } from '@/domain/modelStatus'
 import { useReportStore } from '@/stores/report'
 import { useShell } from '@/stores/shell'
 import { useExport } from '@/utils/export'
@@ -104,6 +105,7 @@ const categories = computed(() => Object.values(riskByNo.value).map(risk => risk
 const g = computed(() => store.generated?.score ?? null)
 const grade = computed(() => store.generated?.grade ?? null)
 const assessmentIssues = computed(() => store.generated?.assessment_issues ?? [])
+const modelNotice = computed(() => modelStatus(store.generated))
 /* 评估概况 = 模板要求的两行（风险分布 + 得分）+ 大模型写的那段说明。
    规则摘要兜底的那版不往报告上打印 —— 它逐条罗列，附页已经列过了，
    塞进概况会把单元格撑得很长（放哪由 PRD Q7 定，这里先按建议默认放概况）。 */
@@ -312,6 +314,7 @@ function fitPapers(): void {
                 JTE-09-R02-3.00　不符合 {{ riskRows.length }} 项　综合安全状况等级 {{ grade ?? '待确认' }}
               </span>
             </div>
+            <div v-if="modelNotice" class="notes model-status" role="status">{{ modelNotice }}</div>
             <div v-if="assessmentIssues.length" class="notes" role="status">
               <b>待确认预览，尚不能作为正式报告导出。</b>
               <div v-for="issue in assessmentIssues" :key="issue">{{ issue }}</div>

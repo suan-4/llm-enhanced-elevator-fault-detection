@@ -12,6 +12,9 @@ from app.services import report_workflow as wf
 from tests._tempdb import TempDB
 from tests.test_report_workflow import _actor, _items, FORM
 from app.services.llm_service import LLMService
+from app.services.prompt_budget import ModelInputError
+from tests.test_model_guard import BudgetFixture
+from unittest.mock import patch
 
 
 class Clock:
@@ -25,6 +28,32 @@ class Clock:
 
 
 class PerformanceTests(unittest.TestCase):
+    def test_invalid_model_overview_is_not_a_successful_model_measurement(self):
+        for content in ('not JSON','{"overview_keys":["finding","score","invented"]}'):
+            async def execute():
+                service=LLMService()
+                service._budget=BudgetFixture()
+                service._client=httpx.AsyncClient(transport=httpx.MockTransport(lambda req:
+                    httpx.Response(200,json={'data':[{'id':'fixture-model'}]}) if req.method=='GET' else
+                    httpx.Response(200,json={'choices':[{'message':{'content':content}}],
+                        'performance':{'run_status':'finished','prefill_tokens':100,'generate_tokens':5}})))
+                try:
+                    with TempDB():
+                        actor=_actor()
+                        report=wf.create_draft(actor=actor)
+                        wf.save_content(report['id'],form=FORM,items=_items(),actor=actor)
+                        with patch.object(wf,'llm_service',service):
+                            return await wf.generate(report['id'],use_llm=True,actor=actor)
+                finally:
+                    await service.close()
+            with self.subTest(content=content):
+                result=asyncio.run(execute())
+                self.assertFalse(result['provenance']['llm_used'])
+                call=result['performance']['model_calls'][0]
+                self.assertEqual(call['runtime']['run_status'],'finished')
+                self.assertEqual(call['status'],'error')
+                self.assertEqual(call['error_code'],'model_response_invalid')
+
     def test_nested_stages_have_explicit_depth_and_milliseconds(self):
         clock = Clock()
         trace = perf.Trace(clock=clock)
@@ -101,16 +130,22 @@ class PerformanceTests(unittest.TestCase):
         async def run(with_runtime):
             payload = {'choices':[{'message':{'content':'original answer'}}],
                        'usage':{'prompt_tokens':2,'completion_tokens':2},
-                       'performance':{'prefill_tokens':123,'generate_tokens':20,
+                       'performance':{'run_status':'finished','prefill_tokens':123,'generate_tokens':20,
                                       'prefill_time_ms':500,'generate_time_ms':400,
                                       'prompt':'must not be copied'} if with_runtime else None}
             client = LLMService()
-            client._client = httpx.AsyncClient(transport=httpx.MockTransport(lambda req: httpx.Response(200,json=payload)))
+            client._budget = BudgetFixture()
+            client._client = httpx.AsyncClient(transport=httpx.MockTransport(lambda req: httpx.Response(200,
+                json={'data':[{'id':'fixture-model'}]} if req.method=='GET' else payload)))
             trace = perf.Trace()
             try:
                 with perf.use_trace(trace), perf.stage('overview'):
-                    answer = await client.generate('{"system":"instruction","data":{"x":"中文材料"}}')
-                self.assertEqual(answer,'original answer')
+                    if with_runtime:
+                        answer = await client.generate('{"system":"instruction","data":{"x":"中文材料"}}')
+                        self.assertEqual(answer,'original answer')
+                    else:
+                        with self.assertRaises(ModelInputError):
+                            await client.generate('{"system":"instruction","data":{"x":"中文材料"}}')
             finally:
                 await client.close()
             calls = trace.snapshot()['model_calls']
@@ -127,7 +162,10 @@ class PerformanceTests(unittest.TestCase):
     def test_model_http_failure_is_timed_and_still_fails(self):
         async def run():
             client = LLMService()
-            client._client = httpx.AsyncClient(transport=httpx.MockTransport(lambda req: httpx.Response(503,json={'error':'busy'})))
+            client._budget = BudgetFixture()
+            client._client = httpx.AsyncClient(transport=httpx.MockTransport(lambda req:
+                httpx.Response(200,json={'data':[{'id':'fixture-model'}]}) if req.method=='GET'
+                else httpx.Response(503,json={'error':'busy'})))
             trace = perf.Trace()
             try:
                 with perf.use_trace(trace), perf.stage('match_risk'):

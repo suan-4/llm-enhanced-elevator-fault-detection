@@ -69,6 +69,20 @@ def record_model_call(value: dict):
         trace.model_calls.append(dict(value))
 
 
+def record_model_validation(purpose: str, *, error_code: str = ''):
+    """Keep SDK evidence, but never count rejected business output as success."""
+    trace = current_trace()
+    if trace is None:
+        return
+    for call in reversed(trace.model_calls):
+        if call.get('purpose') == purpose:
+            if call.get('status') == 'ok':
+                call['application_status'] = 'rejected' if error_code else 'accepted'
+                if error_code:
+                    call.update(status='error', error_code=error_code)
+            break
+
+
 def current_purpose():
     return next((name for name in reversed(_stack.get()) if name in ('match_risk','overview')), 'unspecified')
 

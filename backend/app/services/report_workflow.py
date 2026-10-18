@@ -23,7 +23,8 @@ from app.repo.base import day_key, now_iso
 from app.repo.ids import next_id
 from app.services import audit_service, risk_rules, expert_risk
 from app.services.llm_service import llm_service
-from app.services.performance import stage, traced_generation
+from app.services.prompt_budget import ModelInputError
+from app.services.performance import stage, traced_generation, record_model_validation
 
 TEMPLATE_VERSION = "JTE-09-R02-3.00"
 ITEMS_PATH = Path(__file__).resolve().parent.parent / "data" / "jte_items.json"
@@ -235,36 +236,14 @@ def _narrative_prompt(report: dict, unfit: list[dict], risks: dict,
     刻意**不带知识图谱链路**：模板条目与图谱条目还没建立映射（PRD Q5），
     现在硬接只会给出对不上的证据。模型只根据"用户自己填的内容+规则算出的风险值"来写。
     """
-    form = report.get("form") or {}
-    counters = report.get("counters") or {}
-    categories = {"Ⅰ类": 0, "Ⅱ类": 0, "Ⅲ类": 0}
-    for risk in risks.values():
-        if risk["category"] in categories:
-            categories[risk["category"]] += 1
+    # Canonical facts already include categories, score and full source measures.
+    # Do not send the same risks again as selected_risks + reasons + facts.
     data = {
-        "委托单位名称": form.get("clientName", ""),
-        "使用单位名称": form.get("userName", ""),
-        "设备类别": form.get("deviceCategory", ""),
-        "产品编号": form.get("productNo", ""),
-        "评估日期": form.get("assessDate", ""),
-        "评价条目总数": counters.get("total"),
-        "不符合项": [
-            {
-                "项目编号": item["no"],
-                "存在风险": "；".join([*(item.get("reasons") or []), item.get("other_text") or ""]).strip("；"),
-                "其他原文": item.get("other_text") or "",
-                "风险类别": risks.get(item["no"], {}).get("category", ""),
-                "风险及措施": risks.get(item["no"], {}).get("selected_risks", []),
-                "待确认问题": risks.get(item["no"], {}).get("issue", ""),
-            }
-            for item in unfit
-        ],
-        "风险类别统计": categories,
-        "综合安全状况得分": score,
-        "综合安全状况等级": grade,
         "overview_facts": _overview_facts(unfit, risks, score, grade),
+        "other_evidence": [{"item_no":item["no"], "original_text":item["other_text"]}
+                           for item in unfit if item.get("other_text")],
     }
-    return json.dumps({"system": NARRATIVE_SYSTEM, "data": data}, ensure_ascii=False)
+    return json.dumps({"system": NARRATIVE_SYSTEM, "data": data}, ensure_ascii=False, separators=(',', ':'))
 
 
 @traced_generation
@@ -324,9 +303,15 @@ async def generate(report_id: int | str, *, use_llm: bool = False,
                         with stage('match_risk', item_no=no):
                             raw = await model_text(prompt)
                     except Exception as e:
-                        raise ValueError(f"项目 {no} 的其他文字解析失败，请稍后重试或手动选择风险；原文已保存") from e
+                        reason = str(e) if isinstance(e, ModelInputError) else '模型调用失败'
+                        raise ValueError(f"项目 {no} 的其他文字解析失败：{reason}。请稍后重试或手动选择风险；原文已保存") from e
                     with stage('model_result_validate', purpose='match_risk'):
-                        matched = expert_risk.parse_matches(no, raw)
+                        try:
+                            matched = expert_risk.parse_matches(no, raw)
+                        except ValueError:
+                            record_model_validation('match_risk', error_code='model_response_invalid')
+                            raise
+                        record_model_validation('match_risk')
                     other_matches.append({"no": no, "original_text": other,
                                           "risks": [r["text"] for r in matched]})
                 selected.extend(matched)
@@ -346,7 +331,7 @@ async def generate(report_id: int | str, *, use_llm: bool = False,
             issues.append("综合计分口径待确认，暂不输出综合得分和等级")
         grade = risk_rules.grade_of(score) if score is not None else None
         narrative = _narrative(unfit, risks, score, grade, llm_used=False)
-    llm_used, llm_error = False, ""
+    llm_used, llm_error, llm_error_code = False, "", ""
     if use_llm:
         try:
             with stage('prompt_build', purpose='overview'):
@@ -356,13 +341,22 @@ async def generate(report_id: int | str, *, use_llm: bool = False,
             if text:
                 with stage('model_result_validate', purpose='overview'):
                     narrative = _grounded_overview(text, _overview_facts(unfit, risks, score, grade))
+                record_model_validation('overview')
                 llm_used = True
             else:
                 llm_error = "模型返回空内容，已采用原始数据摘要"
+                llm_error_code = 'model_empty_response'
         except Exception as e:
-            llm_error = f"{type(e).__name__}: {e}"
+            record_model_validation('overview', error_code='model_response_invalid')
+            is_timeout = isinstance(e, TimeoutError) or '超时' in str(e) or 'timed out' in str(e).lower()
+            llm_error_code = getattr(e, 'code', 'model_timeout' if is_timeout else 'model_response_invalid')
+            # Preserve controlled model errors, never print arbitrary response text/URLs.
+            llm_error = (str(e) if getattr(e, 'code', '') else '模型概况调用超时，已采用规则摘要' if is_timeout
+                         else '模型概况未通过校验或未完成，已采用规则摘要')
     provenance = {
         "llm_used": llm_used, "llm_model": "Qwen3.5-4B" if llm_used or other_matches else "",
+        "llm_status": 'success' if llm_used else ('degraded' if use_llm else 'not_requested'),
+        "llm_error_code": llm_error_code,
         "llm_error": llm_error, "kg_available": False,
         "kg_note": "模板条目与图谱条目的映射未定，暂不引用图谱链路",
         "risk_rule": "expert_material", "risk_catalog_version": material["version"],

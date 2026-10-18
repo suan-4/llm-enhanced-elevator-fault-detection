@@ -1,0 +1,24 @@
+{
+  "candidate_files_checked": 318,
+  "candidate_mismatches": [],
+  "formal_db_before_sha256": "ed473c6a75ebf49ecc5c98d1c15856d7280f94c8dbea7a54c9ce92c663f4ccdc",
+  "formal_db_after_sha256": "ed473c6a75ebf49ecc5c98d1c15856d7280f94c8dbea7a54c9ce92c663f4ccdc",
+  "formal_db_unchanged": true,
+  "formal_counts_before": {
+    "account": 1,
+    "session": 17,
+    "report": 18,
+    "audit_log": 53
+  },
+  "formal_counts_after": {
+    "account": 1,
+    "session": 17,
+    "report": 18,
+    "audit_log": 53
+  },
+  "formal_services": [
+    "active",
+    "active",
+    "active"
+  ]
+}

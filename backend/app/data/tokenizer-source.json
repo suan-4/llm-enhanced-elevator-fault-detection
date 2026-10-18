@@ -1,0 +1,11 @@
+{
+  "model_repository": "Qwen/Qwen3.5-4B",
+  "revision": "851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a",
+  "license": "Apache-2.0",
+  "engine": "tokenizers==0.22.1",
+  "files": {
+    "tokenizer.json": {"sha256": "5f9e4d4901a92b997e463c1f46055088b6cca5ca61a6522d1b9f64c4bb81cb42"},
+    "LICENSE": {"sha256": "bbedc3fda3305820b977265f01b8619d87570a6739de3a5582c3464840f1e57a"}
+  },
+  "note": "Pinned source assets only. Not proof of calibration against a converted RKLLM model."
+}

@@ -1,0 +1,12 @@
+{
+  "report_id": "103488310063665152",
+  "read_only": true,
+  "regenerated": false,
+  "recorded_sdk_input_tokens": 5619,
+  "old_text_tokens": 5338,
+  "new_text_tokens": 1382,
+  "old_content_sha256": "4afe81c7be0139a38d367aee57fdb364bc64d8c7d131c5c714120468d4dfee42",
+  "new_content_sha256": "ba09a2805d36a8a08f572c4c8a8dc7edd0a98da61b640a5b20737c8c97c4892a",
+  "input_budget_tokens": 3456,
+  "note": "Reconstructed current formal prompt builder using original saved snapshot. No inference or report write. SDK5619 is historical, not a new SDK measurement."
+}
