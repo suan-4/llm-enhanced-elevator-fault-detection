@@ -51,6 +51,11 @@ _TABLE_RE = re.compile(r"<table\b([^>]*)>", re.I)
 _PAPER_RE = re.compile(r'''<div\b[^>]*\bclass=["']paper["'][^>]*>''', re.I)
 _INFO_RE = re.compile(
     r'''(<table\b[^>]*\bclass=["']info["'][^>]*>)(.*?)(</table>)''', re.I | re.S)
+_EVALUATION_RE = re.compile(
+    r'''(<table\b[^>]*\bclass=["']evaluation["'][^>]*>)(.*?)(</table>)''', re.I | re.S)
+# Retained JTE evaluation table tblGrid, in twips. Only ratios are transferred:
+# Writer's HTML importer ignores the browser header CSS and otherwise auto-sizes by text.
+_EVALUATION_GRID = (544, 1328, 4478, 995, 624, 624, 629)
 
 
 def _document_layout(body_html: str) -> str:
@@ -72,7 +77,18 @@ def _document_layout(body_html: str) -> str:
         grid = '<colgroup><col width="15%"><col width="35%"><col width="15%"><col width="35%"></colgroup>'
         return match.group(1) + grid + match.group(2) + match.group(3)
 
-    return _INFO_RE.sub(columns, _PAPER_RE.sub(section, body_html or ""))
+    def evaluation_columns(match):
+        if re.match(r'\s*<colgroup\b', match.group(2), re.I):
+            return match.group(0)
+        # Writer 7.3 still reflows percentage columns around long cell text.
+        # HTML relative weights (N*) preserve the source grid, including rowspan/colspan.
+        grid = '<colgroup>' + ''.join(
+            f'<col width="{width}*">' for width in _EVALUATION_GRID
+        ) + '</colgroup>'
+        return match.group(1) + grid + match.group(2) + match.group(3)
+
+    return _EVALUATION_RE.sub(evaluation_columns,
+        _INFO_RE.sub(columns, _PAPER_RE.sub(section, body_html or "")))
 
 
 def _borderize(html_str: str) -> str:

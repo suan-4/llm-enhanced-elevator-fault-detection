@@ -1,0 +1,73 @@
+{
+  "viewport": {
+    "width": 600,
+    "height": 960
+  },
+  "page_errors": 0,
+  "cases": [
+    {
+      "case": "优先摘要验收-natural_llm",
+      "rows": 66,
+      "exports": [
+        {
+          "fmt": "pdf",
+          "path": "/userdata/releases/20261019-export-columns-01/benchmark/exports/GDSEI-JTE-20261019-001_最高风险摘要演示（非真实评估）.pdf",
+          "bytes": 305813,
+          "performance": {
+            "convert_ms": 2208.111,
+            "publish_ms": 2.381,
+            "cleanup_ms": 12.023,
+            "export_total_ms": 2224.816,
+            "html_build_ms": 3.397,
+            "api_total_ms": 2228.341
+          }
+        },
+        {
+          "fmt": "docx",
+          "path": "/userdata/releases/20261019-export-columns-01/benchmark/exports/GDSEI-JTE-20261019-001_最高风险摘要演示（非真实评估）.docx",
+          "bytes": 20209,
+          "performance": {
+            "convert_ms": 2356.556,
+            "publish_ms": 1.297,
+            "cleanup_ms": 11.595,
+            "export_total_ms": 2370.938,
+            "html_build_ms": 2.891,
+            "api_total_ms": 2373.95
+          }
+        }
+      ]
+    },
+    {
+      "case": "优先摘要验收-32条风险",
+      "rows": 66,
+      "exports": [
+        {
+          "fmt": "pdf",
+          "path": "/userdata/releases/20261019-export-columns-01/benchmark/exports/GDSEI-JTE-20261019-003_摘要分页压力演示.pdf",
+          "bytes": 324132,
+          "performance": {
+            "convert_ms": 2330.878,
+            "publish_ms": 2.292,
+            "cleanup_ms": 11.687,
+            "export_total_ms": 2346.552,
+            "html_build_ms": 3.324,
+            "api_total_ms": 2350.001
+          }
+        },
+        {
+          "fmt": "docx",
+          "path": "/userdata/releases/20261019-export-columns-01/benchmark/exports/GDSEI-JTE-20261019-003_摘要分页压力演示.docx",
+          "bytes": 23988,
+          "performance": {
+            "convert_ms": 2200.284,
+            "publish_ms": 0.426,
+            "cleanup_ms": 2.815,
+            "export_total_ms": 2204.945,
+            "html_build_ms": 3.307,
+            "api_total_ms": 2208.297
+          }
+        }
+      ]
+    }
+  ]
+}

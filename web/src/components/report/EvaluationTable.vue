@@ -18,7 +18,7 @@ function resultText(no: string): string {
 </script>
 
 <template>
-  <table>
+  <table class="evaluation">
     <thead>
       <tr>
         <th rowspan="2" style="width: 16mm">项目编号</th>
