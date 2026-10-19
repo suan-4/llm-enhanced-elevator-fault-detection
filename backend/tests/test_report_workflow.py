@@ -167,7 +167,8 @@ def test_generate_falls_back_when_llm_fails() -> None:
         assert report["narrative"], "降级后叙述文字不能为空"
         assert report["provenance"]["llm_used"] is False
         assert "超时" in str(report["provenance"].get("llm_error", ""))
-        assert "未使用大模型" in report["narrative"], "报告里要写明没用模型"
+        assert report['provenance']['llm_status'] == 'degraded', '降级原因在页面工具栏展示'
+        assert "未使用大模型" not in report["narrative"], "模型运行提示不能进入报告正文"
 
 
 def test_void_keeps_number_and_delete_rules() -> None:

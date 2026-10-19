@@ -7,7 +7,7 @@ import MissingList from '@/components/report/MissingList.vue'
 import ReportDocument from '@/components/report/ReportDocument.vue'
 import AppDialog from '@/components/AppDialog.vue'
 import { overviewText, countByCategory } from '@/domain/riskScore'
-import { buildAppendixRows } from '@/domain/reportResult'
+import { buildAppendixRows, overviewNarrative } from '@/domain/reportResult'
 import { modelStatus } from '@/domain/modelStatus'
 import { useReportStore } from '@/stores/report'
 import { useShell } from '@/stores/shell'
@@ -106,16 +106,14 @@ const g = computed(() => store.generated?.score ?? null)
 const grade = computed(() => store.generated?.grade ?? null)
 const assessmentIssues = computed(() => store.generated?.assessment_issues ?? [])
 const modelNotice = computed(() => modelStatus(store.generated))
-/* 评估概况 = 模板要求的两行（风险分布 + 得分）+ 大模型写的那段说明。
-   规则摘要兜底的那版不往报告上打印 —— 它逐条罗列，附页已经列过了，
-   塞进概况会把单元格撑得很长（放哪由 PRD Q7 定，这里先按建议默认放概况）。 */
+/* 模板统计 + 已校验概况。新策略的规则兜底也保留最高风险，故障提示不进入纸张。 */
 const overview = computed(() => {
   const count = countByCategory(categories.value)
   const base = g.value === null
     ? `1、存在Ⅰ类风险 ${count['Ⅰ类']} 项，Ⅱ类风险 ${count['Ⅱ类']} 项。\n2、综合评定暂不可用，详见评定提示。`
     : overviewText(categories.value, g.value)
-  const ai = store.generated?.llm_used ? store.generated.narrative.trim() : ''
-  return ai ? `${base}\n${ai}` : base
+  const narrative = overviewNarrative(store.generated)
+  return narrative ? `${base}\n${narrative}` : base
 })
 const conclusion = computed(() => `综合安全状况等级：${grade.value ?? '待确认'}`)
 const appendixRows = computed(() => buildAppendixRows(store.items, store.stateOf, riskByNo.value))

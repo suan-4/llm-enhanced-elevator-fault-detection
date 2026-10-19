@@ -4,6 +4,14 @@ import type { RiskValue } from './riskAssign'
 import { CAT_MEASURE } from './riskScore'
 import { reasonsText, type ItemState } from './validation'
 
+/** Legacy fallback contains runtime messages: only new verified rule facts are printable. */
+export function overviewNarrative(result: {
+  llm_used: boolean | null; overview_policy: string; narrative: string
+} | null): string {
+  return result && (result.llm_used === true || result.overview_policy === 'highest-risk-first-v1')
+    ? result.narrative.trim() : ''
+}
+
 /** One final category per item; keep every risk and its own measure. */
 export function buildAppendixRows(
   items: JteItem[], stateOf: (no: string) => ItemState, risks: Record<string, RiskValue>,

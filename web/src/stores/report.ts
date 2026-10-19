@@ -32,8 +32,9 @@ export interface GeneratedInfo {
   score: number | null
   grade: Grade | null
   narrative: string
-  /** 叙述文字是否真由大模型生成（false = 规则摘要兜底，报告里不打印） */
+  /** 模型是否参与概况；带新策略标识的可信规则摘要也可打印。 */
   llm_used: boolean | null
+  overview_policy: string
   llm_status: string
   llm_error_code: string
   loaded_from_history: boolean
@@ -294,6 +295,7 @@ export const useReportStore = defineStore('report', () => {
       llm_status: typeof report.provenance?.llm_status === 'string' ? report.provenance.llm_status : '',
       llm_error_code: typeof report.provenance?.llm_error_code === 'string' ? report.provenance.llm_error_code : '',
       loaded_from_history: false,
+      overview_policy: typeof report.provenance?.overview_policy === 'string' ? report.provenance.overview_policy : '',
       risks: report.risks || {},
       generated_at: report.generated_at || '',
       assessment_issues: (report.provenance?.assessment_issues as string[]) || [],
@@ -328,6 +330,7 @@ export const useReportStore = defineStore('report', () => {
             llm_status: typeof report.provenance?.llm_status === 'string' ? report.provenance.llm_status : '',
             llm_error_code: typeof report.provenance?.llm_error_code === 'string' ? report.provenance.llm_error_code : '',
             loaded_from_history: true,
+            overview_policy: typeof report.provenance?.overview_policy === 'string' ? report.provenance.overview_policy : '',
             risks: report.risks || {},
             generated_at: report.generated_at || '',
             assessment_issues: (report.provenance?.assessment_issues as string[]) || [],

@@ -1,0 +1,23 @@
+[
+  {
+    "case": "natural_llm",
+    "pages": 15,
+    "required_risks": 1,
+    "missing_in_overview": [],
+    "runtime_status_in_paper": false
+  },
+  {
+    "case": "selected_rule",
+    "pages": 15,
+    "required_risks": 1,
+    "missing_in_overview": [],
+    "runtime_status_in_paper": false
+  },
+  {
+    "case": "large",
+    "pages": 27,
+    "required_risks": 32,
+    "missing_in_overview": [],
+    "runtime_status_in_paper": false
+  }
+]
