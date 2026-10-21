@@ -45,6 +45,12 @@ export interface JteItemsResponse {
 
 export interface ExportResponse {
   success: boolean
+  report_id: string
+  status: 'filed'
+  version: number
+  result_digest: string
+  sha256: string
+  exported_at: string
   fmt: string
   filename: string
   path: string

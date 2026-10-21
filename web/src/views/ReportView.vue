@@ -26,6 +26,7 @@ const confirmNew = ref(false)
 const newBusy = ref(false)
 const confirmExport = ref<'pdf' | 'docx' | null>(null)
 const reportWrap = ref<HTMLElement | null>(null)
+const locked = computed(() => ['filed', 'void'].includes(store.status) || store.exportUncertain)
 
 /* 侧栏 / 顶栏已上移到 AppShell，本页只管内容。
    侧栏点「评估报告录入 / 报告预览」可能是①本页已挂载（立即切）或
@@ -72,10 +73,14 @@ watch([() => store.form, () => store.states], () => store.scheduleSave(), { deep
 /* 页面切到后台/被关闭时，尽量把防抖里还压着的改动写下去。
    防抖窗口（800ms）内掉电仍可能丢最后一次改动，所以悬浮岛会显示保存状态。 */
 function flushOnHide(): void {
-  if (document.visibilityState === 'hidden') void store.flush()
+  if (document.visibilityState === 'hidden') flushOnPageHide()
+}
+function flushOnPageHide(): void {
+  // The store retains the failure; lifecycle events have no caller to catch it.
+  void store.flush().catch(() => undefined)
 }
 document.addEventListener('visibilitychange', flushOnHide)
-window.addEventListener('pagehide', () => void store.flush())
+window.addEventListener('pagehide', flushOnPageHide)
 
 const saveHint = computed(() => {
   if (store.saveState === 'saving') return '保存中…'
@@ -86,6 +91,7 @@ const saveHint = computed(() => {
 onBeforeUnmount(() => {
   window.removeEventListener('resize', fitPapers)
   document.removeEventListener('visibilitychange', flushOnHide)
+  window.removeEventListener('pagehide', flushOnPageHide)
 })
 
 /* 风险值只使用服务端专家查表结果，不用演示值填补未确认数据。 */
@@ -139,6 +145,10 @@ function scrollToTop(): void {
 
 async function saveNow(): Promise<void> {
   try {
+    if (locked.value) {
+      show('这份报告已归档或作废，原内容已保留；修改请在报告管理中复制为新建')
+      return
+    }
     await store.save()
     show('草稿已保存')
   } catch (err) {
@@ -291,12 +301,15 @@ function fitPapers(): void {
           </div>
           <div v-else-if="!store.ready" class="state-tip">正在准备评估…</div>
 
-          <template v-else>
+          <fieldset v-else :disabled="locked || exp.busy.value" style="border: 0; padding: 0; margin: 0; min-width: 0">
+            <div v-if="locked" class="notes" role="status">{{ store.exportUncertain
+              ? '导出状态待确认，暂时只读；恢复连接后请重试导出或重新打开报告。'
+              : '这份报告已归档或作废，只读查看；修改请在报告管理中复制为新建。' }}</div>
             <InfoTable />
             <div style="margin-top: 14px">
               <ItemTable />
             </div>
-          </template>
+          </fieldset>
         </div>
       </section>
 
@@ -357,7 +370,7 @@ function fitPapers(): void {
           <button
             class="btn btn-lg btn-save"
             type="button"
-            :disabled="store.saveState === 'saving'"
+            :disabled="store.saveState === 'saving' || locked || exp.busy.value"
             @click="saveNow"
           >
             保存草稿
@@ -367,7 +380,7 @@ function fitPapers(): void {
               v-if="view === 'input'"
               class="btn btn-lg btn-primary"
               type="button"
-              :disabled="generating"
+              :disabled="generating || locked || exp.busy.value"
               @click="generate"
             >
               {{ generating ? '生成中…' : '校验并生成报告' }}

@@ -54,6 +54,8 @@ export interface ReportSummary {
   grade: Grade | null
   narrative: string
   provenance: Record<string, unknown>
+  files?: { fmt: string; filename: string; path: string; size: number;
+    version: number; result_digest: string; sha256: string }[]
   /** 本次生成响应的计时，不作为报告业务内容保存 */
   performance?: Record<string, unknown>
 }

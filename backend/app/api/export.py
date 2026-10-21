@@ -4,14 +4,16 @@
 接口同时返回文件名与完整路径，前端会展示给用户。
 """
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
+from typing import Literal
 import shlex
 import subprocess
 from pathlib import Path
 from time import perf_counter
 
 from app.deps import get_current_user
-from app.services import export_service
+from app.services import export_service, report_export
+from app.services.report_workflow import VersionConflict
 
 router = APIRouter(prefix="/api/report", tags=["报告导出"])
 
@@ -22,13 +24,12 @@ DESKTOP_UID = 1002
 
 
 class ExportRequest(BaseModel):
-    fmt: str = Field(..., description="导出格式：pdf 或 docx")
-    title: str = Field(default="电梯安全评估报告", max_length=120)
-    subtitle: str = Field(default="", max_length=200)
-    meta: list[list[str]] = Field(default_factory=list, description="[[标签, 值], ...]")
-    body_html: str = Field(default="", description="报告正文 HTML（前端已渲染，避免后端重复实现 markdown）")
-    footer: str = Field(default="", max_length=200)
-    filename: str = Field(default="", max_length=80, description="不带扩展名的文件名，留空则用标题")
+    model_config = ConfigDict(extra="forbid")
+    fmt: Literal["pdf", "docx"]
+    report_id: str = Field(pattern=r"^[1-9][0-9]{0,18}$")
+    version: int = Field(ge=1, strict=True)
+    result_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
+    filename: str = Field(default="", max_length=80)
 
 
 class OpenRequest(BaseModel):
@@ -82,34 +83,21 @@ def export_report(req: ExportRequest, user: dict = Depends(get_current_user)):
     """
     api_started = perf_counter()
     try:
-        build_started = perf_counter()
-        html = export_service.build_html(
-            title=req.title,
-            meta_rows=req.meta,
-            body_html=req.body_html,
-            subtitle=req.subtitle,
-            footer=req.footer,
-        )
-        html_build_ms = (perf_counter()-build_started)*1000
-        info = export_service.export(
-            html_str=html,
-            fmt=req.fmt,
-            stem=req.filename or req.title,
-        )
+        info = report_export.export_report(**req.model_dump(), actor=user)
+    except LookupError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except VersionConflict as e:
+        raise HTTPException(status_code=409, detail=str(e))
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except RuntimeError as e:
         raise HTTPException(status_code=500, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail="%s: %s" % (type(e).__name__, e))
+        report_export.log.exception("Report export failed")
+        raise HTTPException(status_code=500, detail="导出或归档失败，本次未确认成功，请重试")
 
     return {
-        "success": True,
-        "fmt": info["fmt"],
-        "filename": info["filename"],
-        "path": info["path"],
-        "dir": info["dir"],
-        "size": info["size"],
-        "performance": {**info.get('performance', {}), 'html_build_ms':round(html_build_ms, 3),
+        **info,
+        "performance": {**info.get('performance', {}),
                         'api_total_ms':round((perf_counter()-api_started)*1000, 3)},
     }

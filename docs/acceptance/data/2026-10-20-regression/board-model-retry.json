@@ -1,0 +1,262 @@
+{
+  "status": "generated",
+  "score": 0,
+  "grade": "四级",
+  "risk_16_1": {
+    "severity": 2,
+    "probability": "B",
+    "category": "Ⅰ类",
+    "source": "expert_material",
+    "selected_risks": [
+      {
+        "key": "16.1:32",
+        "text": "控制柜散热通道堵塞，元件温升增加，可能造成控制故障。",
+        "raw_text": "32.控制柜散热通道堵塞，元件温升增加，可能造成控制故障。",
+        "category": "I",
+        "measure": "清理散热通道，检查散热装置，验证温升状态。",
+        "source": {
+          "file": "docs/规范与模板/总表-安全评估项目汇总-v1.docx",
+          "table": 1,
+          "row": 310
+        },
+        "category_override": {
+          "original_category": "II",
+          "source": {
+            "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+            "table": 3,
+            "row": 98
+          },
+          "basis": "user_confirmed_evaluation_unfit_2026-10-16"
+        },
+        "match_source": "llm"
+      }
+    ],
+    "reference_source": {
+      "file": "docs/规范与模板/评价结果与风险评定-v1.docx",
+      "table": 3,
+      "row": 98
+    },
+    "issue": ""
+  },
+  "provenance": {
+    "llm_used": true,
+    "llm_model": "Qwen3.5-4B",
+    "llm_status": "success",
+    "llm_error_code": "",
+    "llm_error": "",
+    "kg_available": false,
+    "overview_policy": "highest-risk-first-v1",
+    "overview_required_keys": [
+      "risk:16.1:32"
+    ],
+    "kg_note": "模板条目与图谱条目的映射未定，暂不引用图谱链路",
+    "risk_rule": "expert_material",
+    "risk_catalog_version": "expert-d1e510a8f4ca",
+    "catalog_version": "JTE-09-R02-3.00+be329580",
+    "unfit_count": 1,
+    "other_matches": [
+      {
+        "no": "16.1",
+        "original_text": "控制柜的散热风道被灰尘堵住，电气元件温度升高。",
+        "risks": [
+          "控制柜散热通道堵塞，元件温升增加，可能造成控制故障。"
+        ]
+      }
+    ],
+    "score_basis": "applicable_items",
+    "assessment_issues": [],
+    "assessment_complete": true,
+    "input_digest": "f8b4a6abdecf06c04cf1002436edf5c2d450dd2fbc724585db3a528dff72a44f",
+    "elapsed_ms": 39615,
+    "result_current": true
+  },
+  "performance": {
+    "schema_version": 1,
+    "trace_id": "1661cb76ae8a452f889e9cafb5a0316a",
+    "total_ms": 39622.723,
+    "stages": [
+      {
+        "name": "db_read",
+        "depth": 0,
+        "parent": null,
+        "start_ms": 0.138,
+        "duration_ms": 1.081,
+        "status": "ok"
+      },
+      {
+        "name": "catalog_load",
+        "depth": 0,
+        "parent": null,
+        "start_ms": 1.273,
+        "duration_ms": 5.046,
+        "status": "ok",
+        "cache_hit": false
+      },
+      {
+        "name": "validate",
+        "depth": 0,
+        "parent": null,
+        "start_ms": 6.354,
+        "duration_ms": 0.054,
+        "status": "ok"
+      },
+      {
+        "name": "prompt_build",
+        "depth": 1,
+        "parent": "risk_assessment",
+        "start_ms": 8.742,
+        "duration_ms": 0.146,
+        "status": "ok",
+        "purpose": "match_risk",
+        "item_no": "16.1"
+      },
+      {
+        "name": "match_risk",
+        "depth": 1,
+        "parent": "risk_assessment",
+        "start_ms": 8.899,
+        "duration_ms": 30148.626,
+        "status": "ok",
+        "item_no": "16.1"
+      },
+      {
+        "name": "model_result_validate",
+        "depth": 1,
+        "parent": "risk_assessment",
+        "start_ms": 30157.542,
+        "duration_ms": 0.27,
+        "status": "ok",
+        "purpose": "match_risk"
+      },
+      {
+        "name": "risk_assessment",
+        "depth": 0,
+        "parent": null,
+        "start_ms": 6.439,
+        "duration_ms": 30151.469,
+        "status": "ok"
+      },
+      {
+        "name": "score",
+        "depth": 0,
+        "parent": null,
+        "start_ms": 30157.931,
+        "duration_ms": 0.048,
+        "status": "ok"
+      },
+      {
+        "name": "prompt_build",
+        "depth": 0,
+        "parent": null,
+        "start_ms": 30157.988,
+        "duration_ms": 0.046,
+        "status": "ok",
+        "purpose": "overview"
+      },
+      {
+        "name": "overview",
+        "depth": 0,
+        "parent": null,
+        "start_ms": 30158.039,
+        "duration_ms": 9456.828,
+        "status": "ok"
+      },
+      {
+        "name": "model_result_validate",
+        "depth": 0,
+        "parent": null,
+        "start_ms": 39614.884,
+        "duration_ms": 0.064,
+        "status": "ok",
+        "purpose": "overview"
+      },
+      {
+        "name": "db_commit",
+        "depth": 0,
+        "parent": null,
+        "start_ms": 39615.175,
+        "duration_ms": 7.276,
+        "status": "ok"
+      }
+    ],
+    "model_calls": [
+      {
+        "purpose": "match_risk",
+        "input_chars": 2987,
+        "input_utf8_bytes": 6091,
+        "request_build_ms": 0.169,
+        "status": "ok",
+        "http_status": 200,
+        "runtime": {
+          "prefill_time_ms": 25574.1328125,
+          "prefill_tokens": 1482,
+          "generate_time_ms": 3146.490966796875,
+          "generate_tokens": 18,
+          "memory_usage_mb": 4722.08984375,
+          "first_output_ms": 25628.854,
+          "model_run_ms": 28774.47,
+          "model_load_ms": 24321.921,
+          "prefill_tokens_per_s": 57.949,
+          "generate_tokens_per_s": 5.721,
+          "perf_source": "rkllm_runtime",
+          "run_status": "finished",
+          "inference_id": "cccb6e0403fd44589c8b4353e7e039ea",
+          "request_total_ms": 28776.496
+        },
+        "input_tokens": 1467,
+        "input_budget_tokens": 3456,
+        "context_tokens": 4096,
+        "reserved_output_tokens": 512,
+        "template_reserve_tokens": 128,
+        "tokenizer_sha256": "5f9e4d4901a92b997e463c1f46055088b6cca5ca61a6522d1b9f64c4bb81cb42",
+        "budget_ms": 1200.196,
+        "http_ms": 28947.881,
+        "application_status": "accepted"
+      },
+      {
+        "purpose": "overview",
+        "input_chars": 492,
+        "input_utf8_bytes": 934,
+        "request_build_ms": 0.06,
+        "status": "ok",
+        "http_status": 200,
+        "runtime": {
+          "prefill_time_ms": 6273.88818359375,
+          "prefill_tokens": 243,
+          "generate_time_ms": 3151.097900390625,
+          "generate_tokens": 19,
+          "memory_usage_mb": 4722.671875,
+          "first_output_ms": 6292.73,
+          "model_run_ms": 9444.009,
+          "model_load_ms": 24321.921,
+          "prefill_tokens_per_s": 38.732,
+          "generate_tokens_per_s": 6.03,
+          "perf_source": "rkllm_runtime",
+          "run_status": "finished",
+          "inference_id": "ebe1210005d84ebea77ed3cdee6a772e",
+          "request_total_ms": 9444.828
+        },
+        "input_tokens": 225,
+        "input_budget_tokens": 3456,
+        "context_tokens": 4096,
+        "reserved_output_tokens": 512,
+        "template_reserve_tokens": 128,
+        "tokenizer_sha256": "5f9e4d4901a92b997e463c1f46055088b6cca5ca61a6522d1b9f64c4bb81cb42",
+        "budget_ms": 1.071,
+        "http_ms": 9455.53,
+        "application_status": "accepted"
+      }
+    ]
+  },
+  "formal_before": {
+    "report_count": 18,
+    "reports_sha256": "1f96fb09061392f6e09c5832385870419e11994f01a02075b04895d882efc277",
+    "db_sha256": "8c2332546de02aac68950ce73c4d8240766ca1441b93fd5fe9e31802a3048bc5"
+  },
+  "formal_after": {
+    "report_count": 18,
+    "reports_sha256": "1f96fb09061392f6e09c5832385870419e11994f01a02075b04895d882efc277",
+    "db_sha256": "8c2332546de02aac68950ce73c4d8240766ca1441b93fd5fe9e31802a3048bc5"
+  },
+  "formal_unchanged": true
+}

@@ -252,9 +252,24 @@ def export(html_str: str, fmt: str, stem: str) -> dict:
 
         publish_started = perf_counter()
         final = EXPORT_DIR / out.name
-        if final.exists():      # 同一秒重复导出时不覆盖
-            final = EXPORT_DIR / ("%s_%s.%s" % (clean_stem, datetime.now().strftime("%H%M%S"), fmt))
-        shutil.move(str(out), str(final))
+        suffix = datetime.now().strftime("%H%M%S")
+        attempt = 0
+        while True:
+            try:
+                # Exclusive creation also protects simultaneous exports, not just
+                # sequential repeats. Never replace an existing published file.
+                destination = final.open("xb")
+                break
+            except FileExistsError:
+                attempt += 1
+                extra = "" if attempt == 1 else "_%d" % attempt
+                final = EXPORT_DIR / ("%s_%s%s.%s" % (clean_stem, suffix, extra, fmt))
+        try:
+            with destination, out.open("rb") as source:
+                shutil.copyfileobj(source, destination)
+        except Exception:
+            final.unlink(missing_ok=True)
+            raise
         try:
             if hasattr(os, "chown"):
                 os.chown(final, EXPORT_UID, EXPORT_GID)

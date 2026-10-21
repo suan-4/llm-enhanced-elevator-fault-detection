@@ -3,7 +3,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { useReportStore } from './report'
 import * as api from '@/api/reports'
 
-vi.mock('@/api/reports', () => ({ getReport: vi.fn(), saveReport: vi.fn(), generateReport: vi.fn() }))
+vi.mock('@/api/reports', () => ({ getReport: vi.fn(), saveReport: vi.fn(), generateReport: vi.fn(), createReport: vi.fn() }))
 vi.mock('@/api/report', () => ({ fetchJteItems: vi.fn(async () => ({ items: [] })) }))
 
 const report = (status: string, resultCurrent = true) => ({
@@ -70,5 +70,62 @@ describe('saved report preview', () => {
     await expect(pending).rejects.toThrow('输入已修改')
     expect(store.generated).toBeNull()
     expect(store.form.clientName).toBe('请求期间修改的新输入')
+  })
+
+  it('keeps the current input when saving before switching fails, including a retry', async () => {
+    vi.mocked(api.getReport).mockResolvedValue({ report: report('draft', false) } as never)
+    vi.mocked(api.saveReport).mockRejectedValue(new Error('保存失败'))
+    const store = useReportStore()
+    await store.openReport('123')
+    store.form.clientName = '尚未保存'
+    store.scheduleSave(60_000)
+    await expect(store.openReport('456')).rejects.toThrow('保存失败')
+    await expect(store.openReport('456')).rejects.toThrow('保存失败')
+    expect(store.reportId).toBe('123')
+    expect(store.form.clientName).toBe('尚未保存')
+    expect(api.getReport).toHaveBeenCalledTimes(1)
+  })
+
+  it('waits for an in-flight autosave before creating a new assessment', async () => {
+    vi.mocked(api.getReport).mockResolvedValue({ report: report('draft', false) } as never)
+    vi.mocked(api.createReport).mockResolvedValue({ report: { ...report('draft', false), id: '456' } } as never)
+    let finish!: (value: never) => void
+    vi.mocked(api.saveReport).mockImplementation(() => new Promise(resolve => { finish = resolve }))
+    const store = useReportStore()
+    await store.openReport('123')
+    const saving = store.save()
+    const creating = store.createNew()
+    await Promise.resolve()
+    await Promise.resolve()
+    expect(api.createReport).not.toHaveBeenCalled()
+    finish({ saved_at: 'now', version: 2, status: 'draft' } as never)
+    await saving
+    await creating
+    expect(store.reportId).toBe('456')
+    expect(store.version).toBe(1)
+  })
+
+  it('serializes overlapping saves and sends the latest version with a stable input snapshot', async () => {
+    vi.mocked(api.getReport).mockResolvedValue({ report: report('draft', false) } as never)
+    let finish!: (value: never) => void
+    vi.mocked(api.saveReport)
+      .mockImplementationOnce(() => new Promise(resolve => { finish = resolve }))
+      .mockResolvedValueOnce({ saved_at: 'later', version: 3, status: 'draft' } as never)
+    const store = useReportStore()
+    await store.openReport('123')
+    store.form.clientName = '第一次输入'
+    const first = store.save()
+    await vi.waitFor(() => expect(api.saveReport).toHaveBeenCalledTimes(1))
+    store.form.clientName = '第二次输入'
+    const second = store.save()
+    await Promise.resolve()
+    expect(api.saveReport).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(api.saveReport).mock.calls[0][1].form.clientName).toBe('第一次输入')
+    finish({ saved_at: 'now', version: 2, status: 'draft' } as never)
+    await Promise.all([first, second])
+    expect(vi.mocked(api.saveReport).mock.calls[1][1]).toMatchObject({
+      version: 2, form: { clientName: '第二次输入' },
+    })
+    expect(store.version).toBe(3)
   })
 })

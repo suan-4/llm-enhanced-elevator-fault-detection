@@ -28,6 +28,7 @@ const CODE_TO_RESULT: Record<string, ItemResult> = {
 }
 
 export interface GeneratedInfo {
+  result_digest: string
   report_no: string | null
   score: number | null
   grade: Grade | null
@@ -96,12 +97,19 @@ export const useReportStore = defineStore('report', () => {
   const version = ref(1)
   const status = ref('')
   const generated = ref<GeneratedInfo | null>(null)
+  const uncertainExports = reactive<Record<string, boolean>>({})
+  const exportUncertain = computed(() => !!reportId.value && !!uncertainExports[reportId.value])
+  function markExportUncertain(id: string, uncertain: boolean): void {
+    if (uncertain) uncertainExports[id] = true
+    else delete uncertainExports[id]
+  }
   const saveState = ref<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const savedAt = ref('')
   /** 装载完成前不触发自动保存，避免刚读回来的内容又被写回去 */
   const ready = ref(false)
   const draftError = ref('')
   let saveTimer: number | undefined
+  let saveInFlight: Promise<void> | null = null
 
   function stateOf(no: string): ItemState {
     if (!states[no]) states[no] = createItemState()
@@ -232,35 +240,50 @@ export const useReportStore = defineStore('report', () => {
   /** 立即把待保存的改动写下去（页面隐藏/离开前调用） */
   async function flush(): Promise<void> {
     if (!ready.value || !reportId.value) return
-    if (saveTimer === undefined) return
-    await save().catch(() => undefined)
+    while (saveInFlight) await saveInFlight
+    if (saveTimer !== undefined || saveState.value === 'error') await save()
   }
 
   /** 保存当前全部状态（草稿保存的就是全部） */
   async function save(): Promise<void> {
+    if (status.value === 'filed' || status.value === 'void' || exportUncertain.value) return
+    // Autosave, manual save and generation share one ordered stream of writes.
+    while (saveInFlight) await saveInFlight
     if (!reportId.value) return
     window.clearTimeout(saveTimer)
     saveTimer = undefined
+    const requestedId = reportId.value
+    const payload = {
+      form: { ...form.value },
+      items: serializeItems(),
+      version: version.value,
+    }
     saveState.value = 'saving'
+    const pending = (async () => {
+      try {
+        const res = await flowApi.saveReport(requestedId, payload)
+        if (reportId.value !== requestedId) return
+        savedAt.value = res.saved_at
+        version.value = res.version
+        status.value = res.status
+        saveState.value = 'saved'
+      } catch (err) {
+        if (reportId.value === requestedId) saveState.value = 'error'
+        throw err
+      }
+    })()
+    saveInFlight = pending
     try {
-      const res = await flowApi.saveReport(reportId.value, {
-        form: form.value,
-        items: serializeItems(),
-        version: version.value,
-      })
-      savedAt.value = res.saved_at
-      version.value = res.version
-      status.value = res.status
-      saveState.value = 'saved'
-    } catch (err) {
-      saveState.value = 'error'
-      throw err
+      await pending
+    } finally {
+      if (saveInFlight === pending) saveInFlight = null
     }
   }
 
   /** 改动后防抖保存：既保证不丢，又不至于每敲一个字写一次盘 */
   function scheduleSave(delay = 800): void {
     if (!ready.value || !reportId.value) return
+    if (status.value === 'filed' || status.value === 'void' || exportUncertain.value) return
     generated.value = null
     window.clearTimeout(saveTimer)
     saveTimer = window.setTimeout(() => {
@@ -287,6 +310,7 @@ export const useReportStore = defineStore('report', () => {
     version.value = report.version
     status.value = report.status
     generated.value = {
+      result_digest: String(report.provenance?.result_digest || ''),
       report_no: report.report_no,
       score: report.score,
       grade: report.grade,
@@ -317,11 +341,13 @@ export const useReportStore = defineStore('report', () => {
       status: report.status,
     })
     reportId.value = report.id
+    if (report.status !== 'generated') markExportUncertain(report.id, false)
     ready.value = true
     generated.value =
       !report.generated_at || (report.status === 'draft' && report.provenance?.result_current !== true)
         ? null
         : {
+            result_digest: String(report.provenance?.result_digest || ''),
             report_no: report.report_no,
             score: report.score,
             grade: report.grade,
@@ -363,6 +389,8 @@ export const useReportStore = defineStore('report', () => {
     version,
     status,
     generated,
+    exportUncertain,
+    markExportUncertain,
     saveState,
     savedAt,
     ready,

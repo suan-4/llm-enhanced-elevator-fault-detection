@@ -13,6 +13,7 @@ import hashlib
 import asyncio
 import json
 import re
+from uuid import uuid4
 from pathlib import Path
 from time import monotonic
 
@@ -25,6 +26,7 @@ from app.services import audit_service, risk_rules, expert_risk
 from app.services.llm_service import llm_service
 from app.services.prompt_budget import ModelInputError
 from app.services.performance import stage, traced_generation, record_model_validation
+from app.services.report_snapshot import result_digest
 
 TEMPLATE_VERSION = "JTE-09-R02-3.00"
 ITEMS_PATH = Path(__file__).resolve().parent.parent / "data" / "jte_items.json"
@@ -62,6 +64,7 @@ def public_report(row: dict | None) -> dict | None:
     provenance["result_current"] = bool(out.get("generated_at")) and (
         out.get("status") != "draft" or provenance.get("input_digest") == _input_digest(out)
     )
+    provenance["result_digest"] = result_digest(row) if out.get("generated_at") else ""
     out["provenance"] = provenance
     for key in ("id", "created_by"):
         if out.get(key) is not None:
@@ -162,7 +165,7 @@ def save_content(report_id: int | str, *, form: dict, items: list,
     rid = int(report_id)
     stamp = now_iso()
     with db.get_conn() as conn:
-        report = report_repo.find_by_id(conn, rid)
+        report = report_repo.lock_for_update(conn, rid)
         if report is None:
             raise LookupError("报告不存在")
         if report["status"] in ("void", "filed"):
@@ -175,9 +178,8 @@ def save_content(report_id: int | str, *, form: dict, items: list,
                                    updated_at=stamp, promote=_promote(form))
 
         # 只在真实输入变化时失效，查看/相同内容保存不能把历史报告降为草稿。
-        if report["status"] == "generated" and (form != report["form"] or items != report["items"]):
-            conn.execute("UPDATE report SET status = 'draft', version = version + 1 WHERE id = ?",
-                         (rid,))
+        if form != report["form"] or items != report["items"]:
+            report_repo.invalidate_content(conn, rid)
         current = report_repo.find_by_id(conn, rid)
     return {"counters": counters, "saved_at": stamp, "version": current["version"], "status": current["status"]}
 
@@ -360,6 +362,7 @@ async def generate(report_id: int | str, *, use_llm: bool = False,
             llm_error = (str(e) if getattr(e, 'code', '') else '模型概况调用超时，已采用规则摘要' if is_timeout
                          else '模型概况未通过校验或未完成，已采用规则摘要')
     provenance = {
+        "generation_id": uuid4().hex,
         "llm_used": llm_used, "llm_model": "Qwen3.5-4B" if llm_used or other_matches else "",
         "llm_status": 'success' if llm_used else ('degraded' if use_llm else 'not_requested'),
         "llm_error_code": llm_error_code,
