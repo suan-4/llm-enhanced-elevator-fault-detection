@@ -1,8 +1,17 @@
 # 推送状态
 
-## 当前状态：2026-10-21 发布更新进行中
+## 当前状态：2026-10-21 板端正式版本已更新
 
 用户已授权更新板端正式版本并推送GitHub。当前分支为`codex/export-column-widths`，本轮包含原生JTE模板导出、报告快照、可靠归档和保存一致性修复。最新结果以本轮发布记录和Git命令为准。
+
+正式服务已部署应用提交`f176359`，模型/Word/PDF隔离验收通过，原19份报告内容未变。恢复位置和发布结果见`docs/acceptance/2026-10-21-板端正式发布.md`。
+
+本轮GitHub分支的实际同步状态检查：
+
+```powershell
+git fetch origin
+git rev-list --left-right --count origin/codex/export-column-widths...HEAD
+```
 
 已验收制品`candidate-final.zip`的SHA256：`a498bad3e61120e8346caaa9ad8d74f0dace063a1ffd91d65cd4287adeb4d14b`。模型、离线运行库、业务数据库、密钥和测试生成文件不上传GitHub。
 
