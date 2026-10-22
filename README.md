@@ -75,6 +75,7 @@ RK3588 开发板上的**完全离线**电梯安全评估终端。依据 **GB/T 4
 
 | 想了解 | 看 |
 |---|---|
+| **Windows 本机测试环境（开发 / 联调）** | `docs/本地测试环境部署-Windows.md` |
 | **板端一切细节与踩过的坑** | `kiosk/README.md` ← 最全，优先看这个 |
 | 怎么部署到板子 | `push.bat`（头注释里写了实测布局） |
 | 项目的能力清单 | `RESUME.md` |
@@ -82,6 +83,15 @@ RK3588 开发板上的**完全离线**电梯安全评估终端。依据 **GB/T 4
 | 报告格式要求与改造计划 | `docs/prd/PRD-JTE报告模板对齐与交互优化-v0.2.md` |
 | 新页面长什么样 | 直接打开 `docs/prd/mockup/jte-report-ui.html` |
 | 国标与报告模板原件 | `docs/规范与模板/` |
+
+## 本机开发 / 测试环境（Windows）
+
+没有板子时可以在本机只跑「前端 + 后端」，大模型不可用时报告自动降级：
+
+    powershell -ExecutionPolicy Bypass -File tools/dev/start-test-env.ps1   # 启动，入口 http://127.0.0.1:8081
+    powershell -ExecutionPolicy Bypass -File tools/dev/stop-test-env.ps1    # 停止
+
+详见 [docs/本地测试环境部署-Windows.md](docs/本地测试环境部署-Windows.md)。
 
 ## 部署到板端
 
