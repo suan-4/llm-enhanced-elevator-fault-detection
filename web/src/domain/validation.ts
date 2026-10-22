@@ -15,8 +15,10 @@ export interface ItemState {
   otherText: string
 }
 
+/** 新条目默认「符合」：现场只关注例外项，逐条点 66 次「符合」不现实。
+    未填状态只可能来自旧草稿（result 为空串），仍会触发定位提示。 */
 export function createItemState(): ItemState {
-  return { result: '', reasons: [], other: false, otherText: '' }
+  return { result: '符合', reasons: [], other: false, otherText: '' }
 }
 
 export interface MissingEntry {

@@ -139,17 +139,20 @@ async function seedEmptyDraft(browser) {
     await page.click("button[type=submit]");
     await page.waitForSelector(".items tbody tr", { timeout: 20000 });
 
-    const rows = await page.locator(".items tbody tr").count();
+    const rows = await page.locator(".items tbody tr.item-main").count();
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
 
-    // ── 回归：除四个必填项，其余字段默认必须是「/」──
+    // ── 回归：除四个必填项，其余字段默认必须是「/」；数字项只收数字、单位固定 ──
     // 现场规则：文档第三页只留 委托单位名称/使用单位名称/设备类别/产品编号 四个填空，
     // 其他地方一律打「/」（意思是可填可不填）。
-    // 评估仪器、评估依据 原先直接照抄了设计稿 mockup 里的演示文案（一长串仪器清单 /
-    // 规范清单），打开就像「已经填过了」，操作员容易被误导。
+    // 层/站/门、额定载重(kg)、额定速度(m/s)都是数字框：单位是固定标签，不能被误删。
     const defaults = await page.evaluate(() => {
       const REQUIRED = ["clientName", "userName", "deviceCategory", "productNo"];
-      const out = { total: 0, requiredFilled: [], bad: [] };
+      const NUMERIC = ["floors", "stops", "doors", "ratedLoad", "ratedSpeed"];
+      const out = {
+        total: 0, requiredFilled: [], bad: [], numeric: 0, placeholders: [],
+        floorUnits: [], unitLabels: [], floorBorders: [], unitBorders: [],
+      };
       document.querySelectorAll('.info input[id^="f-"]').forEach((el) => {
         const key = el.id.slice(2);
         // __overview / __conclusion 是报告预览专用的计算行，录入页只是被 v-show 藏着
@@ -159,17 +162,46 @@ async function seedEmptyDraft(browser) {
           if (el.value.trim() !== "") out.requiredFilled.push(key);
           return;
         }
+        if (NUMERIC.includes(key)) {
+          if (el.type === "number") out.numeric += 1;
+          out.placeholders.push(el.placeholder);
+          if (el.value.trim() !== "") out.bad.push(key + "=" + el.value.slice(0, 24));
+          return;
+        }
         if (!el.value.startsWith("/")) out.bad.push(key + "=" + el.value.slice(0, 24));
       });
+      out.floorUnits = [...document.querySelectorAll(".floors .floor-unit")].map((el) => el.textContent.trim());
+      out.unitLabels = [...document.querySelectorAll(".unit-field .unit-label")].map((el) => el.textContent.trim());
+      // 数字框平时不要边框（与其它抬头输入一致）
+      out.floorBorders = [...document.querySelectorAll(".floor-input")].map(
+        (el) => getComputedStyle(el).borderTopColor,
+      );
+      out.unitBorders = [...document.querySelectorAll(".unit-input")].map(
+        (el) => getComputedStyle(el).borderTopColor,
+      );
       return out;
     });
+    const transparent = (c) => c === "rgba(0, 0, 0, 0)" || c === "transparent";
     const defaultsOk =
-      defaults.total >= 22 && defaults.requiredFilled.length === 0 && defaults.bad.length === 0;
-    // 未填行的底色必须在填表之前取，否则所有行都已被置为「符合」
-    const unfilledBg = await page.evaluate(() => {
-      const el = document.querySelector("#row-1-9 td");
-      return el ? getComputedStyle(el).backgroundColor : "(无)";
+      defaults.total >= 24 &&
+      defaults.requiredFilled.length === 0 &&
+      defaults.bad.length === 0 &&
+      defaults.numeric === 5 &&
+      defaults.placeholders.every((p) => p === "/") &&
+      defaults.floorUnits.join("/") === "层/站/门" &&
+      defaults.unitLabels.join("/") === "kg/m/s" &&
+      defaults.floorBorders.every(transparent) &&
+      defaults.unitBorders.every(transparent);
+    // 默认评价结果必须是「符合」：66 行全部选中第一项，没有未填行
+    const defaultFit = await page.evaluate(() => {
+      const rows = [...document.querySelectorAll(".items tbody tr.item-main")];
+      return {
+        rows: rows.length,
+        fit: rows.filter((tr) => tr.querySelectorAll(".seg label")[0]?.classList.contains("on")).length,
+        miss: document.querySelectorAll(".items tbody tr.item-main.row-miss").length,
+      };
     });
+    const defaultFitOk = defaultFit.rows === 66 && defaultFit.fit === 66 && defaultFit.miss === 0;
 
     // 左侧可折叠导航：默认 260px，点折叠按钮收成 50px，再点展开
     const sidebarWidth = () =>
@@ -229,7 +261,7 @@ async function seedEmptyDraft(browser) {
     // 曾出现：点「符合/不符合/无此项」后浏览器为聚焦隐藏 radio 把 html 滚了上千像素，
     // 侧栏是 fixed 所以只剩侧栏、中间一片白（板端 600x960 每次点击必现）；
     // 同时 input 聚焦会让板端弹出软键盘。
-    await page.locator(".items tbody tr").nth(0).locator(".seg label").nth(0).click();
+    await page.locator(".items tbody tr.item-main").nth(0).locator(".seg label").nth(0).click();
     await page.waitForTimeout(450);
     const optionProbe = await page.evaluate(() => {
       const a = document.activeElement;
@@ -249,13 +281,27 @@ async function seedEmptyDraft(browser) {
     console.log(`  选项不抢焦点/不滚整页  ${JSON.stringify(optionProbe)} ${noRootScroll ? "✓" : "✗"}`);
 
     await page.click(".actionbar .btn-primary");
-    await page.waitForTimeout(300);
-    const alertVisible = await page.locator(".alert").isVisible();
-    const alertCount = await page.locator(".alert-list li").count();
-
-    await page.locator(".alert-list a").first().click();
-    await page.waitForTimeout(600);
-    const focusedId = await page.evaluate(() => (document.activeElement && document.activeElement.id) || "");
+    await page.waitForTimeout(700);
+    // 漏填拦截：不再有顶部清单，改为「滚动到第一处 + 红色短 Toast」
+    const missProbe = await page.evaluate(() => {
+      const toast = document.querySelector(".toast");
+      const active = document.activeElement;
+      const field = document.getElementById("f-clientName");
+      const main = document.querySelector(".main");
+      return {
+        toast: toast ? toast.innerText.trim() : "",
+        danger: !!toast && toast.classList.contains("danger"),
+        alertCount: document.querySelectorAll(".alert").length,
+        focusedId: active && active.id ? active.id : "",
+        mainScrollTop: main ? Math.round(main.scrollTop) : -1,
+        fieldTop: field ? Math.round(field.getBoundingClientRect().top) : -1,
+      };
+    });
+    const toastOk = missProbe.danger && /还有 \d+ 项未填写/.test(missProbe.toast) && missProbe.alertCount === 0;
+    // 第一处漏填是「委托单位名称」：必须真的滚到可见区域并把光标放进去
+    const locateOk =
+      missProbe.focusedId === "f-clientName" && missProbe.fieldTop > 0 && missProbe.fieldTop < 700;
+    const focusedId = missProbe.focusedId;
 
     await page.fill("#f-clientName", "佛山市展翰房地产开发有限公司");
     await page.fill("#f-userName", "佛山市展翰房地产开发有限公司");
@@ -263,7 +309,7 @@ async function seedEmptyDraft(browser) {
     await page.fill("#f-productNo", "44786091");
 
     await page.evaluate(() => {
-      document.querySelectorAll(".items tbody tr").forEach((tr) => {
+      document.querySelectorAll(".items tbody tr.item-main").forEach((tr) => {
         const first = tr.querySelectorAll(".seg label")[0];
         if (!first.classList.contains("on")) first.click();
       });
@@ -271,14 +317,43 @@ async function seedEmptyDraft(browser) {
     await page.evaluate(() =>
       document.getElementById("row-2-1").querySelectorAll(".seg label")[1].click(),
     );
-    await page.locator("#row-2-1 .chk.is-other input").waitFor({ state: "attached", timeout: 8000 });
-    await page.evaluate(() =>
-      document.getElementById("row-2-1").querySelector(".chk.is-other input").click(),
-    );
-    const ta = page.locator("#row-2-1 textarea");
+    // 二选一回归：勾选清单项 → 「其他」置灰；取消勾选 → 恢复；
+    // 勾选「其他」→ 清单项置灰。三态都要真的禁用，不能只是看起来灰。
+    const readExclusion = () =>
+      page.evaluate(() => {
+        const row = document.getElementById("row-2-1-reasons");
+        const otherLabel = row.querySelector(".chk.is-other");
+        const optionLabel = row.querySelector(".reasons label.chk");
+        return {
+          otherDisabled: otherLabel.querySelector("input").disabled,
+          otherGrayed: Number(getComputedStyle(otherLabel).opacity) < 0.6,
+          reasonsDisabled: optionLabel.querySelector("input").disabled,
+          reasonsGrayed: Number(getComputedStyle(optionLabel).opacity) < 0.6,
+        };
+      });
+    await page.locator("#row-2-1-reasons .reasons label.chk").first().click();
+    await page.waitForTimeout(200);
+    const afterOption = await readExclusion();
+    await page.locator("#row-2-1-reasons .reasons label.chk").first().click();
+    await page.waitForTimeout(200);
+    const afterUnselect = await readExclusion();
+    await page.locator("#row-2-1-reasons .chk.is-other").click();
+    await page.waitForTimeout(200);
+    const afterOther = await readExclusion();
+    const exclusion = {
+      otherDisabled: afterOption.otherDisabled,
+      otherGrayed: afterOption.otherGrayed,
+      otherEnabled: !afterUnselect.otherDisabled,
+      reasonsDisabled: afterOther.reasonsDisabled,
+      reasonsGrayed: afterOther.reasonsGrayed,
+    };
+    const exclusionOk =
+      exclusion.otherDisabled && exclusion.otherGrayed && exclusion.otherEnabled &&
+      exclusion.reasonsDisabled && exclusion.reasonsGrayed;
+    const ta = page.locator("#row-2-1-reasons textarea");
     await ta.waitFor({ state: "visible", timeout: 8000 });
     // 使用本项目清单原文验证“其他”的明确匹配；不依赖板端模型在线。
-    await ta.fill((await page.locator("#row-2-1 .reasons label.chk").first().innerText()).trim());
+    await ta.fill((await page.locator("#row-2-1-reasons .reasons label.chk").first().innerText()).trim());
     await page.waitForTimeout(300);
     const counters = (await page.locator(".actionbar .count").innerText()).replace(/\s+/g, " ");
 
@@ -337,25 +412,17 @@ async function seedEmptyDraft(browser) {
     const warmOk = warmHits.length === 0;
 
     // 评价结果行底色规则：
-    //   未填 → 白底 ｜ 符合 / 无此项 → 冷浅底 ｜ 不符合 → 红底
-    // 此时 1.9 未填、1.11 为符合、2.1 为不符合（上面的填表步骤已设定）
+    //   符合 / 无此项 → 冷浅底 ｜ 不符合 → 红底（新版默认就是「符合」，没有未填行）
+    // 此时 1.11 为符合、2.1 为不符合（上面的填表步骤已设定）
     const rowColors = await page.evaluate(() => {
       const bg = (sel) => {
         const el = document.querySelector(sel);
         return el ? getComputedStyle(el).backgroundColor : "(无)";
       };
-      return {
-        unfilled: "(已在上方取)",
-        done: bg("#row-1-11 td"),
-        unfit: bg("#row-2-1 td"),
-      };
+      return { done: bg("#row-1-11 td"), unfit: bg("#row-2-1 td") };
     });
-    rowColors.unfilled = unfilledBg;
-    const isWhite = (c) => c === "rgba(0, 0, 0, 0)" || c === "rgb(255, 255, 255)";
     const rowColorOk =
-      isWhite(rowColors.unfilled) &&
-      rowColors.done === "rgb(246, 248, 250)" &&
-      rowColors.unfit === "rgb(254, 240, 240)";
+      rowColors.done === "rgb(246, 248, 250)" && rowColors.unfit === "rgb(254, 240, 240)";
 
     // 字段名（委托单位名称 等）必须使用黑体
     const labelFont = await page.evaluate(() => {
@@ -369,10 +436,7 @@ async function seedEmptyDraft(browser) {
     const clauseLeak = await page.evaluate(() => {
       const marked = (s) => /^\s*[A-Za-z0-9]{1,2}[)）]/.test(s || "");
       const bad = [];
-      document.querySelectorAll(".items tbody tr .item-req div").forEach((d) => {
-        if (marked(d.textContent)) bad.push(d.textContent.trim().slice(0, 30));
-      });
-      // 不符合情形的选项文字同样不能带编号
+      // 不符合情形的选项文字不能带编号
       document.querySelectorAll(".items tbody tr .reasons .chk span").forEach((s) => {
         if (marked(s.textContent)) bad.push(s.textContent.trim().slice(0, 30));
       });
@@ -380,12 +444,23 @@ async function seedEmptyDraft(browser) {
     });
     const clauseOk = clauseLeak.length === 0;
 
+    // 「评价内容与要求」列已按现场要求从录入页移除（报告页仍保留模板原文）
+    const reqColumn = await page.evaluate(() => ({
+      headers: [...document.querySelectorAll(".items thead th")].map((th) => th.textContent.trim()),
+      reqCells: document.querySelectorAll(".items tbody td.item-req").length,
+      reqDivs: document.querySelectorAll(".items tbody tr .item-req div").length,
+    }));
+    const noReqColumnOk =
+      !reqColumn.headers.some((t) => t.includes("评价内容与要求")) &&
+      reqColumn.reqCells === 0 &&
+      reqColumn.reqDivs === 0;
+
     // 窄屏把一行拆成三段后，三态按钮最容易溢出/被裁切，这里固化检查。
     const clipped = await page.evaluate(() => {
       const bad = [];
-      document.querySelectorAll(".items tbody tr").forEach((tr) => {
+      document.querySelectorAll(".items tbody tr.item-main").forEach((tr) => {
         const seg = tr.querySelector(".seg");
-        const cell = tr.querySelector("td:nth-child(4)");
+        const cell = tr.querySelector("td:nth-child(3)");
         if (!seg || !cell) return;
         if (seg.getBoundingClientRect().width > cell.clientWidth + 1) {
           bad.push(`${tr.id} 的 seg 超出单元格`);
@@ -408,8 +483,8 @@ async function seedEmptyDraft(browser) {
         );
       };
       const infoCells = [...document.querySelectorAll(".info th, .info td")];
-      const itemCells = [...document.querySelectorAll(".items td")];
-      const rows = [...document.querySelectorAll(".items tbody tr")];
+      const itemCells = [...document.querySelectorAll(".items tbody tr.item-main td")];
+      const rows = [...document.querySelectorAll(".items tbody tr.item-main")];
       const boxed = (el) =>
         ["Top", "Right", "Bottom", "Left"].every(
           (s) => parseFloat(getComputedStyle(el)["border" + s + "Width"]) > 0,
@@ -441,7 +516,8 @@ async function seedEmptyDraft(browser) {
       borderFacts.infoLines >= borderFacts.infoCells - 2 &&
       (narrow
         ? borderFacts.boxedRows === borderFacts.rows &&
-          borderFacts.itemLines >= Math.ceil(borderFacts.itemCells * 0.7)
+          // 三列后窄屏只有"结果"格带横线（编号/项目是内联行），比例 2/3
+          borderFacts.itemLines >= Math.ceil(borderFacts.itemCells * 0.65)
         : borderFacts.itemLines === borderFacts.itemCells);
 
     // 像素级外框检查：表格 + border + overflow:hidden + border-radius 时，
@@ -662,10 +738,10 @@ async function seedEmptyDraft(browser) {
     const pass =
       loginPageOk && themeOk && warmOk && rowColorOk && labelFontOk && clauseOk &&
       reportClauseOk && clippedOk && borderOk && outlineOk && sidebarOk && actionbarOk &&
-      noRootScroll &&
+      noRootScroll && defaultFitOk && noReqColumnOk && exclusionOk &&
       paperLayoutOk && cardOk && newBtnOk && actionbarStableOk && defaultsOk &&
-      rows === 66 && overflow <= 0 && alertVisible && alertCount > 0 &&
-      focusedId.startsWith("f-") && counters.includes("未填 0 项") &&
+      rows === 66 && overflow <= 0 && toastOk && locateOk &&
+      counters.includes("未填 0 项") &&
       papers === 4 && overflowReport <= 0 && gradeExpected && scoreExpected &&
       hasAppendix && hasAppendixA && filled &&
       (exportOk || toast.length > 0) && errs.length === 0;
@@ -685,7 +761,10 @@ async function seedEmptyDraft(browser) {
     );
     console.log(`  条目行数        ${rows}`);
     console.log(
-      `  默认值(非必填=/ ) ${defaults.total} 个字段 必填被预填=${JSON.stringify(defaults.requiredFilled)} 不合规=${JSON.stringify(defaults.bad)} ${defaultsOk ? "✓" : "✗"}`,
+      `  默认评价结果    全部符合 ${defaultFit.fit}/${defaultFit.rows} 未填 ${defaultFit.miss} ${defaultFitOk ? "✓" : "✗"}`,
+    );
+    console.log(
+      `  默认值(非必填=/ ) ${defaults.total} 个字段 必填被预填=${JSON.stringify(defaults.requiredFilled)} 数字框=${defaults.numeric} 单位=${JSON.stringify(defaults.floorUnits.concat(defaults.unitLabels))} 无边框=${defaults.floorBorders.concat(defaults.unitBorders).every((c) => c === "rgba(0, 0, 0, 0)" || c === "transparent")} 不合规=${JSON.stringify(defaults.bad)} ${defaultsOk ? "✓" : "✗"}`,
     );
     console.log(
       `  主题统一        底色=${theme.bg} 卡片圆角=${theme.sheetRadius} 按钮圆角=${theme.btnRadius} 字体=${theme.font} ${themeOk ? "✓" : "✗"}`,
@@ -694,7 +773,7 @@ async function seedEmptyDraft(browser) {
       `  暖色(褐/米)残留  ${warmHits.length} 处 ${warmOk ? "✓" : "✗ " + warmHits.slice(0, 3).join(" | ")}`,
     );
     console.log(
-      `  行底色规则      未填=${rowColors.unfilled} 符合=${rowColors.done} 不符合=${rowColors.unfit} ${rowColorOk ? "✓" : "✗"}`,
+      `  行底色规则      符合=${rowColors.done} 不符合=${rowColors.unfit} ${rowColorOk ? "✓" : "✗"}`,
     );
     console.log(`  字段名字体      ${labelFont.slice(0, 34)} ${labelFontOk ? "✓ 黑体" : "✗ 非黑体"}`);
     console.log(
@@ -713,8 +792,16 @@ async function seedEmptyDraft(browser) {
       `  侧边栏          展开=${sidebarExpanded}/${mainMarginExpanded} 折叠=${sidebarCollapsed}/${mainMarginCollapsed} 再展开=${sidebarReopened} ${sidebarOk ? "✓" : "✗"}`,
     );
     console.log(`  横向溢出        主页面 ${overflow} px / 报告页 ${overflowReport} px`);
-    console.log(`  必填拦截        ${alertVisible}，清单 ${alertCount} 条`);
-    console.log(`  跳转定位        ${focusedId}`);
+    console.log(
+      `  漏填处理        红色Toast=${missProbe.danger} 文案「${missProbe.toast}」 清单模块=${missProbe.alertCount} ${toastOk ? "✓" : "✗"}`,
+    );
+    console.log(`  跳转定位        ${focusedId} 可见=${missProbe.fieldTop > 0 && missProbe.fieldTop < 700} ${locateOk ? "✓" : "✗"}`);
+    console.log(
+      `  二选一置灰      其他禁用=${exclusion.otherDisabled} 其他灰=${exclusion.otherGrayed} 取消后恢复=${exclusion.otherEnabled} 清单禁用=${exclusion.reasonsDisabled} 清单灰=${exclusion.reasonsGrayed} ${exclusionOk ? "✓" : "✗"}`,
+    );
+    console.log(
+      `  评价内容与要求列 ${JSON.stringify(reqColumn.headers)} 残留格子=${reqColumn.reqCells} ${noReqColumnOk ? "✓ 已移除" : "✗"}`,
+    );
     console.log(`  计数栏          ${counters}`);
     console.log(`  报告页数        ${papers}`);
     console.log(`  内容校验        一级=${gradeExpected} 得分97.73=${scoreExpected} 附页=${hasAppendix} 附录A=${hasAppendixA} 抬头=${filled}`);

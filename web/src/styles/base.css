@@ -46,6 +46,11 @@ table {
   margin-left: 50px;
 }
 
+/* 设置页自带左侧树导航：不再显示项目侧栏，正文占满整宽 */
+.main.no-nav {
+  margin-left: 0;
+}
+
 /* ── 顶栏 ── */
 .topbar {
   display: flex;
@@ -254,6 +259,71 @@ table {
   white-space: nowrap;
 }
 
+/* 层/站/门：三个数字输入框 + 固定单位字（单位是标签，不是可删掉的输入内容） */
+.floors {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.floor-part {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.floor-input {
+  width: 38px;
+  padding: 0 3px;
+  text-align: center;
+  /* 与其它抬头输入一致：平时无边框，hover / 聚焦才出现线条 */
+  border-color: transparent;
+  background: transparent;
+  /* 原生上下箭头又宽又容易误触，去掉；直接键盘/触摸输入 */
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+/* 额定载重量（kg）/ 额定速度（m/s）：数字框 + 固定单位字 */
+.unit-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.unit-input {
+  width: 64px;
+  padding: 0 3px;
+  text-align: right;
+  border-color: transparent;
+  background: transparent;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.unit-input::-webkit-outer-spin-button,
+.unit-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.unit-label {
+  color: var(--c-text);
+  white-space: nowrap;
+}
+
+.floor-input::-webkit-outer-spin-button,
+.floor-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.floor-unit {
+  color: var(--c-text);
+  white-space: nowrap;
+}
+
 /* ── 评价结果表 ── */
 .items {
   width: 100%;
@@ -297,12 +367,6 @@ table {
   font-weight: 400;
   color: var(--c-secondary);
   margin-top: 2px;
-}
-
-.item-req {
-  font-size: 13px;
-  line-height: 1.75;
-  color: var(--c-text);
 }
 
 /* 评价结果行底色规则：
@@ -404,6 +468,16 @@ table {
   margin-bottom: 6px;
 }
 
+/* ── 不符合情形展开行 ──
+   情形选项不再挤在「评价结果」的窄列里：单独一行、colspan 跨整张表，
+   左侧「项目编号 / 项目」下方不再出现一大块空白。 */
+.reasons-row td {
+  border: 1px solid var(--c-line);
+  border-top: 0;
+  padding: 0 8px 8px;
+  background: #fff;
+}
+
 .chk {
   display: flex;
   align-items: flex-start;
@@ -426,39 +500,23 @@ table {
   font-weight: 700;
 }
 
+/* 「清单项」与「其他」二选一：另一边置灰且不可点 */
+.chk.disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.textarea:disabled {
+  opacity: 0.55;
+  background: #f2f4f5;
+  cursor: not-allowed;
+}
+
 .reasons-err {
   margin-top: 6px;
   color: var(--c-danger);
   font-size: 12.5px;
-}
-
-/* ── 校验提示条 ── */
-.alert {
-  width: var(--sheet-max);
-  max-width: calc(100% - 24px);
-  margin: 12px auto 0;
-  border: 1px solid #f3c9cc;
-  border-left: 3px solid var(--c-danger);
-  border-radius: var(--radius);
-  background: var(--c-danger-soft);
-  padding: 8px 12px;
-}
-
-.alert-head {
-  font-weight: 700;
-  color: var(--c-danger);
-  margin-bottom: 6px;
-}
-
-.alert-list {
-  margin: 0;
-  padding-left: 18px;
-}
-
-.alert-list a {
-  color: var(--c-danger);
-  text-decoration: underline;
-  cursor: pointer;
 }
 
 /* ── 底部操作条 ── */
@@ -763,6 +821,13 @@ table {
   z-index: 999;
 }
 
+/* 红色提示：漏填拦截等需要立刻注意、但不该弹窗打断的场景 */
+.toast.danger {
+  background: var(--c-danger);
+  font-weight: 600;
+  box-shadow: 0 4px 14px rgba(198, 40, 40, 0.32);
+}
+
 /* ── 页面内自绘弹窗（不用原生 confirm：板端 WebKit 会弹英文系统框并阻塞页面） ── */
 .dialog-mask {
   position: fixed;
@@ -811,6 +876,10 @@ table {
 
   .main.expanded {
     margin-left: 50px;
+  }
+
+  .main.no-nav {
+    margin-left: 0;
   }
 
   .topbar {
@@ -919,14 +988,6 @@ table {
   }
 
   .items td:nth-child(3)::before {
-    content: '评价内容与要求';
-    display: block;
-    color: var(--c-muted);
-    font-size: 12px;
-    margin-bottom: 3px;
-  }
-
-  .items td:nth-child(4)::before {
     content: '评价结果';
     display: block;
     color: var(--c-muted);
@@ -996,5 +1057,18 @@ table {
 
   .dialog-p {
     margin: 0 0 8px;
+  }
+
+  /* 不符合情形展开行：窄屏沿用卡片式布局，自成一张卡、宽度用满；
+     覆盖上面的 td display:inline-block / border-top 规则。 */
+  .items .reasons-row td {
+    display: block;
+    width: auto;
+    border: 0;
+    padding: 0 8px 8px;
+  }
+
+  .items .reasons-row td::before {
+    content: none;
   }
 }

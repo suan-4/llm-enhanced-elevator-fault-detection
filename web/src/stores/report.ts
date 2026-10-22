@@ -39,6 +39,33 @@ export interface GeneratedInfo {
   other_matches: { no: string; original_text: string; risks: string[] }[]
 }
 
+/** 旧草稿只有 floorsStopsDoors 一个字符串（如「10 层　12 站　12 门」），
+    新表单拆成三个数字框。读回时按数字顺序拆出来，避免历史草稿丢数据。 */
+function migrateLegacyFloors(form: Record<string, string>): void {
+  const legacy = form.floorsStopsDoors
+  if (legacy === undefined) return
+  const numbers = String(legacy).match(/\d+/g) ?? []
+  if (!form.floors) form.floors = numbers[0] ?? ''
+  if (!form.stops) form.stops = numbers[1] ?? ''
+  if (!form.doors) form.doors = numbers[2] ?? ''
+  delete form.floorsStopsDoors
+}
+
+/** 旧草稿把单位写在值里（「/ kg」「1000 kg」）；新表单单位固定、只存数字。
+    读回时把旧字符串里的数字提出来，「无值」统一成空串。 */
+function migrateLegacyUnits(form: Record<string, string>): void {
+  for (const key of ['ratedLoad', 'ratedSpeed']) {
+    const raw = String(form[key] ?? '').trim()
+    if (!raw) {
+      form[key] = ''
+      continue
+    }
+    if (/^\d+(\.\d+)?$/.test(raw)) continue
+    const match = raw.match(/\d+(?:\.\d+)?/)
+    form[key] = match ? match[0] : ''
+  }
+}
+
 /** 载入时去掉条款编号（a) b) 1) …），数据文件本身保持与模板一致 */
 function normalize(items: JteItem[]): JteItem[] {
   return items.map((item) => ({
@@ -64,9 +91,15 @@ function createForm(): Record<string, string> {
     retrofitUnit: '/',
     retrofitDate: '/',
     maintainUnit: '/',
-    ratedLoad: '/ kg',
-    ratedSpeed: '/ m/s',
-    floorsStopsDoors: '/ 层　/ 站　/ 门',
+    /* 额定载重/额定速度也只存数字：单位 kg、m/s 是固定标签，不再写进值里。
+       旧草稿的「/ kg」「1000 kg」在 hydrate 时自动把数字提出来。 */
+    ratedLoad: '',
+    ratedSpeed: '',
+    /* 层/站/门拆成三个数字框：单位字是固定文字，不是可删的输入内容。
+       旧草稿里的 floorsStopsDoors 字符串在 hydrate 时自动拆回来。 */
+    floors: '',
+    stops: '',
+    doors: '',
     controlMode: '/',
     /* 现场规则：除四个必填项（委托/使用单位名称、设备类别、产品编号），其余一律以「/」
        占位，意思是可填可不填。这两项以前直接照抄了设计稿 mockup 里的演示文案
@@ -148,6 +181,8 @@ export const useReportStore = defineStore('report', () => {
        报告预览里的只读信息表（InfoTable）在 setup 时就抓住了 form 的引用，
        换成新对象它还是渲染旧的那份，纸面上的抬头就会全空。 */
     const next = { ...createForm(), ...(draft.form || {}) }
+    migrateLegacyFloors(next)
+    migrateLegacyUnits(next)
     for (const key of Object.keys(form.value)) delete form.value[key]
     Object.assign(form.value, next)
     for (const item of items.value) {

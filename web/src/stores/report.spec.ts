@@ -56,3 +56,39 @@ describe('saved report preview', () => {
     expect(store.form.clientName).toBe('请求期间修改的新输入')
   })
 })
+
+describe('旧草稿抬头兼容', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    vi.clearAllMocks()
+    vi.stubGlobal('window', { clearTimeout, setTimeout })
+  })
+
+  it('floorsStopsDoors 字符串拆成层/站/门三个数字', async () => {
+    vi.mocked(api.getReport).mockResolvedValue({
+      report: {
+        ...report('draft', false),
+        form: { clientName: '原委托单位', floorsStopsDoors: '10 层　12 站　12 门' },
+      },
+    } as never)
+    const store = useReportStore()
+    await store.openReport('123')
+    expect(store.form.floors).toBe('10')
+    expect(store.form.stops).toBe('12')
+    expect(store.form.doors).toBe('12')
+    expect('floorsStopsDoors' in store.form).toBe(false)
+  })
+
+  it('额定载重/额定速度从旧字符串提取数字，单位不进入值', async () => {
+    vi.mocked(api.getReport).mockResolvedValue({
+      report: {
+        ...report('draft', false),
+        form: { clientName: '原委托单位', ratedLoad: '1000 kg', ratedSpeed: '/ m/s' },
+      },
+    } as never)
+    const store = useReportStore()
+    await store.openReport('123')
+    expect(store.form.ratedLoad).toBe('1000')
+    expect(store.form.ratedSpeed).toBe('')
+  })
+})
