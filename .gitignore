@@ -36,6 +36,8 @@ backend/data/
 $out/
 .playwright-cli/
 output/playwright/
+output/acceptance-*/
+output/terminal-ui-acceptance/
 _extracted/
 _patent_extract/
 _render/

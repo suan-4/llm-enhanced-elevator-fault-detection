@@ -1,0 +1,19 @@
+{
+  "before": {
+    "db_sha256": "977f529cfd8d69ee24a73b1399a7fd57a4a1aedc18d962d0286bad72f94534d8",
+    "report_sha256": "1f96fb09061392f6e09c5832385870419e11994f01a02075b04895d882efc277",
+    "report_count": 18
+  },
+  "after": {
+    "db_sha256": "977f529cfd8d69ee24a73b1399a7fd57a4a1aedc18d962d0286bad72f94534d8",
+    "report_sha256": "1f96fb09061392f6e09c5832385870419e11994f01a02075b04895d882efc277",
+    "report_count": 18
+  },
+  "reports_unchanged": true,
+  "services": {
+    "elevator-api": "active",
+    "elevator-rkllm": "active",
+    "neo4j": "active",
+    "elevator-export-columns-test-01": "inactive"
+  }
+}

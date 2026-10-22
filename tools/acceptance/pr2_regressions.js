@@ -4,7 +4,7 @@ const fs = require('fs')
 const path = require('path')
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'C:/Users/何/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright')
 const BASE = process.env.BASE || 'http://127.0.0.1:8094'
-if (!/^http:\/\/127\.0\.0\.1:(8094|18094)$/.test(BASE)) throw new Error('disposable PR2 server only')
+if (!/^http:\/\/127\.0\.0\.1:(8094|18094|18087)$/.test(BASE)) throw new Error('disposable PR2 server only')
 const OUT = path.resolve('output/playwright/pr2-fixes')
 fs.mkdirSync(OUT, { recursive: true })
 
@@ -25,7 +25,7 @@ fs.mkdirSync(OUT, { recursive: true })
 
       const no = await page.evaluate(() => {
         const store = document.querySelector('#app').__vue_app__.config.globalProperties.$pinia._s.get('report')
-        store.hydrate({ form: { clientName: 'PR2验收委托', userName: 'PR2验收使用', deviceCategory: '电梯', productNo: 'FIX-PR2' },
+        store.hydrate({ form: { clientName: 'PR2验收委托', userName: 'PR2验收使用', deviceVariety: '曳引驱动乘客电梯', productNo: 'FIX-PR2' },
           version: store.version, status: 'draft', items: store.items.map((i, index) => ({ no: i.no,
             result: index === 0 ? 'unfit' : 'fit', reasons: [], other_text: '' })) })
         return store.items[0].no

@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { afterPaint, beginInteraction } from '@/utils/performance'
 import InfoTable from '@/components/report/InfoTable.vue'
 import ItemTable from '@/components/report/ItemTable.vue'
 import ReportDocument from '@/components/report/ReportDocument.vue'
 import AppDialog from '@/components/AppDialog.vue'
 import { defaultProfileName } from '@/domain/baseInfo'
 import { overviewText, countByCategory } from '@/domain/riskScore'
-import { buildAppendixRows } from '@/domain/reportResult'
+import { buildAppendixRows, overviewNarrative } from '@/domain/reportResult'
+import { modelStatus } from '@/domain/modelStatus'
 import { useReportStore } from '@/stores/report'
 import { useShell } from '@/stores/shell'
 import { useExport } from '@/utils/export'
@@ -38,6 +40,7 @@ const newBusy = ref(false)
 const confirmExport = ref<'pdf' | 'docx' | null>(null)
 const reportWrap = ref<HTMLElement | null>(null)
 const itemTable = ref<InstanceType<typeof ItemTable> | null>(null)
+const locked = computed(() => ['filed', 'void'].includes(store.status) || store.exportUncertain)
 
 /* 侧栏是「项目进度 + 三个滚动锚点」：基础信息 / 检测项目填写 / 所生成报告。
    从别的页面点过来时本页可能还没挂载，所以用 shell.requested 待办标记，
@@ -105,6 +108,15 @@ watch(view, (v) => {
 
 /** A4 宽度（210mm @96dpi），用于按视口等比缩放报告页 */
 const PAPER_WIDTH = 793.7
+let paperObserver: ResizeObserver | undefined
+
+watch(reportWrap, (host) => {
+  paperObserver?.disconnect()
+  if (!host) return
+  paperObserver = new ResizeObserver(fitPapers)
+  paperObserver.observe(host)
+  host.querySelectorAll('.paper').forEach(paper => paperObserver?.observe(paper))
+}, { flush: 'post' })
 
 onMounted(async () => {
   await store.loadItems()
@@ -112,6 +124,7 @@ onMounted(async () => {
   refreshSelectedProfile()
   await startDraft()
   window.addEventListener('resize', fitPapers)
+  void document.fonts?.ready.then(fitPapers)
   mainEl()?.addEventListener('scroll', updateActiveByScroll, { passive: true })
   document.addEventListener('click', onDocumentClick)
   consumeShellRequest()
@@ -135,10 +148,14 @@ watch([() => store.form, () => store.states], () => store.scheduleSave(), { deep
 /* 页面切到后台/被关闭时，尽量把防抖里还压着的改动写下去。
    防抖窗口（800ms）内掉电仍可能丢最后一次改动，所以悬浮岛会显示保存状态。 */
 function flushOnHide(): void {
-  if (document.visibilityState === 'hidden') void store.flush()
+  if (document.visibilityState === 'hidden') flushOnPageHide()
+}
+function flushOnPageHide(): void {
+  // The store retains the failure; lifecycle events have no caller to catch it.
+  void store.flush().catch(() => undefined)
 }
 document.addEventListener('visibilitychange', flushOnHide)
-window.addEventListener('pagehide', () => void store.flush())
+window.addEventListener('pagehide', flushOnPageHide)
 
 const saveHint = computed(() => {
   if (store.saveState === 'saving') return '保存中…'
@@ -147,10 +164,12 @@ const saveHint = computed(() => {
 })
 
 onBeforeUnmount(() => {
+  paperObserver?.disconnect()
   window.removeEventListener('resize', fitPapers)
   mainEl()?.removeEventListener('scroll', updateActiveByScroll)
   document.removeEventListener('click', onDocumentClick)
   document.removeEventListener('visibilitychange', flushOnHide)
+  window.removeEventListener('pagehide', flushOnPageHide)
 })
 
 /* 风险值只使用服务端专家查表结果，不用演示值填补未确认数据。 */
@@ -170,16 +189,15 @@ const categories = computed(() => Object.values(riskByNo.value).map(risk => risk
 const g = computed(() => store.generated?.score ?? null)
 const grade = computed(() => store.generated?.grade ?? null)
 const assessmentIssues = computed(() => store.generated?.assessment_issues ?? [])
-/* 评估概况 = 模板要求的两行（风险分布 + 得分）+ 大模型写的那段说明。
-   规则摘要兜底的那版不往报告上打印 —— 它逐条罗列，附页已经列过了，
-   塞进概况会把单元格撑得很长（放哪由 PRD Q7 定，这里先按建议默认放概况）。 */
+const modelNotice = computed(() => modelStatus(store.generated))
+/* 模板统计 + 已校验概况。新策略的规则兜底也保留最高风险，故障提示不进入纸张。 */
 const overview = computed(() => {
   const count = countByCategory(categories.value)
   const base = g.value === null
     ? `1、存在Ⅰ类风险 ${count['Ⅰ类']} 项，Ⅱ类风险 ${count['Ⅱ类']} 项。\n2、综合评定暂不可用，详见评定提示。`
     : overviewText(categories.value, g.value)
-  const ai = store.generated?.llm_used ? store.generated.narrative.trim() : ''
-  return ai ? `${base}\n${ai}` : base
+  const narrative = overviewNarrative(store.generated)
+  return narrative ? `${base}\n${narrative}` : base
 })
 const conclusion = computed(() => `综合安全状况等级：${grade.value ?? '待确认'}`)
 const appendixRows = computed(() => buildAppendixRows(store.items, store.stateOf, riskByNo.value))
@@ -205,6 +223,10 @@ function scrollToTop(): void {
 
 async function saveNow(): Promise<void> {
   try {
+    if (locked.value) {
+      show('这份报告已归档或作废，原内容已保留；修改请在报告管理中复制为新建')
+      return
+    }
     await store.save()
     show('草稿已保存')
   } catch (err) {
@@ -327,16 +349,21 @@ async function generate(): Promise<void> {
     return
   }
   if (generating.value) return
+  const timing = beginInteraction('report_generate')
   generating.value = true
   try {
-    await store.generate()
-    view.value = 'report'
-    shell.active = 'report'
-    void nextTick(() => {
+    await store.generate(timing)
+    await timing.measure('render', async () => {
+      view.value = 'report'
+      shell.active = 'report'
+      await nextTick()
       fitPapers()
       scrollToSection(SECTION_IDS.report)
+      await afterPaint()
     })
+    timing.finish('ok')
   } catch (err) {
+    timing.finish('error')
     show(err instanceof Error ? err.message : '生成失败')
   } finally {
     generating.value = false
@@ -416,7 +443,10 @@ function fitPapers(): void {
           </div>
           <div v-else-if="!store.ready" class="state-tip">正在准备评估…</div>
 
-          <template v-else>
+          <fieldset v-else :disabled="locked || exp.busy.value" style="border: 0; padding: 0; margin: 0; min-width: 0">
+            <div v-if="locked" class="notes" role="status">{{ store.exportUncertain
+              ? '导出状态待确认，暂时只读；恢复连接后请重试导出或重新打开报告。'
+              : '这份报告已归档或作废，只读查看；修改请在报告管理中复制为新建。' }}</div>
             <div id="sec-info">
               <div class="section-bar">
                 <b class="section-title">基础信息</b>
@@ -481,7 +511,7 @@ function fitPapers(): void {
             <div id="sec-items" style="margin-top: 14px">
               <ItemTable ref="itemTable" />
             </div>
-          </template>
+          </fieldset>
         </div>
       </section>
 
@@ -497,6 +527,7 @@ function fitPapers(): void {
                 JTE-09-R02-3.00　不符合 {{ riskRows.length }} 项　综合安全状况等级 {{ grade ?? '待确认' }}
               </span>
             </div>
+            <div v-if="modelNotice" class="notes model-status" role="status">{{ modelNotice }}</div>
             <div v-if="assessmentIssues.length" class="notes" role="status">
               <b>待确认预览，尚不能作为正式报告导出。</b>
               <div v-for="issue in assessmentIssues" :key="issue">{{ issue }}</div>
@@ -541,7 +572,7 @@ function fitPapers(): void {
           <button
             class="btn btn-lg btn-save"
             type="button"
-            :disabled="store.saveState === 'saving'"
+            :disabled="store.saveState === 'saving' || locked || exp.busy.value"
             @click="saveNow"
           >
             保存草稿
@@ -551,7 +582,7 @@ function fitPapers(): void {
               v-if="view === 'input'"
               class="btn btn-lg btn-primary"
               type="button"
-              :disabled="generating"
+              :disabled="generating || locked || exp.busy.value"
               @click="generate"
             >
               {{ generating ? '生成中…' : '校验并生成报告' }}

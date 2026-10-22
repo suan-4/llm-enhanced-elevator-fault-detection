@@ -1,0 +1,18 @@
+{
+  "tool": "Playwright CLI Chromium against isolated board candidate via ADB",
+  "viewport": {"width": 600, "height": 960},
+  "fresh": true,
+  "saved": true,
+  "degraded": true,
+  "no_model_http_on_oversize": true,
+  "notice_outside_paper": true,
+  "bounds": {"left": 75, "right": 575, "width": 600},
+  "page_errors": 0,
+  "screenshots_local_only": [
+    "output/playwright/prompt-guard-fresh.png",
+    "output/playwright/prompt-guard-saved.png",
+    "output/playwright/prompt-guard-degraded.png"
+  ],
+  "physical_panel_and_webkit_verified": false,
+  "note": "Transcribed from successful CLI run-code result; not a physical terminal visual sign-off."
+}

@@ -26,6 +26,7 @@ import re
 import shutil
 import subprocess
 import tempfile
+from time import perf_counter
 from datetime import datetime
 from pathlib import Path
 
@@ -51,6 +52,11 @@ _TABLE_RE = re.compile(r"<table\b([^>]*)>", re.I)
 _PAPER_RE = re.compile(r'''<div\b[^>]*\bclass=["']paper["'][^>]*>''', re.I)
 _INFO_RE = re.compile(
     r'''(<table\b[^>]*\bclass=["']info["'][^>]*>)(.*?)(</table>)''', re.I | re.S)
+_EVALUATION_RE = re.compile(
+    r'''(<table\b[^>]*\bclass=["']evaluation["'][^>]*>)(.*?)(</table>)''', re.I | re.S)
+# Retained JTE evaluation table tblGrid, in twips. Only ratios are transferred:
+# Writer's HTML importer ignores the browser header CSS and otherwise auto-sizes by text.
+_EVALUATION_GRID = (544, 1328, 4478, 995, 624, 624, 629)
 
 
 def _document_layout(body_html: str) -> str:
@@ -72,7 +78,18 @@ def _document_layout(body_html: str) -> str:
         grid = '<colgroup><col width="15%"><col width="35%"><col width="15%"><col width="35%"></colgroup>'
         return match.group(1) + grid + match.group(2) + match.group(3)
 
-    return _INFO_RE.sub(columns, _PAPER_RE.sub(section, body_html or ""))
+    def evaluation_columns(match):
+        if re.match(r'\s*<colgroup\b', match.group(2), re.I):
+            return match.group(0)
+        # Writer 7.3 still reflows percentage columns around long cell text.
+        # HTML relative weights (N*) preserve the source grid, including rowspan/colspan.
+        grid = '<colgroup>' + ''.join(
+            f'<col width="{width}*">' for width in _EVALUATION_GRID
+        ) + '</colgroup>'
+        return match.group(1) + grid + match.group(2) + match.group(3)
+
+    return _EVALUATION_RE.sub(evaluation_columns,
+        _INFO_RE.sub(columns, _PAPER_RE.sub(section, body_html or "")))
 
 
 def _borderize(html_str: str) -> str:
@@ -195,6 +212,8 @@ table.meta th, table.meta td { padding: 4pt 7pt; font-size: 10pt; }
 
 def export(html_str: str, fmt: str, stem: str) -> dict:
     """把 html_str 转成 fmt(pdf|docx) 并落到 EXPORT_DIR，返回文件信息。"""
+    started = perf_counter()
+    timings = {}
     fmt = (fmt or "").lower().strip()
     if fmt not in ALLOWED_FORMATS:
         raise ValueError("不支持的导出格式：%s（只支持 pdf / docx）" % fmt)
@@ -215,6 +234,7 @@ def export(html_str: str, fmt: str, stem: str) -> dict:
             "--outdir", str(work),
             str(src),
         ]
+        convert_started = perf_counter()
         try:
             proc = subprocess.run(cmd, capture_output=True, timeout=CONVERT_TIMEOUT)
         except subprocess.TimeoutExpired:
@@ -228,15 +248,33 @@ def export(html_str: str, fmt: str, stem: str) -> dict:
                 "请确认板端已安装 LibreOffice，且该路径存在且可执行。" % SOFFICE
             ) from e
 
+        timings['convert_ms'] = (perf_counter()-convert_started)*1000
+
         out = work / (clean_stem + "." + fmt)
         if not out.exists():
             msg = ((proc.stdout or b"") + (proc.stderr or b"")).decode("utf-8", "replace")
             raise RuntimeError("LibreOffice 未产出文件：%s" % msg.strip()[-500:])
 
+        publish_started = perf_counter()
         final = EXPORT_DIR / out.name
-        if final.exists():      # 同一秒重复导出时不覆盖
-            final = EXPORT_DIR / ("%s_%s.%s" % (clean_stem, datetime.now().strftime("%H%M%S"), fmt))
-        shutil.move(str(out), str(final))
+        suffix = datetime.now().strftime("%H%M%S")
+        attempt = 0
+        while True:
+            try:
+                # Exclusive creation also protects simultaneous exports, not just
+                # sequential repeats. Never replace an existing published file.
+                destination = final.open("xb")
+                break
+            except FileExistsError:
+                attempt += 1
+                extra = "" if attempt == 1 else "_%d" % attempt
+                final = EXPORT_DIR / ("%s_%s%s.%s" % (clean_stem, suffix, extra, fmt))
+        try:
+            with destination, out.open("rb") as source:
+                shutil.copyfileobj(source, destination)
+        except Exception:
+            final.unlink(missing_ok=True)
+            raise
         try:
             if hasattr(os, "chown"):
                 os.chown(final, EXPORT_UID, EXPORT_GID)
@@ -244,12 +282,18 @@ def export(html_str: str, fmt: str, stem: str) -> dict:
         except OSError:
             pass
 
-        return {
+        result = {
             "filename": final.name,
             "path": str(final),
             "dir": str(EXPORT_DIR),
             "size": final.stat().st_size,
             "fmt": fmt,
         }
+        timings['publish_ms'] = (perf_counter()-publish_started)*1000
     finally:
+        cleanup_started = perf_counter()
         shutil.rmtree(work, ignore_errors=True)
+        timings['cleanup_ms'] = (perf_counter()-cleanup_started)*1000
+    timings['export_total_ms'] = (perf_counter()-started)*1000
+    result['performance'] = {key:round(value, 3) for key,value in timings.items()}
+    return result

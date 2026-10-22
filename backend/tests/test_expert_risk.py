@@ -19,7 +19,7 @@ from app.services.llm_service import llm_service
 
 ROOT = Path(__file__).resolve().parents[2]
 W = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
-FORM = {"clientName": "测试委托单位", "userName": "测试使用单位", "deviceCategory": "曳引驱动电梯", "productNo": "TEST-001"}
+FORM = {"clientName": "测试委托单位", "userName": "测试使用单位", "deviceCategory": "曳引驱动电梯", "deviceVariety": "曳引驱动乘客电梯", "productNo": "TEST-001"}
 
 
 def source_risk(row: int) -> tuple[str, str]:
@@ -38,6 +38,43 @@ def answers(selected: dict[str, list[str]] | None = None, other: dict[str, str] 
 
 
 class ExpertRiskTests(unittest.TestCase):
+    def test_overview_prompt_contains_each_grounded_fact_only_once(self):
+        selected=expert_risk.options('1.7')[:2]
+        risks={'1.7':expert_risk.assess('1.7','unfit',selected)}
+        items=[{'no':'1.7','reasons':[r['text'] for r in selected],'other_text':'现场补充原文'}]
+        prompt=wf._narrative_prompt({'form':FORM,'counters':{}},items,risks,97.73,'一级')
+        data=json.loads(prompt)['data']
+        for entry in selected:
+            self.assertEqual(prompt.count(entry['measure']),1)
+            self.assertIn('risk:'+entry['key'],data['overview_facts'])
+        self.assertIn('现场补充原文',prompt)
+        self.assertNotIn('委托单位名称',data)
+
+    def test_overview_failure_has_machine_readable_degraded_status(self):
+        rid=self.prepare(answers())
+        from app.services.prompt_budget import ModelInputError
+        async def blocked(prompt):
+            raise ModelInputError('context_budget_exceeded','超过输入预算')
+        with patch.object(llm_service,'generate',blocked):
+            report=asyncio.run(wf.generate(rid,use_llm=True,actor=self.actor))
+        self.assertEqual(report['provenance']['llm_status'],'degraded')
+        self.assertEqual(report['provenance']['llm_error_code'],'context_budget_exceeded')
+        self.assertFalse(report['provenance']['llm_used'])
+        self.assertEqual(report['score'],100)
+
+    def test_free_text_budget_failure_explains_reason_and_preserves_draft(self):
+        rid=self.prepare(answers(other={'16.1':'需要解析的现场原文'}))
+        from app.services.prompt_budget import ModelInputError
+        async def blocked(prompt):
+            raise ModelInputError('context_budget_exceeded','模型输入超过预算；未截断原始资料')
+        with patch.object(llm_service,'generate',blocked):
+            with self.assertRaisesRegex(ValueError,'超过预算'):
+                asyncio.run(wf.generate(rid,use_llm=True,actor=self.actor))
+        report=wf.get_report(rid)
+        self.assertEqual(report['status'],'draft')
+        self.assertIsNone(report['report_no'])
+        self.assertEqual(next(i for i in report['items'] if i['no']=='16.1')['other_text'],'需要解析的现场原文')
+
     def setUp(self):
         self.temp = TempDB()
         self.temp.__enter__()

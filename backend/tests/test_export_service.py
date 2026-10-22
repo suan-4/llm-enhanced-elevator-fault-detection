@@ -102,6 +102,9 @@ def test_completed_export_does_not_require_posix_chown() -> None:
         assert final.parent == export_service.EXPORT_DIR
         assert final.read_bytes() == b"converter-fixture"
         assert result["fmt"] == "docx" and result["size"] > 0
+        timings = result.get('performance', {})
+        assert {'convert_ms','publish_ms','cleanup_ms','export_total_ms'} <= set(timings), timings
+        assert timings['export_total_ms'] >= timings['convert_ms'] + timings['publish_ms']
 
 
 def test_posix_ownership_is_still_attempted() -> None:

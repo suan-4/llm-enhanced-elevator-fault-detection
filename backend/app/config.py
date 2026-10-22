@@ -16,6 +16,12 @@ class Settings(BaseSettings):
     rkllm_connect_timeout: float = 5.0
     rkllm_temperature: float = 0.7
     rkllm_max_new_tokens: int = 512
+    rkllm_context_tokens: int = 4096
+    rkllm_template_reserve_tokens: int = 128
+    rkllm_model_id: str = "Qwen3.5-4B_W8A8_RK3588"
+    # Relative to backend/. Assets and successful calibration are offline deployment artifacts.
+    rkllm_tokenizer_path: str = "data/tokenizers/qwen3.5-4b/tokenizer.json"
+    rkllm_calibration_path: str = "data/tokenizers/qwen3.5-4b/calibration.json"
 
     # ── 业务数据库（用户账号 / 报告历史 / 填写记录）──
     # 相对路径按 backend/ 目录解析；知识图谱仍在 Neo4j

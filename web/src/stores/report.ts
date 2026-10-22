@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import type { Interaction } from '@/utils/performance'
 import { computed, reactive, ref } from 'vue'
 import * as reportApi from '@/api/report'
 import * as flowApi from '@/api/reports'
@@ -40,12 +41,17 @@ const CODE_TO_RESULT: Record<string, ItemResult> = {
 }
 
 export interface GeneratedInfo {
+  result_digest: string
   report_no: string | null
   score: number | null
   grade: Grade | null
   narrative: string
-  /** 叙述文字是否真由大模型生成（false = 规则摘要兜底，报告里不打印） */
-  llm_used: boolean
+  /** 模型是否参与概况；带新策略标识的可信规则摘要也可打印。 */
+  llm_used: boolean | null
+  overview_policy: string
+  llm_status: string
+  llm_error_code: string
+  loaded_from_history: boolean
   risks: Record<string, RiskValue>
   generated_at: string
   assessment_issues: string[]
@@ -57,10 +63,9 @@ export interface GeneratedInfo {
 function migrateLegacyFloors(form: Record<string, string>): void {
   const legacy = form.floorsStopsDoors
   if (legacy === undefined) return
-  const numbers = String(legacy).match(/\d+/g) ?? []
-  if (!form.floors) form.floors = numbers[0] ?? ''
-  if (!form.stops) form.stops = numbers[1] ?? ''
-  if (!form.doors) form.doors = numbers[2] ?? ''
+  for (const [key, unit] of [['floors', '层'], ['stops', '站'], ['doors', '门']]) {
+    if (!form[key]) form[key] = String(legacy).match(new RegExp('(\\d+)\\s*' + unit))?.[1] ?? ''
+  }
   delete form.floorsStopsDoors
 }
 
@@ -94,8 +99,8 @@ function createForm(): Record<string, string> {
     clientName: '',
     userName: '',
     installSite: '/',
-    deviceCategory: '',
-    deviceVariety: '/',
+    deviceCategory: '/',
+    deviceVariety: '',
     model: '/',
     productNo: '',
     registerNo: '/',
@@ -114,7 +119,7 @@ function createForm(): Record<string, string> {
     stops: '',
     doors: '',
     controlMode: '/',
-    /* 现场规则：除四个必填项（委托/使用单位名称、设备类别、产品编号），其余一律以「/」
+    /* 现场规则：除四个必填项（委托/使用单位名称、设备品种、产品编号），其余一律以「/」
        占位，意思是可填可不填。这两项以前直接照抄了设计稿 mockup 里的演示文案
        （一长串仪器清单 / 规范清单），打开就像已经填过，会误导操作员。 */
     instruments: '/',
@@ -137,12 +142,19 @@ export const useReportStore = defineStore('report', () => {
   const version = ref(1)
   const status = ref('')
   const generated = ref<GeneratedInfo | null>(null)
+  const uncertainExports = reactive<Record<string, boolean>>({})
+  const exportUncertain = computed(() => !!reportId.value && !!uncertainExports[reportId.value])
+  function markExportUncertain(id: string, uncertain: boolean): void {
+    if (uncertain) uncertainExports[id] = true
+    else delete uncertainExports[id]
+  }
   const saveState = ref<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const savedAt = ref('')
   /** 装载完成前不触发自动保存，避免刚读回来的内容又被写回去 */
   const ready = ref(false)
   const draftError = ref('')
   let saveTimer: number | undefined
+  let saveInFlight: Promise<void> | null = null
 
   function stateOf(no: string): ItemState {
     if (!states[no]) states[no] = createItemState()
@@ -329,8 +341,10 @@ export const useReportStore = defineStore('report', () => {
       return {
         no: item.no,
         result: RESULT_TO_CODE[state.result] ?? '',
-        reasons: state.reasons.slice(),
-        other_text: state.other ? state.otherText.trim() : '',
+        reasons: state.result === '不符合' && (!state.other || state.legacyCombined) ? state.reasons.slice() : [],
+        other_text: state.result === '不符合' && state.other ? state.otherText.trim() : '',
+        editing: { reasons: state.reasons.slice(), other: state.other,
+          other_text: state.otherText, legacy_combined: !!state.legacyCombined },
       }
     })
   }
@@ -354,11 +368,19 @@ export const useReportStore = defineStore('report', () => {
     for (const item of items.value) {
       const saved = draft.items.find((i) => i.no === item.no)
       const state = createItemState()
+      state.result = ''
       if (saved) {
         state.result = CODE_TO_RESULT[saved.result] ?? ''
         state.reasons = saved.reasons ?? []
         state.other = !!saved.other_text
         state.otherText = saved.other_text ?? ''
+        state.legacyCombined = !saved.editing && !!saved.other_text && !!saved.reasons?.length
+        if (saved.editing) {
+          state.reasons = saved.editing.reasons.slice()
+          state.other = saved.editing.other
+          state.otherText = saved.editing.other_text
+          state.legacyCombined = !!saved.editing.legacy_combined
+        }
       }
       states[item.no] = state
     }
@@ -434,35 +456,50 @@ export const useReportStore = defineStore('report', () => {
   /** 立即把待保存的改动写下去（页面隐藏/离开前调用） */
   async function flush(): Promise<void> {
     if (!ready.value || !reportId.value) return
-    if (saveTimer === undefined) return
-    await save().catch(() => undefined)
+    while (saveInFlight) await saveInFlight
+    if (saveTimer !== undefined || saveState.value === 'error') await save()
   }
 
   /** 保存当前全部状态（草稿保存的就是全部） */
   async function save(): Promise<void> {
+    if (status.value === 'filed' || status.value === 'void' || exportUncertain.value) return
+    // Autosave, manual save and generation share one ordered stream of writes.
+    while (saveInFlight) await saveInFlight
     if (!reportId.value) return
     window.clearTimeout(saveTimer)
     saveTimer = undefined
+    const requestedId = reportId.value
+    const payload = {
+      form: { ...form.value },
+      items: serializeItems(),
+      version: version.value,
+    }
     saveState.value = 'saving'
+    const pending = (async () => {
+      try {
+        const res = await flowApi.saveReport(requestedId, payload)
+        if (reportId.value !== requestedId) return
+        savedAt.value = res.saved_at
+        version.value = res.version
+        status.value = res.status
+        saveState.value = 'saved'
+      } catch (err) {
+        if (reportId.value === requestedId) saveState.value = 'error'
+        throw err
+      }
+    })()
+    saveInFlight = pending
     try {
-      const res = await flowApi.saveReport(reportId.value, {
-        form: form.value,
-        items: serializeItems(),
-        version: version.value,
-      })
-      savedAt.value = res.saved_at
-      version.value = res.version
-      status.value = res.status
-      saveState.value = 'saved'
-    } catch (err) {
-      saveState.value = 'error'
-      throw err
+      await pending
+    } finally {
+      if (saveInFlight === pending) saveInFlight = null
     }
   }
 
   /** 改动后防抖保存：既保证不丢，又不至于每敲一个字写一次盘 */
   function scheduleSave(delay = 800): void {
     if (!ready.value || !reportId.value) return
+    if (status.value === 'filed' || status.value === 'void' || exportUncertain.value) return
     generated.value = null
     window.clearTimeout(saveTimer)
     saveTimer = window.setTimeout(() => {
@@ -471,26 +508,35 @@ export const useReportStore = defineStore('report', () => {
   }
 
   /** 生成报告：编号、风险评定值、得分等级都由服务端给 */
-  async function generate(): Promise<ReportSummary> {
+  async function generate(timing?: Interaction): Promise<ReportSummary> {
     if (!reportId.value) throw new Error('还没有正在编辑的报告')
-    await save()
+    if (timing) await timing.measure('save', save)
+    else await save()
     const requestedId = reportId.value
     const inputSnapshot = JSON.stringify({ form: form.value, items: serializeItems() })
     // use_llm=true：模型可用就用模型写概况；不可用后端会自动降级，不影响出报告
-    const res = await flowApi.generateReport(reportId.value, true)
+    const res = timing
+      ? await timing.measure('generate_http', () => flowApi.generateReport(reportId.value!, true))
+      : await flowApi.generateReport(reportId.value, true)
     const report = res.report
-    if (reportId.value !== requestedId || inputSnapshot !== JSON.stringify({ form: form.value, items: serializeItems() })) {
+    if (reportId.value !== requestedId) throw new Error('当前报告已切换，没有覆盖新报告')
+    if (inputSnapshot !== JSON.stringify({ form: form.value, items: serializeItems() })) {
       generated.value = null
       throw new Error('生成期间输入已修改，请保存后重新生成；没有覆盖新输入')
     }
     version.value = report.version
     status.value = report.status
     generated.value = {
+      result_digest: String(report.provenance?.result_digest || ''),
       report_no: report.report_no,
       score: report.score,
       grade: report.grade,
       narrative: report.narrative,
-      llm_used: Boolean((report.provenance || {}).llm_used),
+      llm_used: typeof report.provenance?.llm_used === 'boolean' ? report.provenance.llm_used : null,
+      llm_status: typeof report.provenance?.llm_status === 'string' ? report.provenance.llm_status : '',
+      llm_error_code: typeof report.provenance?.llm_error_code === 'string' ? report.provenance.llm_error_code : '',
+      loaded_from_history: false,
+      overview_policy: typeof report.provenance?.overview_policy === 'string' ? report.provenance.overview_policy : '',
       risks: report.risks || {},
       generated_at: report.generated_at || '',
       assessment_issues: (report.provenance?.assessment_issues as string[]) || [],
@@ -512,16 +558,22 @@ export const useReportStore = defineStore('report', () => {
       status: report.status,
     })
     reportId.value = report.id
+    if (report.status !== 'generated') markExportUncertain(report.id, false)
     ready.value = true
     generated.value =
       !report.generated_at || (report.status === 'draft' && report.provenance?.result_current !== true)
         ? null
         : {
+            result_digest: String(report.provenance?.result_digest || ''),
             report_no: report.report_no,
             score: report.score,
             grade: report.grade,
             narrative: report.narrative,
-            llm_used: Boolean((report.provenance || {}).llm_used),
+            llm_used: typeof report.provenance?.llm_used === 'boolean' ? report.provenance.llm_used : null,
+            llm_status: typeof report.provenance?.llm_status === 'string' ? report.provenance.llm_status : '',
+            llm_error_code: typeof report.provenance?.llm_error_code === 'string' ? report.provenance.llm_error_code : '',
+            loaded_from_history: true,
+            overview_policy: typeof report.provenance?.overview_policy === 'string' ? report.provenance.overview_policy : '',
             risks: report.risks || {},
             generated_at: report.generated_at || '',
             assessment_issues: (report.provenance?.assessment_issues as string[]) || [],
@@ -554,6 +606,8 @@ export const useReportStore = defineStore('report', () => {
     version,
     status,
     generated,
+    exportUncertain,
+    markExportUncertain,
     saveState,
     savedAt,
     ready,

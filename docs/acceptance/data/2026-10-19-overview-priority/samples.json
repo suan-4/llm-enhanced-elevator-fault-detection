@@ -1,0 +1,257 @@
+[
+  {
+    "case": "natural_llm",
+    "report_id": "105528348309983232",
+    "report_no": "GDSEI-JTE-20261019-001",
+    "http_ms": 43183.122,
+    "llm_used": true,
+    "score": 0,
+    "highest_fact_present": true,
+    "highest_first": true,
+    "performance": {
+      "schema_version": 1,
+      "trace_id": "44f5b510c6fb4adda8a3f81a114c0d66",
+      "total_ms": 43167.105,
+      "stages": [
+        {
+          "name": "db_read",
+          "depth": 0,
+          "parent": null,
+          "start_ms": 0.096,
+          "duration_ms": 1.183,
+          "status": "ok"
+        },
+        {
+          "name": "catalog_load",
+          "depth": 0,
+          "parent": null,
+          "start_ms": 1.328,
+          "duration_ms": 0.003,
+          "status": "ok",
+          "cache_hit": true
+        },
+        {
+          "name": "validate",
+          "depth": 0,
+          "parent": null,
+          "start_ms": 1.336,
+          "duration_ms": 0.082,
+          "status": "ok"
+        },
+        {
+          "name": "prompt_build",
+          "depth": 1,
+          "parent": "risk_assessment",
+          "start_ms": 3.9,
+          "duration_ms": 0.144,
+          "status": "ok",
+          "purpose": "match_risk",
+          "item_no": "16.1"
+        },
+        {
+          "name": "match_risk",
+          "depth": 1,
+          "parent": "risk_assessment",
+          "start_ms": 4.055,
+          "duration_ms": 30369.017,
+          "status": "ok",
+          "item_no": "16.1"
+        },
+        {
+          "name": "model_result_validate",
+          "depth": 1,
+          "parent": "risk_assessment",
+          "start_ms": 30373.11,
+          "duration_ms": 0.656,
+          "status": "ok",
+          "purpose": "match_risk"
+        },
+        {
+          "name": "risk_assessment",
+          "depth": 0,
+          "parent": null,
+          "start_ms": 1.44,
+          "duration_ms": 30373.964,
+          "status": "ok"
+        },
+        {
+          "name": "score",
+          "depth": 0,
+          "parent": null,
+          "start_ms": 30375.467,
+          "duration_ms": 0.147,
+          "status": "ok"
+        },
+        {
+          "name": "prompt_build",
+          "depth": 0,
+          "parent": null,
+          "start_ms": 30375.64,
+          "duration_ms": 0.138,
+          "status": "ok",
+          "purpose": "overview"
+        },
+        {
+          "name": "overview",
+          "depth": 0,
+          "parent": null,
+          "start_ms": 30375.801,
+          "duration_ms": 12776.698,
+          "status": "ok"
+        },
+        {
+          "name": "model_result_validate",
+          "depth": 0,
+          "parent": null,
+          "start_ms": 43152.538,
+          "duration_ms": 0.141,
+          "status": "ok",
+          "purpose": "overview"
+        },
+        {
+          "name": "db_commit",
+          "depth": 0,
+          "parent": null,
+          "start_ms": 43153.434,
+          "duration_ms": 13.372,
+          "status": "ok"
+        }
+      ],
+      "model_calls": [
+        {
+          "purpose": "match_risk",
+          "input_chars": 2987,
+          "input_utf8_bytes": 6091,
+          "request_build_ms": 0.152,
+          "status": "ok",
+          "http_status": 200,
+          "runtime": {
+            "prefill_time_ms": 25790.13671875,
+            "prefill_tokens": 1482,
+            "generate_time_ms": 3193.403076171875,
+            "generate_tokens": 18,
+            "memory_usage_mb": 4741.8203125,
+            "first_output_ms": 25842.534,
+            "model_run_ms": 29036.1,
+            "model_load_ms": 23420.239,
+            "prefill_tokens_per_s": 57.464,
+            "generate_tokens_per_s": 5.637,
+            "perf_source": "rkllm_runtime",
+            "run_status": "finished",
+            "inference_id": "6c19eb9b2d524297995594f613ff2ec3",
+            "request_total_ms": 29037.718
+          },
+          "input_tokens": 1467,
+          "input_budget_tokens": 3456,
+          "context_tokens": 4096,
+          "reserved_output_tokens": 512,
+          "template_reserve_tokens": 128,
+          "tokenizer_sha256": "5f9e4d4901a92b997e463c1f46055088b6cca5ca61a6522d1b9f64c4bb81cb42",
+          "budget_ms": 1232.922,
+          "http_ms": 29135.558,
+          "application_status": "accepted"
+        },
+        {
+          "purpose": "overview",
+          "input_chars": 940,
+          "input_utf8_bytes": 1957,
+          "request_build_ms": 0.142,
+          "status": "ok",
+          "http_status": 200,
+          "runtime": {
+            "prefill_time_ms": 9521.9052734375,
+            "prefill_tokens": 558,
+            "generate_time_ms": 3202.012939453125,
+            "generate_tokens": 19,
+            "memory_usage_mb": 4760.734375,
+            "first_output_ms": 9544.224,
+            "model_run_ms": 12746.384,
+            "model_load_ms": 23420.239,
+            "prefill_tokens_per_s": 58.602,
+            "generate_tokens_per_s": 5.934,
+            "perf_source": "rkllm_runtime",
+            "run_status": "finished",
+            "inference_id": "81535d1137bd44e0b2877189d403663c",
+            "request_total_ms": 12747.812
+          },
+          "input_tokens": 538,
+          "input_budget_tokens": 3456,
+          "context_tokens": 4096,
+          "reserved_output_tokens": 512,
+          "template_reserve_tokens": 128,
+          "tokenizer_sha256": "5f9e4d4901a92b997e463c1f46055088b6cca5ca61a6522d1b9f64c4bb81cb42",
+          "budget_ms": 5.226,
+          "http_ms": 12770.96,
+          "application_status": "accepted"
+        }
+      ]
+    }
+  },
+  {
+    "case": "selected_rule",
+    "report_id": "105528529533276160",
+    "report_no": "GDSEI-JTE-20261019-002",
+    "http_ms": 36.67,
+    "llm_used": false,
+    "score": 0,
+    "highest_fact_present": true,
+    "highest_first": true,
+    "performance": {
+      "schema_version": 1,
+      "trace_id": "01e884994977405ba117669aa3d6d1d1",
+      "total_ms": 21.142,
+      "stages": [
+        {
+          "name": "db_read",
+          "depth": 0,
+          "parent": null,
+          "start_ms": 0.17,
+          "duration_ms": 3.144,
+          "status": "ok"
+        },
+        {
+          "name": "catalog_load",
+          "depth": 0,
+          "parent": null,
+          "start_ms": 3.399,
+          "duration_ms": 0.01,
+          "status": "ok",
+          "cache_hit": true
+        },
+        {
+          "name": "validate",
+          "depth": 0,
+          "parent": null,
+          "start_ms": 3.428,
+          "duration_ms": 0.226,
+          "status": "ok"
+        },
+        {
+          "name": "risk_assessment",
+          "depth": 0,
+          "parent": null,
+          "start_ms": 3.716,
+          "duration_ms": 5.272,
+          "status": "ok"
+        },
+        {
+          "name": "score",
+          "depth": 0,
+          "parent": null,
+          "start_ms": 9.042,
+          "duration_ms": 0.175,
+          "status": "ok"
+        },
+        {
+          "name": "db_commit",
+          "depth": 0,
+          "parent": null,
+          "start_ms": 10.009,
+          "duration_ms": 10.876,
+          "status": "ok"
+        }
+      ],
+      "model_calls": []
+    }
+  }
+]

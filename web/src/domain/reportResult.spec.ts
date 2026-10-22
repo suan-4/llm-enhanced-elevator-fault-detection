@@ -2,10 +2,20 @@ import { describe, expect, it } from 'vitest'
 import { createSSRApp } from 'vue'
 import { renderToString } from '@vue/server-renderer'
 import AppendixA from '@/components/report/AppendixA.vue'
-import { buildAppendixRows } from './reportResult'
+import { buildAppendixRows, overviewNarrative } from './reportResult'
 import type { RiskValue } from './riskAssign'
 
 describe('专家风险生成结果', () => {
+  it('模型降级后仍展示新版本的可信最高风险摘要', () => {
+    expect(overviewNarrative({ llm_used: false, overview_policy: 'highest-risk-first-v1', narrative: '项目16.1：已核实的Ⅰ类风险' }))
+      .toContain('Ⅰ类风险')
+  })
+
+  it('不把旧规则摘要里的运行提示带进报告，也不改历史模型概况', () => {
+    expect(overviewNarrative({ llm_used: false, overview_policy: '', narrative: '未使用大模型，模型不可用' })).toBe('')
+    expect(overviewNarrative({ llm_used: true, overview_policy: '', narrative: '历史已核实概况' })).toBe('历史已核实概况')
+    expect(overviewNarrative(null)).toBe('')
+  })
   it('同项目附页统一显示最终类别但保留各风险和措施', () => {
     const risks: Record<string, RiskValue> = {
       '16.1': {

@@ -1,0 +1,50 @@
+{
+  "platform": "Linux-5.10.160-aarch64-with-glibc2.35",
+  "python": "3.10.12",
+  "materials_bytes": 278598,
+  "materials_sha256": "adbf821dae79f210b3ec30cbc4e1c508bd673074af7455c66a31a0208a07034c",
+  "cache_boundary": "new Python process; OS page cache not cleared",
+  "measurements": [
+    {
+      "index": 0,
+      "python_cache": "empty",
+      "read_parse_ms": 3.2631670000000668
+    },
+    {
+      "index": 1,
+      "python_cache": "hit",
+      "read_parse_ms": 0.0017500000240033842
+    },
+    {
+      "index": 2,
+      "python_cache": "hit",
+      "read_parse_ms": 0.000582999973630649
+    },
+    {
+      "index": 3,
+      "python_cache": "hit",
+      "read_parse_ms": 0.000582999973630649
+    },
+    {
+      "index": 4,
+      "python_cache": "hit",
+      "read_parse_ms": 0.0002919999815276242
+    },
+    {
+      "index": 5,
+      "python_cache": "hit",
+      "read_parse_ms": 0.0002919999815276242
+    }
+  ],
+  "formal_data_state": {
+    "integrity": "ok",
+    "account": {
+      "count": 1,
+      "hash": "481836fab5278e8d6387be93f23a280564f5c0763c761d49ed377e642cdb1aa3"
+    },
+    "report": {
+      "count": 17,
+      "hash": "5674dc00bc3ebb3b3bd6d2f75572a1314f847bbaeb00a0db6767a8f6d701d08a"
+    }
+  }
+}

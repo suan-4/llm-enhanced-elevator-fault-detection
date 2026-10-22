@@ -37,6 +37,11 @@ describe('itemProblem（条目漏填判定）', () => {
     expect(itemProblem(state)).toBe('选择了「不符合」但未填写具体情形')
   })
 
+  it('其他分支的未填写内容不能被停用的清单缓存掩盖', () => {
+    expect(itemProblem({ ...createItemState(), result: '不符合', reasons: ['缓存'],
+      other: true, otherText: '', legacyCombined: false })).not.toBe('')
+  })
+
   it('勾选「其他」并填写内容即通过', () => {
     const state = {
       ...createItemState(),
@@ -62,13 +67,13 @@ describe('collectMissing', () => {
   const items = [makeItem('1.7', '机房工作安全空间'), makeItem('1.9', '限速器')]
 
   it('同时收集必填字段与条目漏填', () => {
-    const form = { clientName: '', userName: '使用单位', deviceCategory: '/', productNo: 'X1' }
+    const form = { clientName: '', userName: '使用单位', deviceVariety: '/', productNo: 'X1' }
     const states: Record<string, ReturnType<typeof createItemState>> = {
       '1.7': { ...createItemState(), result: '符合' },
       '1.9': { ...createItemState(), result: '' },
     }
     const missing = collectMissing(form, items, (no) => states[no])
-    expect(missing.map((m) => m.key)).toEqual(['clientName', 'deviceCategory', '1.9'])
+    expect(missing.map((m) => m.key)).toEqual(['clientName', 'deviceVariety', '1.9'])
     expect(missing[2].why).toBe('未选择评价结果')
   })
 
@@ -76,7 +81,7 @@ describe('collectMissing', () => {
     const form = {
       clientName: '委托单位',
       userName: '使用单位',
-      deviceCategory: '曳引驱动电梯',
+      deviceVariety: '曳引驱动乘客电梯',
       productNo: 'P-001',
     }
     const states = {

@@ -2,6 +2,7 @@
 /* 报告正文：按 JTE 模板顺序渲染四页 —— 正文页、评价结果表、附页、附录A。
    每页包在 .paper-holder 里，外层负责按视口宽度等比缩放。 */
 import InfoTable from './InfoTable.vue'
+import ReportFrontMatter from './ReportFrontMatter.vue'
 import EvaluationTable from './EvaluationTable.vue'
 import AppendixPage from './AppendixPage.vue'
 import AppendixA from './AppendixA.vue'
@@ -21,6 +22,7 @@ defineProps<{
 </script>
 
 <template>
+  <ReportFrontMatter />
   <div class="paper-holder">
     <div class="paper">
       <h1>在用曳引驱动电梯安全评估报告</h1>

@@ -1,0 +1,26 @@
+{
+  "case": "first_short_probe_after_model_reload",
+  "http_ms": 1021.629,
+  "performance": {
+    "first_output_ms": 824.483,
+    "generate_time_ms": 191.53199768066406,
+    "generate_tokens": 1,
+    "generate_tokens_per_s": 5.221,
+    "inference_id": "434abbd6fb8d453e94580afd66a3b733",
+    "memory_usage_mb": 4721.46875,
+    "model_load_ms": 17222.639,
+    "model_run_ms": 1014.503,
+    "perf_source": "rkllm_runtime",
+    "prefill_time_ms": 789.1849975585938,
+    "prefill_tokens": 19,
+    "prefill_tokens_per_s": 24.075,
+    "request_total_ms": 1015.916,
+    "run_status": "finished"
+  },
+  "usage": {
+    "completion_tokens": 1,
+    "prompt_tokens": 19,
+    "total_tokens": 20
+  },
+  "output_chars": 2
+}

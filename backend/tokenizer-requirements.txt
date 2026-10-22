@@ -1,0 +1,4 @@
+# Optional offline tokenizer bundle. Do not install transformers or model weights.
+# Resolve once on the build machine; retain platform-specific wheel SHA manifest.
+tokenizers==0.22.1
+huggingface-hub==0.36.0

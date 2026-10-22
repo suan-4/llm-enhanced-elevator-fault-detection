@@ -94,26 +94,17 @@ def main() -> int:
                   all(k in items[0] for k in ("no", "name", "sub", "req", "opts")),
                   f"首条 {items[0]['no']} {items[0]['name']}")
 
-        print("═══ 第 4 层：导出失败必须可见且可读 ═══")
+        print("═══ 第 4 层：导出必须绑定服务端报告快照 ═══")
         r = c.post("/api/report/export", headers=H, json={
             "fmt": "pdf", "title": "验收", "meta": [], "body_html": "<p>x</p>", "filename": "验收",
         })
-        detail = ""
-        try:
-            detail = r.json().get("detail", "")
-        except Exception:  # noqa: BLE001
-            detail = r.text
-        if r.status_code == 200:
-            check(4, "导出成功", True, "本机具备 LibreOffice")
-        else:
-            check(4, "导出失败非静默", r.status_code >= 400, f"status={r.status_code}")
-            check(4, "提示指向具体原因",
-                  ("导出目录" in detail) or ("LibreOffice" in detail) or ("soffice" in detail),
-                  detail[:110])
-            check(4, "提示不泄漏内部异常",
-                  not any(k in detail for k in
-                          ("FileNotFoundError", "WinError", "Traceback", "AttributeError")),
-                  detail[:110])
+        check(4, "旧HTML请求/缺少快照绑定 → 422", r.status_code == 422)
+        r = c.post("/api/report/export", headers=H, json={
+            "fmt": "docx", "report_id": "123456789", "version": 1, "result_digest": "a"*64,
+        })
+        check(4, "不存在的报告 → 404", r.status_code == 404)
+        check(4, "提示不泄漏内部异常",
+              not any(k in r.text for k in ("Traceback", "FileNotFoundError", "WinError")))
 
         print("═══ 第 5 层：打开文件的安全边界 ═══")
         outside = r"C:\Windows\win.ini" if os.name == "nt" else "/etc/passwd"
