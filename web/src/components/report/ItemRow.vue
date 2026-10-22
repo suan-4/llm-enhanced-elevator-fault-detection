@@ -11,12 +11,27 @@ const problem = computed(() => itemProblem(state.value))
 const unfit = computed(() => state.value.result === '不符合')
 const oldReasons = computed(() => state.value.reasons.filter(text => !props.item.opts.includes(text)))
 
-const rowId = computed(() => `row-${props.item.no.replace('.', '-')}`)
+const rowId = computed(() => 'row-' + props.item.no.replace('.', '-'))
+const reasonsId = computed(() => rowId.value + '-reasons')
 
 const RESULTS = ['符合', '不符合', '无此项'] as const
 
+/* 「其他」与清单选项二选一：选了其中一个，另一个立即置灰（并清空值），
+   保证落库时不会同时出现两种来源。 */
+const otherOn = computed(() => state.value.other)
+const hasReasons = computed(() => state.value.reasons.length > 0)
+const reasonsLocked = computed(() => unfit.value && otherOn.value)
+const otherLocked = computed(() => !unfit.value || hasReasons.value)
+
+function clearUnfitInputs(): void {
+  state.value.reasons = []
+  state.value.other = false
+  state.value.otherText = ''
+}
+
 function setResult(value: (typeof RESULTS)[number]): void {
   state.value.result = value
+  if (value !== '不符合') clearUnfitInputs()
 }
 
 /* 三态/情形都走「点 label 自己改状态」，而不是让浏览器去激活里面的
@@ -25,25 +40,43 @@ function setResult(value: (typeof RESULTS)[number]): void {
    2) 隐藏 input 抢焦点还会把整页滚走（见 styles/base.css .seg input 的说明）。
    鼠标/触摸走 label 的 @click.prevent，键盘仍走 input 的 @change，两条路都能用。 */
 function toggleReason(text: string, checked: boolean): void {
+  if (reasonsLocked.value) return
   const list = state.value.reasons
   const index = list.indexOf(text)
   if (checked && index < 0) list.push(text)
   if (!checked && index >= 0) list.splice(index, 1)
+  // 二选一：只要选了清单项，「其他」就让位并置灰
+  if (list.length) {
+    state.value.other = false
+    state.value.otherText = ''
+  }
 }
 
 /** 点 label 时默认激活已被拦住，所以按「点击前」的状态取反 */
 function pickReason(text: string): void {
+  if (reasonsLocked.value) return
   toggleReason(text, !state.value.reasons.includes(text))
+}
+
+function toggleOther(): void {
+  if (otherLocked.value) return
+  state.value.other = !state.value.other
+  // 二选一：勾选「其他」即清掉清单勾选；取消勾选则清掉已填文字
+  if (state.value.other) state.value.reasons = []
+  else state.value.otherText = ''
 }
 </script>
 
 <template>
+  <!-- 主行：项目编号 / 项目 / 评价结果 -->
   <tr
     :id="rowId"
+    class="item-main"
     :class="{
       'row-unfit': unfit,
       'row-miss': !!problem,
       'row-done': state.result === '符合' || state.result === '无此项',
+      'has-reasons': unfit,
     }"
   >
     <td class="item-no">{{ item.no }}</td>
@@ -52,9 +85,6 @@ function pickReason(text: string): void {
         {{ item.name }}
         <span v-if="item.sub" class="sub">{{ item.sub }}</span>
       </div>
-    </td>
-    <td class="item-req">
-      <div v-for="(line, i) in item.req" :key="i">{{ line }}</div>
     </td>
     <td>
       <div class="seg">
@@ -66,7 +96,7 @@ function pickReason(text: string): void {
         >
           <input
             type="radio"
-            :name="`seg-${item.no}`"
+            :name="'seg-' + item.no"
             :value="opt"
             :checked="state.result === opt"
             @change="setResult(opt)"
@@ -74,13 +104,30 @@ function pickReason(text: string): void {
           <span>{{ opt }}</span>
         </label>
       </div>
+    </td>
+  </tr>
 
-      <div v-if="unfit" class="reasons">
-        <div class="reasons-head">不符合情形（可多选）</div>
+  <!-- 情形选项单独一行、横跨整张表：
+       不再被「评价结果」的窄列约束，左侧编号/项目下方不再留一大块空白。 -->
+  <tr v-if="unfit" :id="reasonsId" class="reasons-row">
+    <td :colspan="3">
+      <div class="reasons">
+        <div class="reasons-head">不符合情形（清单项与其他二选一）</div>
         <template v-if="oldReasons.length">
           <div class="reasons-err">以下为旧版选项，请取消并重新选择当前风险，或填入其他：</div>
-          <label v-for="old in oldReasons" :key="old" class="chk" @click.prevent="pickReason(old)">
-            <input type="checkbox" checked @change="toggleReason(old, false)" />
+          <label
+            v-for="old in oldReasons"
+            :key="old"
+            class="chk"
+            :class="{ disabled: reasonsLocked }"
+            @click.prevent="pickReason(old)"
+          >
+            <input
+              type="checkbox"
+              checked
+              :disabled="reasonsLocked"
+              @change="toggleReason(old, false)"
+            />
             <span>{{ old }}</span>
           </label>
         </template>
@@ -88,23 +135,35 @@ function pickReason(text: string): void {
           v-for="(opt, i) in item.opts"
           :key="i"
           class="chk"
+          :class="{ disabled: reasonsLocked }"
           @click.prevent="pickReason(opt)"
         >
           <input
             type="checkbox"
             :checked="state.reasons.includes(opt)"
+            :disabled="reasonsLocked"
             @change="toggleReason(opt, ($event.target as HTMLInputElement).checked)"
           />
           <span>{{ opt }}</span>
         </label>
-        <label class="chk is-other" @click.prevent="state.other = !state.other">
-          <input v-model="state.other" type="checkbox" />
+        <label
+          class="chk is-other"
+          :class="{ disabled: otherLocked }"
+          @click.prevent="toggleOther"
+        >
+          <input
+            type="checkbox"
+            :checked="state.other"
+            :disabled="otherLocked"
+            @change="toggleOther"
+          />
           <span>其他（自行填写）</span>
         </label>
         <div v-if="state.other" class="other-box">
           <textarea
             v-model="state.otherText"
             class="textarea"
+            :disabled="otherLocked"
             placeholder="请填写具体情况，将写入报告「存在风险」"
           />
         </div>

@@ -130,7 +130,7 @@ async function open(report: api.ReportSummary): Promise<void> {
     const loaded = await store.openReport(report.id)
     await router.push('/')
     // 已生成的直接看预览；草稿继续录入
-    shell.requestView(loaded.status === 'draft' ? 'input' : 'report')
+    shell.requestView(loaded.status === 'draft' ? 'items' : 'report')
   } catch (err) {
     show(err instanceof ApiError ? err.detail : '打开失败')
   } finally {
@@ -142,7 +142,7 @@ function clone(report: api.ReportSummary): void {
   openConfirm(`按「${report.client_name || '这份报告'}」的抬头新建一份空白评估？评价结果不会带过去。`,
     async () => {
       await api.cloneReport(report.id)
-      show('已按抬头新建草稿，去「评估报告录入」继续')
+      show('已按抬头新建草稿，返回评估后继续填写')
     })
 }
 
@@ -189,7 +189,7 @@ onMounted(load)
       <div v-if="loadError" class="err-box">{{ loadError }}</div>
       <div v-else-if="loading" class="empty-state">加载中…</div>
       <div v-else-if="!reports.length" class="empty-state">
-        还没有报告。去「评估报告录入」新建一份吧。
+        还没有报告。回到评估录入页新建一份吧。
       </div>
 
       <table v-else class="data-table">

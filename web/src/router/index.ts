@@ -28,21 +28,19 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      /* 报告管理 / 账号管理已并入「系统设置」的左侧树；
+         旧地址保留重定向，书签不会失效。 */
       path: '/reports',
-      name: 'reports',
-      component: () => import('@/views/ReportListView.vue'),
-      meta: { requiresAuth: true },
+      redirect: { path: '/settings', query: { section: 'reports' } },
+    },
+    {
+      path: '/accounts',
+      redirect: { path: '/settings', query: { section: 'accounts' } },
     },
     {
       path: '/settings',
       name: 'settings',
       component: () => import('@/views/SettingsView.vue'),
-      meta: { requiresAuth: true },
-    },
-    {
-      path: '/accounts',
-      name: 'accounts',
-      component: () => import('@/views/AccountListView.vue'),
       meta: { requiresAuth: true },
     },
     { path: '/:pathMatch(.*)*', redirect: '/' },

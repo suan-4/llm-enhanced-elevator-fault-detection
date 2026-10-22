@@ -1,20 +1,23 @@
 <script setup lang="ts">
-/* 左侧可折叠导航。
+/* 左侧可折叠导航：项目进度 + 三个录入锚点（基础信息 / 检测项目填写 / 所生成报告）。
    样式与旧版一致（260px 深色渐变，折叠到 50px）。
    ⚠ 关键点（旧版实测教训）：折叠时 .sidebar 的 width 与 .main 的 margin-left
    必须用同一时长与缓动，否则展开过程中侧边栏会短暂压住正文左列。 */
+import { computed } from 'vue'
+
 export interface NavItem {
   key: string
   label: string
 }
 
-defineProps<{
+const props = defineProps<{
   collapsed: boolean
   items: NavItem[]
   active: string
   userName: string
   userRole: string
   showExit: boolean
+  progress: { done: number; total: number; unfit: number }
 }>()
 
 const emit = defineEmits<{
@@ -23,6 +26,12 @@ const emit = defineEmits<{
   logout: []
   exitSystem: []
 }>()
+
+const percent = computed(() => {
+  const { done, total } = props.progress
+  if (!total) return 0
+  return Math.max(0, Math.min(100, Math.round((done / total) * 100)))
+})
 </script>
 
 <template>
@@ -41,15 +50,24 @@ const emit = defineEmits<{
       <div class="sub">Elevator Safety Assessment</div>
     </div>
 
+    <div v-if="!collapsed" class="progress">
+      <div class="progress-title">项目进度</div>
+      <div class="progress-track"><i :style="{ width: percent + '%' }" /></div>
+      <div class="progress-meta">
+        <b>{{ progress.done }}</b>/{{ progress.total }} 项已评 · 不符合 {{ progress.unfit }}
+      </div>
+    </div>
+
     <ul class="sidebar-nav">
       <li
-        v-for="item in items"
+        v-for="(item, index) in items"
         :key="item.key"
         :class="{ active: item.key === active }"
+        :data-anchor="item.key"
         @click="emit('navigate', item.key)"
       >
-        <span class="dot" />
-        {{ item.label }}
+        <span class="step-no">{{ index + 1 }}</span>
+        <span class="step-label">{{ item.label }}</span>
       </li>
     </ul>
 
@@ -115,7 +133,7 @@ const emit = defineEmits<{
 .sidebar-brand {
   padding: 0 22px 20px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  margin-bottom: 16px;
+  margin-bottom: 14px;
 }
 
 .sidebar-brand h1 {
@@ -132,6 +150,51 @@ const emit = defineEmits<{
   white-space: nowrap;
 }
 
+/* ── 项目进度 ── */
+.progress {
+  margin: 0 14px 16px;
+  padding: 12px 12px 11px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.progress-title {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.78);
+  letter-spacing: 0.04em;
+  margin-bottom: 8px;
+}
+
+.progress-track {
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+
+.progress-track i {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #2d8ab5 0%, #4fb3d9 100%);
+  transition: width 0.25s ease;
+}
+
+.progress-meta {
+  margin-top: 7px;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.45);
+  white-space: nowrap;
+}
+
+.progress-meta b {
+  color: rgba(255, 255, 255, 0.82);
+  font-weight: 600;
+}
+
+/* ── 锚点导航 ── */
 .sidebar-nav {
   list-style: none;
   padding: 0 12px;
@@ -167,16 +230,22 @@ const emit = defineEmits<{
   border-color: rgba(255, 255, 255, 0.12);
 }
 
-.sidebar-nav .dot {
-  width: 8px;
-  height: 8px;
+.step-no {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.25);
-  flex-shrink: 0;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 10px;
+  line-height: 16px;
+  text-align: center;
 }
 
-.sidebar-nav li.active .dot {
+.sidebar-nav li.active .step-no {
+  border-color: #2d8ab5;
   background: #2d8ab5;
+  color: #fff;
   box-shadow: 0 0 10px rgba(45, 138, 181, 0.5);
 }
 
@@ -263,20 +332,31 @@ const emit = defineEmits<{
 
 .sidebar.collapsed .sidebar-brand h1,
 .sidebar.collapsed .sub,
+.sidebar.collapsed .progress,
 .sidebar.collapsed .user-bar,
 .sidebar.collapsed .sidebar-footer {
   display: none;
+}
+
+.sidebar.collapsed .sidebar-nav {
+  padding: 0 8px;
 }
 
 .sidebar.collapsed .sidebar-nav li {
   justify-content: center;
   padding: 10px 0;
   font-size: 0;
+  gap: 0;
 }
 
-.sidebar.collapsed .sidebar-nav .dot {
-  width: 10px;
-  height: 10px;
+.sidebar.collapsed .step-label {
+  display: none;
+}
+
+.sidebar.collapsed .step-no {
+  width: 20px;
+  height: 20px;
+  line-height: 18px;
 }
 
 .sidebar.collapsed .sidebar-brand {
@@ -284,10 +364,6 @@ const emit = defineEmits<{
   margin-bottom: 12px;
   border: none;
   text-align: center;
-}
-
-.sidebar.collapsed .sidebar-nav {
-  padding: 0 8px;
 }
 
 .sidebar.collapsed .sidebar-toggle {
@@ -307,6 +383,11 @@ const emit = defineEmits<{
 
   .sidebar-brand h1 {
     font-size: 13.5px;
+  }
+
+  .progress {
+    margin: 0 8px 12px;
+    padding: 10px;
   }
 
   .sidebar-nav {

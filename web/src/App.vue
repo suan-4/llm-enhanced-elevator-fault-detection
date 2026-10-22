@@ -12,7 +12,7 @@ const auth = useAuthStore()
 const setup = useSetupStore()
 const kiosk = useKiosk()
 const route = useRoute()
-const { message } = useToast()
+const { message, tone } = useToast()
 
 const ready = ref(false)
 
@@ -56,7 +56,7 @@ onMounted(async () => {
     </AppShell>
     <RouterView v-else />
 
-    <div v-if="message" class="toast">{{ message }}</div>
+    <div v-if="message" class="toast" :class="{ danger: tone === 'danger' }">{{ message }}</div>
   </template>
   <SplashScreen v-else />
 </template>

@@ -2,7 +2,6 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import InfoTable from '@/components/report/InfoTable.vue'
 import ItemTable from '@/components/report/ItemTable.vue'
-import MissingList from '@/components/report/MissingList.vue'
 import ReportDocument from '@/components/report/ReportDocument.vue'
 import AppDialog from '@/components/AppDialog.vue'
 import { overviewText, countByCategory } from '@/domain/riskScore'
@@ -18,30 +17,74 @@ const exp = useExport()
 const { show } = useToast()
 
 const view = ref<'input' | 'report'>('input')
-const showAlert = ref(false)
 const generating = ref(false)
 const confirmNew = ref(false)
 const newBusy = ref(false)
 const confirmExport = ref<'pdf' | 'docx' | null>(null)
 const reportWrap = ref<HTMLElement | null>(null)
 
-/* 侧栏 / 顶栏已上移到 AppShell，本页只管内容。
-   侧栏点「评估报告录入 / 报告预览」可能是①本页已挂载（立即切）或
-   ②从账号页跳过来（本页刚挂载，事件已过去）——所以看 shell.requested 待办标记。 */
+/* 侧栏是「项目进度 + 三个滚动锚点」：基础信息 / 检测项目填写 / 所生成报告。
+   从别的页面点过来时本页可能还没挂载，所以用 shell.requested 待办标记，
+   挂载后消费；本页已挂载时 watch 立即消费。 */
+const SECTION_IDS = { info: 'sec-info', items: 'sec-items', report: 'sec-report' } as const
+
+function mainEl(): HTMLElement | null {
+  return document.querySelector('.main') as HTMLElement | null
+}
+
+/** 滚到某个锚点（让开 52px 吸顶栏） */
+function scrollToSection(id: string): void {
+  const main = mainEl()
+  const el = document.getElementById(id)
+  if (!main || !el) return
+  const top = main.scrollTop + el.getBoundingClientRect().top - main.getBoundingClientRect().top - 64
+  main.scrollTo({ top: Math.max(0, top), behavior: 'smooth' })
+}
+
+async function showAnchor(anchor: 'info' | 'items'): Promise<void> {
+  view.value = 'input'
+  await nextTick()
+  shell.active = anchor
+  scrollToSection(SECTION_IDS[anchor])
+}
+
+/** 「所生成报告」：没有就先生成；漏填时会留在录入页并已定位第一处 */
+async function showReportSection(): Promise<void> {
+  if (!store.generated) await generate()
+  if (!store.generated) return
+  view.value = 'report'
+  await nextTick()
+  fitPapers()
+  shell.active = 'report'
+  scrollToSection(SECTION_IDS.report)
+}
+
 function consumeShellRequest(): void {
   const want = shell.requested
   if (!want) return
   shell.requested = ''
-  if (want === 'report') {
-    void showPreview()
-  } else {
-    view.value = 'input'
-  }
+  if (want === 'report') void showReportSection()
+  else void showAnchor(want)
 }
 
 watch(() => shell.requested, consumeShellRequest)
+
+/* 录入视图内按滚动位置高亮侧栏锚点；报告视图固定高亮第三项 */
+function updateActiveByScroll(): void {
+  if (view.value === 'report') {
+    shell.active = 'report'
+    return
+  }
+  const main = mainEl()
+  const items = document.getElementById(SECTION_IDS.items)
+  if (!main || !items) return
+  const offset = items.getBoundingClientRect().top - main.getBoundingClientRect().top
+  shell.active = offset < 160 ? 'items' : 'info'
+}
+
 watch(view, (v) => {
-  shell.active = v
+  if (v === 'report') shell.active = 'report'
+  else void nextTick(updateActiveByScroll)
 })
 
 /** A4 宽度（210mm @96dpi），用于按视口等比缩放报告页 */
@@ -51,7 +94,10 @@ onMounted(async () => {
   await store.loadItems()
   await startDraft()
   window.addEventListener('resize', fitPapers)
+  mainEl()?.addEventListener('scroll', updateActiveByScroll, { passive: true })
   consumeShellRequest()
+  await nextTick()
+  updateActiveByScroll()
 })
 
 /** 准备当前评估（没有就新建、有草稿就续录）；失败时页面给重试入口 */
@@ -83,6 +129,7 @@ const saveHint = computed(() => {
 
 onBeforeUnmount(() => {
   window.removeEventListener('resize', fitPapers)
+  mainEl()?.removeEventListener('scroll', updateActiveByScroll)
   document.removeEventListener('visibilitychange', flushOnHide)
 })
 
@@ -173,7 +220,6 @@ async function doNewReport(): Promise<void> {
   try {
     await store.createNew()
     view.value = 'input'
-    showAlert.value = false
     show('已新建一份评估')
     scrollToTop()
   } catch (err) {
@@ -184,34 +230,29 @@ async function doNewReport(): Promise<void> {
 }
 
 async function generate(): Promise<void> {
+  /* 漏填不再罗列清单：直接滚到第一处并给红色短提示（提示内容不宜过长）。
+     jump() 会滚动 + 高亮，字段类还会把光标放进输入框，方便直接补填。 */
   if (store.missing.length) {
-    showAlert.value = true
-    show(`有 ${store.missing.length} 项未填写，请见页面顶部清单`)
-    scrollToTop()
+    const first = store.missing[0]
+    jump(first.key, first.kind)
+    show(`还有 ${store.missing.length} 项未填写`, 3000, 'danger')
     return
   }
-  showAlert.value = false
   if (generating.value) return
   generating.value = true
   try {
     await store.generate()
     view.value = 'report'
-    nextTick(fitPapers)
+    shell.active = 'report'
+    void nextTick(() => {
+      fitPapers()
+      scrollToSection(SECTION_IDS.report)
+    })
   } catch (err) {
     show(err instanceof Error ? err.message : '生成失败')
   } finally {
     generating.value = false
   }
-}
-
-async function showPreview(): Promise<void> {
-  if (!store.generated) {
-    await generate()
-    return
-  }
-  await store.ensurePreview()
-  view.value = 'report'
-  nextTick(fitPapers)
 }
 
 function jump(key: string, kind: 'field' | 'item'): void {
@@ -256,8 +297,6 @@ function fitPapers(): void {
 </script>
 
 <template>
-  <MissingList v-if="showAlert && store.missing.length" @jump="jump" />
-
       <section v-show="view === 'input'">
         <div class="sheet">
           <h1 class="doc-title">在用曳引驱动电梯安全评估报告</h1>
@@ -284,15 +323,17 @@ function fitPapers(): void {
           <div v-else-if="!store.ready" class="state-tip">正在准备评估…</div>
 
           <template v-else>
-            <InfoTable />
-            <div style="margin-top: 14px">
+            <div id="sec-info">
+              <InfoTable />
+            </div>
+            <div id="sec-items" style="margin-top: 14px">
               <ItemTable />
             </div>
           </template>
         </div>
       </section>
 
-      <section v-show="view === 'report'">
+      <section id="sec-report" v-show="view === 'report'">
         <div ref="reportWrap" class="report-wrap">
           <div class="sheet report-toolbar">
             <div style="display: flex; align-items: center; gap: 12px">
@@ -397,7 +438,7 @@ function fitPapers(): void {
           当前这份评估已填 <b>{{ store.counters.done }}</b> 项。
         </p>
         <p class="dialog-p">
-          新建后它不会丢，仍留在「报告管理」里，随时可以点「继续编辑」接着填。
+          新建后它不会丢，仍留在「系统设置 → 报告管理」里，随时可以点「继续编辑」接着填。
         </p>
         <p class="dialog-p">确定新建一份空白评估吗？</p>
       </AppDialog>

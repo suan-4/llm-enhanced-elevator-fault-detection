@@ -7,8 +7,13 @@ function makeItem(no: string, name = '项目'): JteItem {
 }
 
 describe('itemProblem（条目漏填判定）', () => {
-  it('未选评价结果', () => {
-    expect(itemProblem(createItemState())).toBe('未选择评价结果')
+  it('新条目默认「符合」，直接通过', () => {
+    expect(createItemState().result).toBe('符合')
+    expect(itemProblem(createItemState())).toBe('')
+  })
+
+  it('旧草稿残留的空结果仍算未填', () => {
+    expect(itemProblem({ ...createItemState(), result: '' })).toBe('未选择评价结果')
   })
 
   it('符合 / 无此项 直接通过', () => {
@@ -60,7 +65,7 @@ describe('collectMissing', () => {
     const form = { clientName: '', userName: '使用单位', deviceCategory: '/', productNo: 'X1' }
     const states: Record<string, ReturnType<typeof createItemState>> = {
       '1.7': { ...createItemState(), result: '符合' },
-      '1.9': createItemState(),
+      '1.9': { ...createItemState(), result: '' },
     }
     const missing = collectMissing(form, items, (no) => states[no])
     expect(missing.map((m) => m.key)).toEqual(['clientName', 'deviceCategory', '1.9'])
@@ -88,7 +93,7 @@ describe('countItems', () => {
     const states = {
       '1.7': { ...createItemState(), result: '符合' as const },
       '1.9': { ...createItemState(), result: '不符合' as const, reasons: ['a)情形一'] },
-      '2.1': createItemState(),
+      '2.1': { ...createItemState(), result: '' as const },
     }
     expect(countItems(items, (no) => states[no as '1.7' | '1.9' | '2.1'])).toEqual({
       total: 3,
