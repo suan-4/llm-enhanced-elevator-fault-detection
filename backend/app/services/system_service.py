@@ -231,7 +231,10 @@ def diagnose() -> dict:
 
 # ── 备份 / 恢复 ─────────────────────────────────────────
 def backup(target_dir: str | None = None, *, actor: dict | None = None) -> dict:
+    from app.services.storage_paths import separate_storage, storage_directory
     base = Path(target_dir) if target_dir else Path(settings.backup_dir)
+    base = storage_directory(str(base.resolve()))
+    separate_storage(Path(settings.export_dir), base)
     dest = base / datetime.now().strftime("%Y%m%d-%H%M%S")
     dest.mkdir(parents=True, exist_ok=True)
 
@@ -278,7 +281,21 @@ def _prune_backups(base: Path) -> None:
     """只保留最近 N 份（按目录名排序，名字就是时间戳）。"""
     if not base.is_dir():
         return
-    dirs = sorted((d for d in base.iterdir() if d.is_dir()), key=lambda d: d.name)
+    import re
+    dirs = []
+    for directory in base.iterdir():
+        if (directory.is_symlink() or not directory.is_dir()
+                or not re.fullmatch(r'\d{8}-\d{6}', directory.name)):
+            continue
+        try:
+            manifest = verify_backup(str(directory))
+            if (not manifest.get('app_version') or not manifest.get('created_at')
+                    or not any(entry.get('path') == 'elevator.db' for entry in manifest['files'])):
+                continue
+        except (OSError, ValueError, TypeError, KeyError):
+            continue
+        dirs.append(directory)
+    dirs.sort(key=lambda directory: directory.name)
     for old in dirs[: max(0, len(dirs) - settings.backup_keep)]:
         shutil.rmtree(old, ignore_errors=True)
 
@@ -290,8 +307,14 @@ def verify_backup(source_dir: str) -> dict:
     if not manifest_path.is_file():
         raise ValueError("这个目录不是一份备份（缺少 manifest.json）")
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    if not isinstance(manifest, dict) or not isinstance(manifest.get('files'), list):
+        raise ValueError('备份清单格式无效')
     for entry in manifest.get("files", []):
+        if not isinstance(entry, dict) or not isinstance(entry.get('path'), str):
+            raise ValueError('备份清单文件路径无效')
         target = src / entry["path"]
+        if target.is_symlink() or src.resolve() not in target.resolve().parents:
+            raise ValueError('备份清单含目录之外的路径')
         if not target.is_file():
             raise ValueError(f"备份不完整：缺少 {entry['path']}")
         if _sha256(target) != entry["sha256"]:

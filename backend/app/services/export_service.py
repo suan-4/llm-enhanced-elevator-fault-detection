@@ -33,6 +33,7 @@ SOFFICE = "/usr/bin/soffice"
 # 导出目录放在 GUI 用户家目录下，方便退出到桌面后取走文件。
 # 统一从配置取（config.py 的 export_dir），避免"文档写一个、代码写另一个"。
 from app.config import settings  # noqa: E402
+from app.services.storage_paths import storage_directory  # noqa: E402
 
 EXPORT_DIR = Path(settings.export_dir)
 EXPORT_UID = 1002
@@ -102,6 +103,8 @@ def _safe_stem(stem: str) -> str:
 
 
 def ensure_export_dir() -> None:
+    storage_directory(str(EXPORT_DIR.resolve()))
+    existed = EXPORT_DIR.exists()
     try:
         EXPORT_DIR.mkdir(parents=True, exist_ok=True)
     except OSError as e:
@@ -112,7 +115,9 @@ def ensure_export_dir() -> None:
             "导出目录不可用（%s）：%s。请检查该路径是否存在、磁盘是否可写。"
             % (EXPORT_DIR, (e.strerror or str(e)).rstrip("。."))
         ) from e
-    # 属主与权限是给桌面用户取文件用的；改不动不影响导出本身，可以容忍。
+    # Only directories created by this service may have ownership adjusted.
+    if existed:
+        return
     try:
         if hasattr(os, "chown"):
             os.chown(EXPORT_DIR, EXPORT_UID, EXPORT_GID)

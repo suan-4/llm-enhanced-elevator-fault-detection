@@ -178,11 +178,12 @@ export const useReportStore = defineStore('report', () => {
     }
   }
 
-  function writeStorage(key: string, value: string): void {
+  function writeStorage(key: string, value: string): boolean {
     try {
       window.localStorage.setItem(key, value)
+      return true
     } catch {
-      // 本地存储不可用只是没有常用信息，不影响录入
+      return false
     }
   }
 
@@ -194,10 +195,16 @@ export const useReportStore = defineStore('report', () => {
     }
   }
 
-  function persistProfiles(lastId?: string): void {
+  function persistProfiles(list: BaseInfoProfile[], lastId: string): boolean {
     const keys = profileStorage(useAuthStore().user?.id)
-    writeStorage(keys.list, JSON.stringify(baseInfoProfiles.value))
-    if (lastId !== undefined) writeStorage(keys.last, lastId)
+    const previous = readStorage(keys.list)
+    if (!writeStorage(keys.list, JSON.stringify(list))) return false
+    if (!writeStorage(keys.last, lastId)) {
+      if (previous === null) removeStorage(keys.list)
+      else writeStorage(keys.list, previous)
+      return false
+    }
+    return true
   }
 
   /** 按当前登录账号加载常用信息列表（旧版单套快照自动迁移成一套方案） */
@@ -227,8 +234,7 @@ export const useReportStore = defineStore('report', () => {
           ])
           if (legacy.length) {
             list = legacy
-            removeStorage(keys.legacy)
-            writeStorage(keys.list, JSON.stringify(list))
+            if (writeStorage(keys.list, JSON.stringify(list))) removeStorage(keys.legacy)
           }
         } catch {
           // 旧数据损坏就忽略
@@ -263,9 +269,10 @@ export const useReportStore = defineStore('report', () => {
       values,
       updatedAt: new Date().toISOString(),
     }
-    baseInfoProfiles.value = upsertProfile(baseInfoProfiles.value, profile)
+    const next = upsertProfile(baseInfoProfiles.value, profile)
+    if (!persistProfiles(next, profile.id)) return null
+    baseInfoProfiles.value = next
     lastBaseInfoProfileId.value = profile.id
-    persistProfiles(profile.id)
     return profile
   }
 
@@ -274,19 +281,20 @@ export const useReportStore = defineStore('report', () => {
     ensureBaseInfoLoaded()
     const profile = baseInfoProfiles.value.find((item) => item.id === id)
     if (!profile) return false
+    if (!persistProfiles(baseInfoProfiles.value, profile.id)) return false
     resetForm(mergeBaseInfo(createForm(), profile.values))
     lastBaseInfoProfileId.value = profile.id
-    persistProfiles(profile.id)
     return true
   }
 
-  function deleteBaseInfoProfile(id: string): void {
+  function deleteBaseInfoProfile(id: string): boolean {
     ensureBaseInfoLoaded()
-    baseInfoProfiles.value = removeProfile(baseInfoProfiles.value, id)
-    if (lastBaseInfoProfileId.value === id) {
-      lastBaseInfoProfileId.value = baseInfoProfiles.value[0]?.id ?? ''
-    }
-    persistProfiles(lastBaseInfoProfileId.value)
+    const next = removeProfile(baseInfoProfiles.value, id)
+    const lastId = lastBaseInfoProfileId.value === id ? (next[0]?.id ?? '') : lastBaseInfoProfileId.value
+    if (!persistProfiles(next, lastId)) return false
+    baseInfoProfiles.value = next
+    lastBaseInfoProfileId.value = lastId
+    return true
   }
 
   function hasSavedBaseInfo(): boolean {
@@ -387,13 +395,18 @@ export const useReportStore = defineStore('report', () => {
     resetForm(freshForm())
     resetItemStates()
     ready.value = true
+    await save()
     return created.report.id
   }
 
   async function ensureDraft(): Promise<'created' | 'resumed'> {
-    if (reportId.value) return 'resumed'
+    if (reportId.value && !draftError.value) return 'resumed'
     draftError.value = ''
     try {
+      if (reportId.value) {
+        await save()
+        return 'resumed'
+      }
       // 先看有没有上次没做完的草稿 —— 现场经常是"录一半去下一台，回头接着录"
       const drafts = await flowApi.listReports({ status: 'draft', mine: true, size: 1 })
       if (drafts.items.length) {
@@ -407,6 +420,7 @@ export const useReportStore = defineStore('report', () => {
       status.value = created.report.status
       // 首次进入且没有草稿：同样带入常用基础信息
       resetForm(freshForm())
+      await save()
       return 'created'
     } catch (err) {
       draftError.value = err instanceof Error ? err.message : '无法准备评估'

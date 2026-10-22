@@ -29,12 +29,14 @@ def test_linux_prefers_zenity_then_kdialog() -> None:
     zenity = fp._linux_plan(
         which=lambda name: "/usr/bin/zenity" if name == "zenity" else None,
         has_tk=False,
+        display=":0",
     )
     assert zenity["available"] and zenity["method"] == "zenity"
 
     kdialog = fp._linux_plan(
         which=lambda name: "/usr/bin/kdialog" if name == "kdialog" else None,
         has_tk=False,
+        display=":0",
     )
     assert kdialog["available"] and kdialog["method"] == "kdialog"
 

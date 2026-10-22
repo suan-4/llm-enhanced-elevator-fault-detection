@@ -37,6 +37,7 @@ const confirmNew = ref(false)
 const newBusy = ref(false)
 const confirmExport = ref<'pdf' | 'docx' | null>(null)
 const reportWrap = ref<HTMLElement | null>(null)
+const itemTable = ref<InstanceType<typeof ItemTable> | null>(null)
 
 /* 侧栏是「项目进度 + 三个滚动锚点」：基础信息 / 检测项目填写 / 所生成报告。
    从别的页面点过来时本页可能还没挂载，所以用 shell.requested 待办标记，
@@ -229,8 +230,8 @@ function confirmSaveProfile(): void {
   profileBusy.value = true
   const profile = store.saveBaseInfoProfile(profileName.value)
   profileBusy.value = false
-  saveProfileOpen.value = false
   if (profile) {
+    saveProfileOpen.value = false
     selectedProfileId.value = profile.id
     show('常用基础信息已保存：' + profile.name)
   } else {
@@ -242,8 +243,8 @@ function applyProfile(): void {
   const id = selectedProfileId.value
   const profile = store.baseInfoProfiles.find((item) => item.id === id)
   if (!id || !profile) return
-  store.applyBaseInfoProfile(id)
-  show('已应用常用信息：' + profile.name)
+  if (store.applyBaseInfoProfile(id)) show('已应用常用信息：' + profile.name)
+  else show('本机无法保存方案选择，尚未应用，请检查浏览器存储后重试', 3500, 'danger')
 }
 
 function toggleProfileMenu(): void {
@@ -262,7 +263,10 @@ function askDeleteProfile(id: string): void {
 
 function confirmDeleteProfile(): void {
   const profile = store.baseInfoProfiles.find((item) => item.id === deleteProfileId.value)
-  store.deleteBaseInfoProfile(deleteProfileId.value)
+  if (!store.deleteBaseInfoProfile(deleteProfileId.value)) {
+    show('删除失败：无法写入浏览器存储，请重试', 3500, 'danger')
+    return
+  }
   deleteProfileOpen.value = false
   deleteProfileId.value = ''
   refreshSelectedProfile()
@@ -318,7 +322,7 @@ async function generate(): Promise<void> {
      jump() 会滚动 + 高亮，字段类还会把光标放进输入框，方便直接补填。 */
   if (store.missing.length) {
     const first = store.missing[0]
-    jump(first.key, first.kind)
+    await jump(first.key, first.kind)
     show(`还有 ${store.missing.length} 项未填写`, 3000, 'danger')
     return
   }
@@ -339,7 +343,13 @@ async function generate(): Promise<void> {
   }
 }
 
-function jump(key: string, kind: 'field' | 'item'): void {
+async function jump(key: string, kind: 'field' | 'item'): Promise<void> {
+  view.value = 'input'
+  await nextTick()
+  if (kind === 'item') {
+    itemTable.value?.expandItem(key)
+    await nextTick()
+  }
   const el =
     kind === 'field'
       ? document.getElementById(`f-${key}`)
@@ -469,7 +479,7 @@ function fitPapers(): void {
               <InfoTable />
             </div>
             <div id="sec-items" style="margin-top: 14px">
-              <ItemTable />
+              <ItemTable ref="itemTable" />
             </div>
           </template>
         </div>

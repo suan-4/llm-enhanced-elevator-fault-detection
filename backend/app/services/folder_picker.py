@@ -24,6 +24,41 @@ TITLE = "选择目录"
 TIMEOUT_SECONDS = 180
 
 
+def _desktop_context() -> tuple[dict, dict]:
+    """Reuse the known kiosk user's display credentials, never an arbitrary process."""
+    environment = os.environ.copy()
+    identity = {}
+    if os.name != 'posix' or not Path('/proc').is_dir():
+        return environment, identity
+    try:
+        import pwd
+        desktop = pwd.getpwnam('user')
+        for directory in Path('/proc').iterdir():
+            if not directory.name.isdecimal() or directory.stat().st_uid != desktop.pw_uid:
+                continue
+            try:
+                arguments = (directory / 'cmdline').read_bytes().split(b'\0')
+                if not any(arg.endswith(b'/elevator_app.py')
+                           or (arg.startswith(b'--user-data-dir=') and b'elevator-kiosk-profile' in arg)
+                           for arg in arguments):
+                    continue
+                fields = dict(part.split(b'=', 1) for part in (directory / 'environ').read_bytes().split(b'\0')
+                              if b'=' in part)
+                for key in ('DISPLAY', 'WAYLAND_DISPLAY', 'XAUTHORITY',
+                            'DBUS_SESSION_BUS_ADDRESS', 'XDG_RUNTIME_DIR'):
+                    if key.encode() in fields:
+                        environment[key] = os.fsdecode(fields[key.encode()])
+                environment['HOME'] = desktop.pw_dir
+                if os.geteuid() == 0:
+                    identity = {'user': desktop.pw_uid, 'group': desktop.pw_gid, 'extra_groups': []}
+                return environment, identity
+            except (OSError, ValueError):
+                continue
+    except (OSError, KeyError):
+        pass
+    return environment, identity
+
+
 def _tk_available() -> bool:
     try:
         import tkinter  # noqa: F401
@@ -42,12 +77,15 @@ def _windows_plan(*, has_tk: bool | None = None) -> dict:
 def _linux_plan(*, which=None, has_tk: bool | None = None,
                 display: str | None = None) -> dict:
     which = which or shutil.which
+    environment, _ = _desktop_context() if display is None else ({'DISPLAY': display}, {})
+    disp = environment.get('DISPLAY') or environment.get('WAYLAND_DISPLAY')
+    if not disp:
+        return {"available": False, "method": "none", "platform": "linux"}
     for exe, method in (("zenity", "zenity"), ("kdialog", "kdialog")):
         if which(exe):
             return {"available": True, "method": method, "platform": "linux"}
     has = _tk_available() if has_tk is None else has_tk
-    disp = os.environ.get("DISPLAY") if display is None else display
-    if has and disp:
+    if has and environment.get('DISPLAY'):
         return {"available": True, "method": "tkinter", "platform": "linux"}
     return {"available": False, "method": "none", "platform": "linux"}
 
@@ -84,16 +122,20 @@ def _tk_script(initial: str) -> str:
 def _run(args: list[str]) -> str | None:
     creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0) if os.name == "nt" else 0
     try:
+        environment, identity = _desktop_context()
         proc = subprocess.run(
             args, capture_output=True, text=True, timeout=TIMEOUT_SECONDS,
-            creationflags=creationflags,
+            creationflags=creationflags, env=environment, **identity,
         )
     except subprocess.TimeoutExpired as e:
         raise RuntimeError(f"目录选择窗口超过 {TIMEOUT_SECONDS} 秒未操作，请重试") from e
     except OSError as e:
         raise RuntimeError(f"无法启动目录选择程序：{e}") from e
     if proc.returncode != 0:
-        return None  # 用户取消（zenity/kdialog 取消时返回非 0）
+        detail = (proc.stderr or '').strip()
+        if proc.returncode == 1 and not detail:
+            return None  # GUI cancellation; startup/authentication errors must remain visible.
+        raise RuntimeError('无法打开系统目录选择窗口：' + (detail[:300] or f'程序退出码 {proc.returncode}'))
     lines = [line.strip() for line in (proc.stdout or "").splitlines() if line.strip()]
     return lines[-1] if lines else ""
 

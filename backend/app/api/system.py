@@ -31,6 +31,8 @@ def update_config(req: SystemConfigUpdateRequest,
         result = runtime_config.update(req.values, actor=user)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except OSError:
+        raise HTTPException(status_code=503, detail='配置保存失败，请检查磁盘空间和文件写入权限；原配置仍然有效')
     return {"success": True, **result,
             "readonly_items": runtime_config.readonly_items()}
 

@@ -43,6 +43,13 @@ const groups = computed<ItemGroup[]>(() => {
 function toggle(key: string): void {
   collapsed[key] = !collapsed[key]
 }
+
+function expandItem(no: string): void {
+  const group = groups.value.find(group => group.items.some(item => item.no === no))
+  if (group) collapsed[group.key] = false
+}
+
+defineExpose({ expandItem })
 </script>
 
 <template>

@@ -15,6 +15,8 @@ from __future__ import annotations
 import json
 import os
 import re
+import tempfile
+from threading import RLock
 from pathlib import Path
 
 from app import db
@@ -24,6 +26,9 @@ from app.config import (
     settings,
 )
 from app.services import audit_service
+from app.services.storage_paths import separate_storage, storage_directory
+
+_UPDATE_LOCK = RLock()
 
 _MODEL_NAME = "Qwen3.5-4B / RKLLM"
 
@@ -156,6 +161,19 @@ def _sync_side_effects(values: dict) -> None:
         export_service.EXPORT_DIR = Path(str(values["export_dir"]))
 
 
+def _atomic_write(target: Path, data: bytes) -> None:
+    target.parent.mkdir(parents=True, exist_ok=True)
+    fd, temporary = tempfile.mkstemp(prefix=target.name + '.', suffix='.tmp', dir=target.parent)
+    try:
+        with os.fdopen(fd, 'wb') as stream:
+            stream.write(data)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, target)
+    finally:
+        Path(temporary).unlink(missing_ok=True)
+
+
 def _persist(values: dict, path: Path | None = None) -> None:
     target = Path(path) if path is not None else RUNTIME_CONFIG_PATH
     merged = {}
@@ -166,14 +184,16 @@ def _persist(values: dict, path: Path | None = None) -> None:
     except (OSError, ValueError):
         merged = {}
     merged.update(values)
-    target.parent.mkdir(parents=True, exist_ok=True)
-    tmp = target.with_name(target.name + ".tmp")
-    tmp.write_text(json.dumps(merged, ensure_ascii=False, indent=1), encoding="utf-8")
-    os.replace(tmp, target)
+    _atomic_write(target, json.dumps(merged, ensure_ascii=False, indent=1).encode('utf-8'))
 
 
 def update(values: dict, *, actor: dict | None = None, path: Path | None = None) -> dict:
     """保存基本配置。校验全部通过才写入，避免半套配置落盘。"""
+    with _UPDATE_LOCK:
+        return _update(values, actor=actor, path=path)
+
+
+def _update(values: dict, *, actor: dict | None, path: Path | None) -> dict:
     if not isinstance(values, dict) or not values:
         raise ValueError("没有需要保存的配置")
     unknown = [key for key in values if key not in SPEC_BY_KEY]
@@ -181,20 +201,37 @@ def update(values: dict, *, actor: dict | None = None, path: Path | None = None)
         raise ValueError("未知配置项：" + "、".join(unknown))
 
     coerced = {key: _coerce(SPEC_BY_KEY[key], raw) for key, raw in values.items()}
+    if {'export_dir', 'backup_dir'} & coerced.keys():
+        for key in ('export_dir', 'backup_dir'):
+            if key in coerced and coerced[key] != _current(key):
+                coerced[key] = str(storage_directory(str(coerced[key])))
+        separate_storage(Path(str(coerced.get('export_dir', settings.export_dir))),
+                         Path(str(coerced.get('backup_dir', settings.backup_dir))))
     before = {key: _current(key) for key in coerced}
     changed = {key: value for key, value in coerced.items() if before[key] != value}
     if not changed:
         return {"updated": [], "restart_required": [], "items": items()}
 
-    apply_runtime_overrides(settings, changed)
-    _sync_side_effects(changed)
+    target = Path(path) if path is not None else RUNTIME_CONFIG_PATH
+    snapshot = target.read_bytes() if target.exists() else None
+    # A failed write must never change the running service.
     _persist(changed, path)
-
-    with db.get_conn() as conn:
-        audit_service.record(
-            conn, "config_update", actor=actor, target="settings",
-            before=before, after=changed, note="基本配置更新：" + "、".join(changed),
-        )
+    try:
+        with db.get_conn() as conn:
+            apply_runtime_overrides(settings, changed)
+            _sync_side_effects(changed)
+            audit_service.record(
+                conn, "config_update", actor=actor, target="settings",
+                before=before, after=changed, note="基本配置更新：" + "、".join(changed),
+            )
+    except Exception:
+        apply_runtime_overrides(settings, before)
+        _sync_side_effects(before)
+        if snapshot is None:
+            target.unlink(missing_ok=True)
+        else:
+            _atomic_write(target, snapshot)
+        raise
 
     restart = [key for key in changed if SPEC_BY_KEY[key]["restart"]]
     return {"updated": list(changed), "restart_required": restart, "items": items()}
