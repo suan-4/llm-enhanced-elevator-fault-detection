@@ -12,6 +12,19 @@ import {
   type ItemState,
 } from '@/domain/validation'
 import { stripClauseMarker } from '@/domain/format'
+import {
+  baseInfoStorageKey,
+  defaultProfileName,
+  lastProfileStorageKey,
+  mergeBaseInfo,
+  pickBaseInfo,
+  profilesStorageKey,
+  removeProfile,
+  sanitizeProfiles,
+  upsertProfile,
+  type BaseInfoProfile,
+} from '@/domain/baseInfo'
+import { useAuthStore } from '@/stores/auth'
 import type { JteItem } from '@/types/api'
 
 /** 界面用中文取值，接口用 code（见《数据库设计 v1》§7.2） */
@@ -136,6 +149,151 @@ export const useReportStore = defineStore('report', () => {
     return states[no]
   }
 
+  /* ── 常用基础信息（本机保存，可存多套并选择） ────────────
+     现场常有多家委托/使用单位，需要保存多套抬头；新建评估默认带入
+     最近使用的一套，也可以在基础信息栏的下拉框里切换/应用。 */
+  const baseInfoProfiles = ref<BaseInfoProfile[]>([])
+  const lastBaseInfoProfileId = ref('')
+  let loadedProfileKey = ''
+
+  function resetForm(next: Record<string, string>): void {
+    // 必须就地改 form（InfoTable 在 setup 时抓住了它的引用），换对象会让抬头表变空
+    for (const key of Object.keys(form.value)) delete form.value[key]
+    Object.assign(form.value, next)
+  }
+
+  function profileStorage(userId: string | number | null | undefined) {
+    return {
+      list: profilesStorageKey(userId),
+      last: lastProfileStorageKey(userId),
+      legacy: baseInfoStorageKey(userId),
+    }
+  }
+
+  function readStorage(key: string): string | null {
+    try {
+      return window.localStorage.getItem(key)
+    } catch {
+      return null
+    }
+  }
+
+  function writeStorage(key: string, value: string): void {
+    try {
+      window.localStorage.setItem(key, value)
+    } catch {
+      // 本地存储不可用只是没有常用信息，不影响录入
+    }
+  }
+
+  function removeStorage(key: string): void {
+    try {
+      window.localStorage.removeItem(key)
+    } catch {
+      // ignore
+    }
+  }
+
+  function persistProfiles(lastId?: string): void {
+    const keys = profileStorage(useAuthStore().user?.id)
+    writeStorage(keys.list, JSON.stringify(baseInfoProfiles.value))
+    if (lastId !== undefined) writeStorage(keys.last, lastId)
+  }
+
+  /** 按当前登录账号加载常用信息列表（旧版单套快照自动迁移成一套方案） */
+  function ensureBaseInfoLoaded(): void {
+    const keys = profileStorage(useAuthStore().user?.id)
+    if (loadedProfileKey === keys.list) return
+    loadedProfileKey = keys.list
+    let list: BaseInfoProfile[] = []
+    try {
+      const raw = readStorage(keys.list)
+      list = sanitizeProfiles(raw ? JSON.parse(raw) : null)
+    } catch {
+      list = []
+    }
+    if (!list.length) {
+      const legacyRaw = readStorage(keys.legacy)
+      if (legacyRaw) {
+        try {
+          const merged = mergeBaseInfo(createForm(), JSON.parse(legacyRaw))
+          const legacy = sanitizeProfiles([
+            {
+              id: 'legacy',
+              name: defaultProfileName(merged),
+              values: pickBaseInfo(merged, createForm()),
+              updatedAt: new Date().toISOString(),
+            },
+          ])
+          if (legacy.length) {
+            list = legacy
+            removeStorage(keys.legacy)
+            writeStorage(keys.list, JSON.stringify(list))
+          }
+        } catch {
+          // 旧数据损坏就忽略
+        }
+      }
+    }
+    baseInfoProfiles.value = list
+    const lastId = readStorage(keys.last)
+    lastBaseInfoProfileId.value = list.some((item) => item.id === lastId)
+      ? (lastId as string)
+      : (list[0]?.id ?? '')
+  }
+
+  /** 新建评估的初始抬头：默认值 + 最近使用的那套常用信息 */
+  function freshForm(): Record<string, string> {
+    ensureBaseInfoLoaded()
+    const profile =
+      baseInfoProfiles.value.find((item) => item.id === lastBaseInfoProfileId.value) ||
+      baseInfoProfiles.value[0]
+    return profile ? mergeBaseInfo(createForm(), profile.values) : createForm()
+  }
+
+  /** 保存当前抬头为一套常用信息；同名视为覆盖 */
+  function saveBaseInfoProfile(name: string): BaseInfoProfile | null {
+    ensureBaseInfoLoaded()
+    const values = pickBaseInfo(form.value, createForm())
+    const finalName = (name || '').trim().slice(0, 40) || defaultProfileName(values)
+    const existing = baseInfoProfiles.value.find((item) => item.name === finalName)
+    const profile: BaseInfoProfile = {
+      id: existing?.id ?? 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      name: finalName,
+      values,
+      updatedAt: new Date().toISOString(),
+    }
+    baseInfoProfiles.value = upsertProfile(baseInfoProfiles.value, profile)
+    lastBaseInfoProfileId.value = profile.id
+    persistProfiles(profile.id)
+    return profile
+  }
+
+  /** 把某套常用信息应用到当前抬头 */
+  function applyBaseInfoProfile(id: string): boolean {
+    ensureBaseInfoLoaded()
+    const profile = baseInfoProfiles.value.find((item) => item.id === id)
+    if (!profile) return false
+    resetForm(mergeBaseInfo(createForm(), profile.values))
+    lastBaseInfoProfileId.value = profile.id
+    persistProfiles(profile.id)
+    return true
+  }
+
+  function deleteBaseInfoProfile(id: string): void {
+    ensureBaseInfoLoaded()
+    baseInfoProfiles.value = removeProfile(baseInfoProfiles.value, id)
+    if (lastBaseInfoProfileId.value === id) {
+      lastBaseInfoProfileId.value = baseInfoProfiles.value[0]?.id ?? ''
+    }
+    persistProfiles(lastBaseInfoProfileId.value)
+  }
+
+  function hasSavedBaseInfo(): boolean {
+    ensureBaseInfoLoaded()
+    return baseInfoProfiles.value.length > 0
+  }
+
   async function loadItems(): Promise<void> {
     if (items.value.length) return
     itemsLoading.value = true
@@ -225,10 +383,8 @@ export const useReportStore = defineStore('report', () => {
     generated.value = null
     saveState.value = 'idle'
     savedAt.value = ''
-    // 必须就地改 form（InfoTable 在 setup 时抓住了它的引用），换对象会让抬头表变空
-    const fresh = createForm()
-    for (const key of Object.keys(form.value)) delete form.value[key]
-    Object.assign(form.value, fresh)
+    // 新建评估带入本机保存的常用基础信息（没有再回退默认值）
+    resetForm(freshForm())
     resetItemStates()
     ready.value = true
     return created.report.id
@@ -249,6 +405,8 @@ export const useReportStore = defineStore('report', () => {
       reportId.value = created.report.id
       version.value = created.report.version
       status.value = created.report.status
+      // 首次进入且没有草稿：同样带入常用基础信息
+      resetForm(freshForm())
       return 'created'
     } catch (err) {
       draftError.value = err instanceof Error ? err.message : '无法准备评估'
@@ -388,6 +546,13 @@ export const useReportStore = defineStore('report', () => {
     draftError,
     countDrafts,
     createNew,
+    baseInfoProfiles,
+    lastBaseInfoProfileId,
+    ensureBaseInfoLoaded,
+    saveBaseInfoProfile,
+    applyBaseInfoProfile,
+    deleteBaseInfoProfile,
+    hasSavedBaseInfo,
     ensureDraft,
     flush,
     hydrate,

@@ -101,6 +101,102 @@ async function signOut(): Promise<void> {
 
 const info = ref<api.SystemInfo | null>(null)
 const configItems = ref<api.ConfigItem[]>([])
+const configDraft = ref<Record<string, api.ConfigValue>>({})
+const configBusy = ref(false)
+const configError = ref('')
+const configRestart = ref<string[]>([])
+const pickerInfo = ref<api.FolderPickerInfo | null>(null)
+const pickerBusy = ref('')
+
+const pickerAvailable = computed(() => pickerInfo.value?.available !== false)
+const pickerTitle = computed(() => {
+  const info = pickerInfo.value
+  if (!pickerAvailable.value) {
+    return '当前环境无法打开系统目录选择窗口（可在输入框直接填写路径）'
+  }
+  if (!info || !info.available) return '点击后尝试打开系统目录选择框'
+  return '使用 ' + info.method + ' 打开系统目录选择框'
+})
+
+/** 把服务端当前值填进表单草稿 */
+function fillConfigDraft(): void {
+  const next: Record<string, api.ConfigValue> = {}
+  for (const item of configItems.value) {
+    if (item.editable) next[item.key] = item.value
+  }
+  configDraft.value = next
+}
+
+/** 拉取基本配置后刷新表单（只读系统信息走「关于本机」的 info 接口，不在这里展示） */
+function applyConfigPayload(payload: api.SystemConfig): void {
+  configItems.value = payload.items
+  fillConfigDraft()
+}
+
+/** 表单值按配置项类型归一：字符串比较时不会被 7 与 "7" 误判为改动 */
+function normalizeConfig(item: api.ConfigItem, raw: api.ConfigValue | undefined): api.ConfigValue {
+  if (item.type === 'int') {
+    const parsed = typeof raw === 'number' ? raw : Number.parseInt(String(raw ?? '').trim(), 10)
+    return Number.isFinite(parsed) ? parsed : 0
+  }
+  if (item.type === 'bool') return raw === true || raw === 'true'
+  return String(raw ?? '')
+}
+
+const configDirty = computed(() =>
+  configItems.value.some(
+    (item) =>
+      item.editable &&
+      String(normalizeConfig(item, configDraft.value[item.key])) !== String(item.value),
+  ),
+)
+
+async function saveConfig(): Promise<void> {
+  if (configBusy.value || !configDirty.value) return
+  configBusy.value = true
+  configError.value = ''
+  try {
+    const values: Record<string, api.ConfigValue> = {}
+    for (const item of configItems.value) {
+      if (item.editable) values[item.key] = normalizeConfig(item, configDraft.value[item.key])
+    }
+    const res = await api.updateSystemConfig(values)
+    applyConfigPayload(res)
+    configRestart.value = (res.restart_required || []).map(
+      (key) => configItems.value.find((item) => item.key === key)?.label || key,
+    )
+    if (configRestart.value.length) show('配置已保存，部分项需重启后端生效', 4200)
+    else show('配置已保存')
+  } catch (err) {
+    configError.value = err instanceof ApiError ? err.detail : '保存配置失败'
+  } finally {
+    configBusy.value = false
+  }
+}
+
+function resetConfigDraft(): void {
+  configError.value = ''
+  configRestart.value = []
+  fillConfigDraft()
+}
+
+/** 目录项：调起服务端所在机器的系统目录选择框（Linux/Windows 均适配） */
+async function chooseDirectory(item: api.ConfigItem): Promise<void> {
+  if (pickerBusy.value || configBusy.value) return
+  pickerBusy.value = item.key
+  try {
+    const current = String(configDraft.value[item.key] ?? '').trim()
+    const res = await api.pickDirectory(current || undefined)
+    if (res.path) {
+      configDraft.value[item.key] = res.path
+      show('已选择目录：' + res.path)
+    }
+  } catch (err) {
+    show(err instanceof ApiError ? err.detail : '无法打开目录选择窗口', 4000, 'danger')
+  } finally {
+    pickerBusy.value = ''
+  }
+}
 
 function mb(bytes: number): string {
   if (bytes < 0) return '未知'
@@ -112,7 +208,12 @@ function mb(bytes: number): string {
 async function loadInfo(): Promise<void> {
   try {
     info.value = await api.systemInfo()
-    configItems.value = (await api.systemConfig()).items
+    applyConfigPayload(await api.systemConfig())
+    try {
+      pickerInfo.value = await api.folderPickerInfo()
+    } catch {
+      pickerInfo.value = null
+    }
   } catch (err) {
     show(err instanceof ApiError ? err.detail : '读取系统信息失败')
   }
@@ -218,8 +319,31 @@ onMounted(async () => {
   <div class="settings-page">
     <aside class="settings-tree">
       <div class="tree-head">
-        <span class="tree-title">系统设置</span>
-        <span class="tree-sub">报告 / 账号 / 运维</span>
+        <button
+          class="tree-home"
+          type="button"
+          title="返回评估"
+          aria-label="返回评估"
+          @click="goBack"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            width="16"
+            height="16"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M15 18l-6-6 6-6" />
+          </svg>
+        </button>
+        <div class="tree-head-text">
+          <span class="tree-title">系统设置</span>
+          <span class="tree-sub">报告 / 账号 / 运维</span>
+        </div>
       </div>
       <nav class="tree-body">
         <div v-for="group in TREE" :key="group.key" class="tree-group">
@@ -245,7 +369,6 @@ onMounted(async () => {
         </div>
       </nav>
       <div class="tree-foot">
-        <button class="tree-back" type="button" @click="goBack">← 返回评估</button>
         <div class="tree-user">{{ auth.user?.display_name || auth.user?.username || '' }}</div>
         <button class="tree-link" type="button" @click="signOut">注销登录</button>
       </div>
@@ -260,25 +383,84 @@ onMounted(async () => {
           <h1 class="doc-title" style="font-size: 18px">{{ sectionTitle }}</h1>
 
           <template v-if="section === 'config'">
-            <table class="data-table">
+            <div v-if="configError" class="err-box">{{ configError }}</div>
+            <table class="data-table config-table">
               <thead>
                 <tr>
-                  <th style="width: 140px">项目</th>
-                  <th style="width: 220px">当前值</th>
+                  <th style="width: 190px">配置项</th>
+                  <th style="width: 320px">当前值</th>
                   <th>说明</th>
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="c in configItems" :key="c.key">
-                  <td data-label="项目">{{ c.key }}</td>
-                  <td data-label="当前值">{{ c.value }}</td>
-                  <td data-label="说明">{{ c.desc }}</td>
+                <tr v-for="item in configItems" :key="item.key">
+                  <td data-label="配置项">
+                    {{ item.label }}
+                    <span v-if="item.restart" class="restart-tag">重启生效</span>
+                  </td>
+                  <td data-label="当前值">
+                    <template v-if="item.editable">
+                      <div v-if="item.ui === 'directory'" class="dir-field">
+                        <input v-model="configDraft[item.key]" class="input" type="text" />
+                        <button
+                          class="btn dir-pick"
+                          type="button"
+                          :title="pickerTitle"
+                          :disabled="configBusy || pickerBusy === item.key || !pickerAvailable"
+                          @click="chooseDirectory(item)"
+                        >
+                          {{ pickerBusy === item.key ? '选择中…' : '选择…' }}
+                        </button>
+                      </div>
+                      <select
+                        v-else-if="item.type === 'bool'"
+                        v-model="configDraft[item.key]"
+                        class="select"
+                      >
+                        <option :value="true">启用</option>
+                        <option :value="false">禁用</option>
+                      </select>
+                      <input
+                        v-else
+                        v-model="configDraft[item.key]"
+                        class="input"
+                        :type="item.type === 'int' ? 'number' : 'text'"
+                        :min="item.min"
+                        :max="item.max"
+                      />
+                    </template>
+                    <span v-else>{{ item.value }}</span>
+                  </td>
+                  <td data-label="说明">{{ item.desc }}</td>
                 </tr>
               </tbody>
             </table>
-            <p class="hint" style="margin-top: 8px">
-              基础版配置以部署时的 .env 为准，这里是只读展示；可改配置的界面放下一期。
-            </p>
+
+            <div class="config-actions">
+              <button
+                class="btn btn-primary config-save"
+                type="button"
+                :disabled="configBusy || !configDirty"
+                @click="saveConfig"
+              >
+                {{ configBusy ? '保存中…' : '保存配置' }}
+              </button>
+              <button
+                class="btn config-reset"
+                type="button"
+                :disabled="configBusy || !configDirty"
+                @click="resetConfigDraft"
+              >
+                撤销修改
+              </button>
+              <span v-if="configDirty" class="hint">有未保存的修改</span>
+              <span v-else class="hint">
+                修改后点「保存配置」；目录项可点「选择…」调起系统文件夹选择框（Linux/Windows 适配）
+              </span>
+            </div>
+            <div v-if="configRestart.length" class="restart-box">
+              以下配置已保存，需要重启后端服务后生效：{{ configRestart.join('、') }}
+            </div>
           </template>
 
           <template v-else-if="section === 'audit'">
@@ -392,12 +574,15 @@ onMounted(async () => {
                 <tr><th>系统版本</th><td>{{ info.version }}</td></tr>
                 <tr><th>大模型</th><td>{{ info.model }}</td></tr>
                 <tr>
+                  <th>业务库路径</th>
+                  <td>{{ info.db.path }}（{{ mb(info.db.size) }}）</td>
+                </tr>
+                <tr>
                   <th>评价条目库</th>
                   <td>
                     {{ info.catalog.version }}　共 {{ info.catalog.count }} 条　哈希 {{ info.catalog.hash }}
                   </td>
                 </tr>
-                <tr><th>业务库</th><td>{{ info.db.path }}（{{ mb(info.db.size) }}）</td></tr>
                 <tr><th>导出目录</th><td>{{ info.export_dir }}</td></tr>
                 <tr><th>备份目录</th><td>{{ info.backup_dir }}</td></tr>
                 <tr><th>磁盘剩余</th><td>{{ mb(info.disk_free) }}</td></tr>
@@ -449,8 +634,38 @@ onMounted(async () => {
 }
 
 .tree-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   padding: 16px 16px 12px;
   border-bottom: 1px solid var(--c-line-soft);
+}
+
+.tree-home {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--c-line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--c-primary);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.tree-home:hover {
+  border-color: var(--c-primary);
+  background: var(--c-primary-soft);
+}
+
+.tree-head-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
 }
 
 .tree-title {
@@ -545,22 +760,6 @@ onMounted(async () => {
   gap: 8px;
 }
 
-.tree-back {
-  font: inherit;
-  font-size: 12.5px;
-  padding: 8px 10px;
-  border: 1px solid var(--c-line);
-  border-radius: var(--radius-sm);
-  background: #fff;
-  color: var(--c-primary);
-  cursor: pointer;
-}
-
-.tree-back:hover {
-  border-color: var(--c-primary);
-  background: var(--c-primary-soft);
-}
-
 .tree-user {
   font-size: 11.5px;
   color: var(--c-muted);
@@ -586,6 +785,55 @@ onMounted(async () => {
   flex: 1;
   min-width: 0;
   overflow-y: auto;
+}
+
+.config-table .input,
+.config-table .select {
+  max-width: 300px;
+}
+
+.dir-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dir-field .input {
+  flex: 1;
+  min-width: 0;
+}
+
+.dir-pick {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.restart-tag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 8px;
+  background: var(--c-primary-soft);
+  color: var(--c-primary);
+  font-size: 10.5px;
+  white-space: nowrap;
+}
+
+.config-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.restart-box {
+  margin-top: 10px;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--c-primary-soft);
+  color: var(--c-primary);
+  font-size: 12.5px;
 }
 
 .about-table th {

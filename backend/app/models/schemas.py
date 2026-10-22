@@ -133,3 +133,15 @@ class ReportGenerateRequest(BaseModel):
 class ReportVoidRequest(BaseModel):
     reason: str = Field(..., min_length=1, max_length=200, description="作废原因，必填")
     confirm: bool = False
+
+
+class SystemConfigUpdateRequest(BaseModel):
+    """基本配置保存：key 必须是后端白名单里的可编辑项。"""
+
+    values: dict[str, object] = Field(..., min_length=1, description="配置项 key → 新值")
+
+
+class PickDirectoryRequest(BaseModel):
+    """打开系统目录选择框（初始定位目录，可空）。"""
+
+    initial: Optional[str] = Field(default=None, max_length=512)

@@ -4,6 +4,7 @@ import InfoTable from '@/components/report/InfoTable.vue'
 import ItemTable from '@/components/report/ItemTable.vue'
 import ReportDocument from '@/components/report/ReportDocument.vue'
 import AppDialog from '@/components/AppDialog.vue'
+import { defaultProfileName } from '@/domain/baseInfo'
 import { overviewText, countByCategory } from '@/domain/riskScore'
 import { buildAppendixRows } from '@/domain/reportResult'
 import { useReportStore } from '@/stores/report'
@@ -17,6 +18,20 @@ const exp = useExport()
 const { show } = useToast()
 
 const view = ref<'input' | 'report'>('input')
+/* 常用基础信息：本机可存多套（不同委托/使用单位），在这里选择或保存 */
+const selectedProfileId = ref('')
+const profileMenuOpen = ref(false)
+const pickerRoot = ref<HTMLElement | null>(null)
+const saveProfileOpen = ref(false)
+const deleteProfileOpen = ref(false)
+const deleteProfileId = ref('')
+const profileName = ref('')
+const profileBusy = ref(false)
+
+const selectedProfileName = computed(
+  () =>
+    store.baseInfoProfiles.find((item) => item.id === selectedProfileId.value)?.name || '',
+)
 const generating = ref(false)
 const confirmNew = ref(false)
 const newBusy = ref(false)
@@ -92,9 +107,12 @@ const PAPER_WIDTH = 793.7
 
 onMounted(async () => {
   await store.loadItems()
+  store.ensureBaseInfoLoaded()
+  refreshSelectedProfile()
   await startDraft()
   window.addEventListener('resize', fitPapers)
   mainEl()?.addEventListener('scroll', updateActiveByScroll, { passive: true })
+  document.addEventListener('click', onDocumentClick)
   consumeShellRequest()
   await nextTick()
   updateActiveByScroll()
@@ -130,6 +148,7 @@ const saveHint = computed(() => {
 onBeforeUnmount(() => {
   window.removeEventListener('resize', fitPapers)
   mainEl()?.removeEventListener('scroll', updateActiveByScroll)
+  document.removeEventListener('click', onDocumentClick)
   document.removeEventListener('visibilitychange', flushOnHide)
 })
 
@@ -190,6 +209,71 @@ async function saveNow(): Promise<void> {
   } catch (err) {
     show(err instanceof Error ? err.message : '保存失败')
   }
+}
+
+/** 下拉框选中的方案被删除后，自动回退到最近使用/第一套 */
+function refreshSelectedProfile(): void {
+  if (!store.baseInfoProfiles.some((item) => item.id === selectedProfileId.value)) {
+    selectedProfileId.value =
+      store.lastBaseInfoProfileId || store.baseInfoProfiles[0]?.id || ''
+  }
+}
+
+function openSaveProfile(): void {
+  profileName.value = defaultProfileName(store.form)
+  saveProfileOpen.value = true
+}
+
+function confirmSaveProfile(): void {
+  if (profileBusy.value) return
+  profileBusy.value = true
+  const profile = store.saveBaseInfoProfile(profileName.value)
+  profileBusy.value = false
+  saveProfileOpen.value = false
+  if (profile) {
+    selectedProfileId.value = profile.id
+    show('常用基础信息已保存：' + profile.name)
+  } else {
+    show('本机无法保存常用基础信息（浏览器存储不可用）', 3000, 'danger')
+  }
+}
+
+function applyProfile(): void {
+  const id = selectedProfileId.value
+  const profile = store.baseInfoProfiles.find((item) => item.id === id)
+  if (!id || !profile) return
+  store.applyBaseInfoProfile(id)
+  show('已应用常用信息：' + profile.name)
+}
+
+function toggleProfileMenu(): void {
+  profileMenuOpen.value = !profileMenuOpen.value
+}
+
+function selectProfile(id: string): void {
+  selectedProfileId.value = id
+  profileMenuOpen.value = false
+}
+
+function askDeleteProfile(id: string): void {
+  deleteProfileId.value = id
+  deleteProfileOpen.value = true
+}
+
+function confirmDeleteProfile(): void {
+  const profile = store.baseInfoProfiles.find((item) => item.id === deleteProfileId.value)
+  store.deleteBaseInfoProfile(deleteProfileId.value)
+  deleteProfileOpen.value = false
+  deleteProfileId.value = ''
+  refreshSelectedProfile()
+  if (profile) show('已删除常用信息：' + profile.name)
+}
+
+/** 点页面其它地方收起常用信息菜单 */
+function onDocumentClick(event: MouseEvent): void {
+  if (!profileMenuOpen.value) return
+  const root = pickerRoot.value
+  if (root && !root.contains(event.target as Node)) profileMenuOpen.value = false
 }
 
 /* ── 新建评估 ──
@@ -324,6 +408,64 @@ function fitPapers(): void {
 
           <template v-else>
             <div id="sec-info">
+              <div class="section-bar">
+                <b class="section-title">基础信息</b>
+                <div class="baseinfo-controls">
+                  <div ref="pickerRoot" class="baseinfo-picker">
+                    <button
+                      class="baseinfo-trigger"
+                      type="button"
+                      aria-haspopup="listbox"
+                      :aria-expanded="profileMenuOpen"
+                      @click="toggleProfileMenu"
+                    >
+                      <span class="baseinfo-trigger-text">
+                        {{ selectedProfileName || '（未选择常用信息）' }}
+                      </span>
+                      <span class="baseinfo-caret" :class="{ open: profileMenuOpen }">▾</span>
+                    </button>
+                    <ul v-if="profileMenuOpen" class="baseinfo-menu" role="listbox">
+                      <li
+                        v-for="profile in store.baseInfoProfiles"
+                        :key="profile.id"
+                        class="baseinfo-menu-item"
+                        :class="{ active: profile.id === selectedProfileId }"
+                      >
+                        <button
+                          class="baseinfo-menu-name"
+                          type="button"
+                          @click="selectProfile(profile.id)"
+                        >
+                          {{ profile.name }}
+                        </button>
+                        <button
+                          class="baseinfo-menu-del"
+                          type="button"
+                          title="删除这套常用信息"
+                          aria-label="删除"
+                          @click.stop="askDeleteProfile(profile.id)"
+                        >
+                          ×
+                        </button>
+                      </li>
+                      <li v-if="!store.baseInfoProfiles.length" class="baseinfo-menu-empty">
+                        还没有常用信息，点「保存为常用…」新建
+                      </li>
+                    </ul>
+                  </div>
+                  <button
+                    class="btn baseinfo-apply"
+                    type="button"
+                    :disabled="!selectedProfileId"
+                    @click="applyProfile"
+                  >
+                    应用
+                  </button>
+                  <button class="btn baseinfo-save" type="button" @click="openSaveProfile">
+                    {{ store.baseInfoProfiles.length ? '保存新方案…' : '保存为常用…' }}
+                  </button>
+                </div>
+              </div>
               <InfoTable />
             </div>
             <div id="sec-items" style="margin-top: 14px">
@@ -427,6 +569,38 @@ function fitPapers(): void {
       </div>
 
       <AppDialog
+        :open="saveProfileOpen"
+        title="保存常用基础信息"
+        confirm-text="保存"
+        :busy="profileBusy"
+        @close="saveProfileOpen = false"
+        @confirm="confirmSaveProfile"
+      >
+        <div class="field">
+          <label>方案名称</label>
+          <input
+            v-model="profileName"
+            class="input baseinfo-name"
+            placeholder="例如：XX 小区 1# 梯 / 某公司"
+          />
+        </div>
+        <p class="dialog-p">保存后新建评估默认带入这套抬头；同名会覆盖。</p>
+      </AppDialog>
+      <AppDialog
+        :open="deleteProfileOpen"
+        title="删除常用基础信息"
+        confirm-text="删除"
+        danger
+        :busy="profileBusy"
+        @close="deleteProfileOpen = false"
+        @confirm="confirmDeleteProfile"
+      >
+        <p class="dialog-p">
+          确定删除「{{ store.baseInfoProfiles.find((item) => item.id === deleteProfileId)?.name || '这套常用信息' }}」？
+          删除不影响当前已填写的内容。
+        </p>
+      </AppDialog>
+      <AppDialog
         :open="confirmNew"
         title="新建评估"
         confirm-text="新建"
@@ -453,6 +627,174 @@ function fitPapers(): void {
 </template>
 
 <style scoped>
+.section-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 0 0 8px;
+  border-bottom: 1px solid var(--c-line);
+  padding-bottom: 8px;
+}
+
+.baseinfo-controls {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.baseinfo-picker {
+  position: relative;
+}
+
+.baseinfo-trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 260px;
+  max-width: 100%;
+  height: var(--h-control);
+  padding: 0 10px;
+  border: 1px solid var(--c-line);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  color: var(--c-text);
+  font: inherit;
+  font-size: 13.5px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.baseinfo-trigger:hover {
+  border-color: var(--c-primary);
+}
+
+.baseinfo-trigger-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.baseinfo-caret {
+  flex: 0 0 auto;
+  color: var(--c-muted);
+  font-size: 11px;
+  transition: transform 0.15s;
+}
+
+.baseinfo-caret.open {
+  transform: rotate(180deg);
+}
+
+.baseinfo-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  width: 100%;
+  min-width: 260px;
+  max-height: 260px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: var(--c-panel);
+  border: 1px solid var(--c-line);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-lg);
+  z-index: 60;
+}
+
+.baseinfo-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 5px;
+}
+
+.baseinfo-menu-item:hover,
+.baseinfo-menu-item.active {
+  background: var(--c-primary-soft);
+}
+
+.baseinfo-menu-name {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 8px;
+  border: 0;
+  background: none;
+  color: var(--c-text);
+  font: inherit;
+  font-size: 12.5px;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.baseinfo-menu-del {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  margin-right: 6px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: #fdecec;
+  color: var(--c-danger);
+  font-size: 14px;
+  line-height: 20px;
+  text-align: center;
+  cursor: pointer;
+}
+
+.baseinfo-menu-del:hover {
+  background: var(--c-danger);
+  color: #fff;
+}
+
+.baseinfo-menu-empty {
+  padding: 8px;
+  color: var(--c-muted);
+  font-size: 12px;
+}
+
+@media (max-width: 900px) {
+  .baseinfo-controls {
+    width: 100%;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+  }
+
+  .baseinfo-trigger {
+    width: 210px;
+  }
+
+  .baseinfo-menu {
+    min-width: 210px;
+  }
+}
+
+.section-title {
+  font-family: var(--font-bold);
+  font-size: 15px;
+  color: var(--c-primary);
+}
+
+.section-hint {
+  color: var(--c-muted);
+  font-size: 12px;
+}
+
+.section-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+}
+
 .state-tip {
   padding: 20px 0;
   color: var(--c-muted);

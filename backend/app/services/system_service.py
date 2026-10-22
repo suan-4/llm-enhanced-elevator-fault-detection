@@ -85,26 +85,6 @@ def info() -> dict:
     }
 
 
-def config_items() -> list[dict]:
-    """配置**只读展示**：基础版仍以 .env 为准，配置界面（可写）放 P1。"""
-    return [
-        {"key": "机构信息", "value": settings.institution_name, "editable": False,
-         "desc": "报告与界面署名"},
-        {"key": "报告编号前缀", "value": settings.report_no_prefix, "editable": False,
-         "desc": "编号格式：{前缀}-{YYYYMMDD}-{3 位流水}"},
-        {"key": "导出目录", "value": settings.export_dir, "editable": False,
-         "desc": "PDF/Word 落盘位置，退出系统后可取走"},
-        {"key": "备份目录", "value": settings.backup_dir, "editable": False,
-         "desc": f"保留最近 {settings.backup_keep} 份"},
-        {"key": "会话时长", "value": f"{settings.session_ttl_hours} 小时", "editable": False,
-         "desc": f"空闲 {settings.session_idle_hours} 小时算掉线"},
-        {"key": "工作节点号", "value": str(settings.worker_id), "editable": False,
-         "desc": "雪花 ID 的机器位，多台终端必须各不相同"},
-        {"key": "大模型开关", "value": "按需调用", "editable": False,
-         "desc": "模型不可用时自动降级为规则摘要"},
-    ]
-
-
 def _check_neo4j() -> dict:
     """先探端口再验连接。
 
