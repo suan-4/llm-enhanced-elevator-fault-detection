@@ -41,6 +41,7 @@ const confirmExport = ref<'pdf' | 'docx' | null>(null)
 const reportWrap = ref<HTMLElement | null>(null)
 const itemTable = ref<InstanceType<typeof ItemTable> | null>(null)
 const locked = computed(() => ['filed', 'void'].includes(store.status) || store.exportUncertain)
+const resumedDraft = ref(false)
 
 /* 侧栏是「项目进度 + 三个滚动锚点」：基础信息 / 检测项目填写 / 所生成报告。
    从别的页面点过来时本页可能还没挂载，所以用 shell.requested 待办标记，
@@ -135,7 +136,7 @@ onMounted(async () => {
 /** 准备当前评估（没有就新建、有草稿就续录）；失败时页面给重试入口 */
 async function startDraft(): Promise<void> {
   try {
-    await store.ensureDraft()
+    resumedDraft.value = (await store.ensureDraft()) === 'resumed' && store.status === 'draft'
   } catch (err) {
     show(err instanceof Error ? err.message : '无法开始新的评估')
   }
@@ -329,6 +330,7 @@ async function doNewReport(): Promise<void> {
   newBusy.value = true
   try {
     await store.createNew()
+    resumedDraft.value = false
     view.value = 'input'
     show('已新建一份评估')
     scrollToTop()
@@ -421,6 +423,9 @@ function fitPapers(): void {
       <section v-show="view === 'input'">
         <div class="sheet">
           <h1 class="doc-title">在用曳引驱动电梯安全评估报告</h1>
+          <p v-if="resumedDraft" class="draft-origin" role="status">
+            已恢复上次草稿，评价按原值保留；新建评估默认 66 项符合。
+          </p>
 
           <div v-if="store.itemsLoading" class="state-tip">正在加载评价条目…</div>
           <div v-else-if="store.itemsError" class="state-tip">
@@ -668,6 +673,12 @@ function fitPapers(): void {
 </template>
 
 <style scoped>
+.draft-origin {
+  margin: -10px 0 10px;
+  color: var(--c-muted);
+  font-size: 11px;
+  text-align: center;
+}
 .section-bar {
   display: flex;
   align-items: center;
@@ -805,13 +816,22 @@ function fitPapers(): void {
 
 @media (max-width: 900px) {
   .baseinfo-controls {
-    width: 100%;
+    width: auto;
     justify-content: flex-end;
     flex-wrap: wrap;
+    gap: 6px;
   }
 
   .baseinfo-trigger {
-    width: 210px;
+    width: 150px;
+    height: 32px;
+    font-size: 12px;
+  }
+
+  .baseinfo-controls > .btn {
+    height: 32px;
+    padding: 0 8px;
+    font-size: 12px;
   }
 
   .baseinfo-menu {

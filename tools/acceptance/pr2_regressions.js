@@ -4,7 +4,7 @@ const fs = require('fs')
 const path = require('path')
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'C:/Users/何/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright')
 const BASE = process.env.BASE || 'http://127.0.0.1:8094'
-if (!/^http:\/\/127\.0\.0\.1:(8094|18094|18087)$/.test(BASE)) throw new Error('disposable PR2 server only')
+if (!/^http:\/\/127\.0\.0\.1:(8087|8094|18094|18087)$/.test(BASE)) throw new Error('disposable PR2 server only')
 const OUT = path.resolve('output/playwright/pr2-fixes')
 fs.mkdirSync(OUT, { recursive: true })
 
