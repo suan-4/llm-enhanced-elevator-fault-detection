@@ -4,14 +4,8 @@
 import { useReportStore } from '@/stores/report'
 
 const props = withDefaults(
-  defineProps<{
-    readonly?: boolean
-    overview?: string
-    conclusion?: string
-    /** 只读查看填写内容时不需要「评估概况 / 评估结论」两行（它们只属于报告预览） */
-    showComputed?: boolean
-  }>(),
-  { readonly: false, overview: '', conclusion: '', showComputed: true },
+  defineProps<{ readonly?: boolean; overview?: string; conclusion?: string }>(),
+  { readonly: false, overview: '', conclusion: '' },
 )
 
 const store = useReportStore()
@@ -100,7 +94,7 @@ function rowText(row: InfoRow): string {
 }
 
 function rowVisible(row: InfoRow): boolean {
-  return row.computed ? props.readonly && props.showComputed : true
+  return row.computed ? props.readonly : true
 }
 </script>
 

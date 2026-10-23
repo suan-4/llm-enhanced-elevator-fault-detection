@@ -1,22 +1,19 @@
 <script setup lang="ts">
 /* 报告管理：查报告、继续编辑、复制为新建、作废、删除。
    行内操作按状态给（设计 §4.7）：草稿只能继续编辑/删除；
-   已生成/已归档只能查看、复制、作废；已作废只剩查看与删除。
-   组件内嵌在主页面的「报告管理」区域：查看/继续编辑只发事件，
-   由父组件在右侧区域内就地切换，不跳转路由。 */
+   已生成/已归档只能查看、复制、作废；已作废只剩查看与删除。 */
 import { onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import * as api from '@/api/reports'
 import AppDialog from '@/components/AppDialog.vue'
+import { useReportStore } from '@/stores/report'
+import { useShell } from '@/stores/shell'
 import { ApiError } from '@/utils/http'
 import { useToast } from '@/utils/toast'
 
-/* 内嵌在主页面的「报告管理」：查看/继续编辑交给父组件就地切换，
-   不再跳转路由，也不再自己往 report store 里装历史报告。 */
-const emit = defineEmits<{
-  view: [report: api.ReportSummary]
-  continueEdit: [report: api.ReportSummary]
-}>()
-
+const router = useRouter()
+const store = useReportStore()
+const shell = useShell()
 const { show } = useToast()
 
 const reports = ref<api.ReportSummary[]>([])
@@ -124,10 +121,21 @@ async function runConfirm(): Promise<void> {
 }
 
 /* ── 行内操作 ───────────────────────────────────────── */
-function open(report: api.ReportSummary): void {
-  // 草稿：父组件切回录入页继续填写；已生成/归档/作废：父组件就地展开查看
-  if (report.status === 'draft') emit('continueEdit', report)
-  else emit('view', report)
+const opening = ref('')
+
+async function open(report: api.ReportSummary): Promise<void> {
+  if (opening.value) return
+  opening.value = report.id
+  try {
+    const loaded = await store.openReport(report.id)
+    await router.push('/')
+    // 已生成的直接看预览；草稿继续录入
+    shell.requestView(loaded.status === 'draft' ? 'items' : 'report')
+  } catch (err) {
+    show(err instanceof ApiError ? err.detail : '打开失败')
+  } finally {
+    opening.value = ''
+  }
 }
 
 function clone(report: api.ReportSummary): void {
@@ -150,9 +158,6 @@ const canVoid = (r: api.ReportSummary): boolean => r.status === 'generated' || r
 const canDelete = (r: api.ReportSummary): boolean => r.status === 'draft' || r.status === 'void'
 
 onMounted(load)
-
-/* 被「报告管理/查看」组合组件复用：返回列表前先刷新，旧列表保持可见不闪 */
-defineExpose({ reload: load })
 </script>
 
 <template>
@@ -182,7 +187,7 @@ defineExpose({ reload: load })
       </div>
 
       <div v-if="loadError" class="err-box">{{ loadError }}</div>
-      <div v-else-if="loading && !reports.length" class="empty-state">加载中…</div>
+      <div v-else-if="loading" class="empty-state">加载中…</div>
       <div v-else-if="!reports.length" class="empty-state">
         还没有报告。回到评估录入页新建一份吧。
       </div>
@@ -217,7 +222,7 @@ defineExpose({ reload: load })
             <td data-label="创建时间">{{ fmt(r.created_at) }}</td>
             <td data-label="操作">
               <div class="actions">
-                <button class="btn" type="button" @click="open(r)">
+                <button class="btn" type="button" :disabled="!!opening" @click="open(r)">
                   {{ canEdit(r) ? '继续编辑' : '查看' }}
                 </button>
                 <button class="btn" type="button" @click="clone(r)">复制为新建</button>

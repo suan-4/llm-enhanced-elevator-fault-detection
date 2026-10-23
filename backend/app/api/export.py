@@ -6,7 +6,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field, ConfigDict
 from typing import Literal
-import os
 import shlex
 import subprocess
 from pathlib import Path
@@ -53,14 +52,6 @@ def open_export(req: OpenRequest, user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=400, detail="只允许打开导出目录内的文件")
     if not target.exists():
         raise HTTPException(status_code=404, detail="文件不存在")
-
-    if os.name == "nt":
-        # 本机 Windows：交给资源管理器/默认程序打开（board 上没有这个分支）
-        try:
-            os.startfile(str(target))  # type: ignore[attr-defined]
-        except OSError as e:
-            raise HTTPException(status_code=500, detail=f"无法打开：{e}")
-        return {"success": True, "target": str(target)}
 
     cmd = (
         "DISPLAY=:0 "

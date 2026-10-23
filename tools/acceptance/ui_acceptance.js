@@ -147,7 +147,7 @@ async function seedEmptyDraft(browser) {
     // 其他地方一律打「/」（意思是可填可不填）。
     // 层/站/门、额定载重(kg)、额定速度(m/s)都是数字框：单位是固定标签，不能被误删。
     const defaults = await page.evaluate(() => {
-      const REQUIRED = ["clientName", "userName", "deviceVariety", "productNo"];
+      const REQUIRED = ["clientName", "userName", "deviceCategory", "productNo"];
       const NUMERIC = ["floors", "stops", "doors", "ratedLoad", "ratedSpeed"];
       const out = {
         total: 0, requiredFilled: [], bad: [], numeric: 0, placeholders: [],
@@ -343,7 +343,6 @@ async function seedEmptyDraft(browser) {
     await page.fill("#f-clientName", "佛山市展翰房地产开发有限公司");
     await page.fill("#f-userName", "佛山市展翰房地产开发有限公司");
     await page.fill("#f-deviceCategory", "曳引驱动电梯");
-    await page.fill("#f-deviceVariety", "曳引驱动乘客电梯");
     await page.fill("#f-productNo", "44786091");
 
     await page.evaluate(() => {
@@ -757,11 +756,11 @@ async function seedEmptyDraft(browser) {
     const cardCentered = !cardFacts.missing && Math.abs(cardFacts.cardCenter - cardFacts.contentCenter) <= 2;
     const cardOk = cardNotCovered && (narrow ? cardCentered : true);
 
-    // 导出按钮在报告查看工具条上（顶栏式，就地查看）；录入的生成按钮保留但禁用
-    const exportBtn = page.locator(".viewer-actions button", { hasText: "导出 PDF" }).first();
+    // 报告页的导出按钮已移到悬浮岛（底部操作条）
+    const exportBtn = page.locator(".actionbar .btn-primary").first();
     const exportBtnText = (await exportBtn.innerText()).trim();
     const exportBtnBg = await exportBtn.evaluate((el) => getComputedStyle(el).backgroundColor);
-    const generateBtnDisabled = await page.locator(".actionbar .btn-primary").isDisabled();
+    const generateBtnGone = (await page.locator(".actionbar").innerText()).includes("校验并生成报告");
     await exportBtn.click();
     await page.waitForTimeout(2500);
     const toast = (await page.locator(".toast").count())
@@ -771,7 +770,7 @@ async function seedEmptyDraft(browser) {
       ? await page.locator(".export-float").isVisible().catch(() => false)
       : false;
     const actionbarOk =
-      exportBtnText.includes("导出 PDF") && generateBtnDisabled && exportBtnBg === "rgb(27, 94, 122)";
+      exportBtnText.includes("导出 PDF") && !generateBtnGone && exportBtnBg === "rgb(27, 94, 122)";
 
     // ── 回归：基础信息可保存多套并选择，新建评估自动带入最近应用的一套 ──
     await page.locator('.sidebar-nav li[data-anchor="items"]').click();
@@ -815,7 +814,7 @@ async function seedEmptyDraft(browser) {
       paperLayoutOk && cardOk && newBtnOk && actionbarStableOk && defaultsOk &&
       rows === 66 && overflow <= 0 && toastOk && locateOk &&
       counters.includes("未填 0 项") &&
-      papers === 6 && overflowReport <= 0 && gradeExpected && scoreExpected &&
+      papers === 4 && overflowReport <= 0 && gradeExpected && scoreExpected &&
       hasAppendix && hasAppendixA && filled &&
       (exportOk || toast.length > 0) && errs.length === 0;
     allOk = allOk && pass;
@@ -895,7 +894,7 @@ async function seedEmptyDraft(browser) {
     );
     console.log(`  导出            ${exportOk ? "成功" : "失败可见 → " + toast.slice(0, 70)}`);
     console.log(
-      `  查看页导出      「${exportBtnText}」底色=${exportBtnBg} 录入生成按钮已禁用=${generateBtnDisabled} ${actionbarOk ? "✓" : "✗"}`,
+      `  悬浮岛按钮      「${exportBtnText}」底色=${exportBtnBg} 已移除校验并生成报告=${!generateBtnGone} ${actionbarOk ? "✓" : "✗"}`,
     );
     console.log(`  页面错误        ${errs.length}${errs.length ? " " + errs.slice(0, 3).join(" | ") : ""}`);
     console.log(`  结论            ${pass ? "通过" : "未通过"}`);
