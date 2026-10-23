@@ -22,7 +22,7 @@ import { useToast } from '@/utils/toast'
 const NAV: NavItem[] = [
   { key: 'info', label: '基础信息' },
   { key: 'items', label: '检测项目填写' },
-  { key: 'reports', label: '报告管理' },
+  { key: 'report', label: '所生成报告' },
 ]
 
 const route = useRoute()
@@ -33,12 +33,10 @@ const shell = useShell()
 const kiosk = useKiosk()
 const { show } = useToast()
 
-/* 系统设置自带左侧树，不显示项目侧栏 */
-const isFullPage = computed(() => route.name === 'settings')
 const isSettings = computed(() => route.name === 'settings')
 
 /** 侧栏高亮：只看录入页的三个锚点 */
-const active = computed(() => (isFullPage.value ? '' : shell.active))
+const active = computed(() => (isSettings.value ? '' : shell.active))
 
 /** 侧栏「项目进度」：当前这份评估的填写进度 */
 const progress = computed(() => ({
@@ -48,7 +46,7 @@ const progress = computed(() => ({
 }))
 
 function onNavigate(key: string): void {
-  const anchor = key as 'info' | 'items' | 'reports'
+  const anchor = key as 'info' | 'items' | 'report'
   if (route.path !== '/') {
     void router.push('/').then(() => shell.requestView(anchor))
     return
@@ -83,7 +81,7 @@ async function exitSystem(): Promise<void> {
 <template>
   <div class="app-shell">
     <AppSidebar
-      v-if="!isFullPage"
+      v-if="!isSettings"
       :collapsed="shell.collapsed"
       :items="NAV"
       :active="active"
@@ -99,7 +97,7 @@ async function exitSystem(): Promise<void> {
 
     <div
       class="main"
-      :class="{ expanded: shell.collapsed, 'no-nav': isFullPage }"
+      :class="{ expanded: shell.collapsed, 'no-nav': isSettings }"
       @click="onMainClick"
     >
       <header class="topbar">
@@ -116,9 +114,9 @@ async function exitSystem(): Promise<void> {
 
     <ExportResult v-if="!isSettings" />
 
-    <!-- 系统设置入口：右下角单个 icon（账号管理收进设置页） -->
+    <!-- 系统设置入口：右下角单个 icon（报告管理 / 账号管理都收进设置页） -->
     <button
-      v-if="!isFullPage"
+      v-if="!isSettings"
       class="settings-fab"
       type="button"
       title="系统设置"

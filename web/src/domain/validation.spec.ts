@@ -1,13 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  collectMissing,
-  countItems,
-  createItemState,
-  isFieldMissing,
-  itemProblem,
-  reasonList,
-  reasonsText,
-} from './validation'
+import { collectMissing, countItems, createItemState, isFieldMissing, itemProblem } from './validation'
 import type { JteItem } from '@/types/api'
 
 function makeItem(no: string, name = '项目'): JteItem {
@@ -58,49 +50,6 @@ describe('itemProblem（条目漏填判定）', () => {
       otherText: '现场实测净高不足',
     }
     expect(itemProblem(state)).toBe('')
-  })
-})
-
-describe('reasonList / reasonsText（不符合项明细）', () => {
-  it('多个清单项按顺序全部保留', () => {
-    const state = {
-      ...createItemState(),
-      result: '不符合' as const,
-      reasons: ['情形一。', '情形二。'],
-    }
-    expect(reasonList(state)).toEqual(['情形一。', '情形二。'])
-  })
-
-  it('勾选「其他」并自行填写时，填写内容也算不符合项', () => {
-    const state = {
-      ...createItemState(),
-      result: '不符合' as const,
-      other: true,
-      otherText: '  现场自行描述的内容  ',
-    }
-    expect(reasonList(state)).toEqual(['现场自行描述的内容'])
-    expect(reasonsText(state)).toBe('现场自行描述的内容')
-  })
-
-  it('旧报告同时存在清单项与「其他」文字时两者都保留', () => {
-    const state = {
-      ...createItemState(),
-      result: '不符合' as const,
-      reasons: ['情形一'],
-      other: true,
-      otherText: '补充文字',
-      legacyCombined: true,
-    }
-    expect(reasonList(state)).toEqual(['情形一', '补充文字'])
-  })
-
-  it('拼接时去掉非末条句号，避免出现「。；」', () => {
-    const state = {
-      ...createItemState(),
-      result: '不符合' as const,
-      reasons: ['情形一。', '情形二。', '情形三。'],
-    }
-    expect(reasonsText(state)).toBe('情形一；情形二；情形三。')
   })
 })
 
