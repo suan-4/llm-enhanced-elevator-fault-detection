@@ -28,9 +28,13 @@ fs.mkdirSync(OUT, { recursive: true })
       await page.locator('.login-card .form-input[type=password]').fill('Acceptance2026!')
       await page.locator('button[type=submit]').click()
       await page.locator('.group-toggle').first().waitFor()
+      assert.equal(await page.locator('.group-toggle[aria-expanded="true"]').count(), 0, 'Project groups initially stay collapsed')
+      await page.locator('.group-toggle').first().click()
+      assert.equal(await page.locator('.group-toggle').first().getAttribute('aria-expanded'), 'true')
       await page.getByRole('button', { name: '＋ 新建评估', exact: true }).click()
       await page.locator('.dialog-mask').getByRole('button', { name: '新建', exact: true }).click()
       await page.waitForFunction(() => document.querySelector('.toast')?.textContent.includes('已新建'))
+      assert.equal(await page.locator('.group-toggle[aria-expanded="true"]').count(), 0, 'New assessment resets group expansion')
       await page.waitForFunction(() => document.querySelector('.sidebar').getBoundingClientRect().width <= 51 || innerWidth > 900)
       const token = await page.evaluate(() => localStorage.getItem('elevator_token'))
       const snapshot = await page.evaluate(() => {
@@ -45,6 +49,7 @@ fs.mkdirSync(OUT, { recursive: true })
       assert(persisted.items.every(item => item.result === 'fit'))
       await page.reload()
       await page.locator('.group-toggle').first().waitFor()
+      assert.equal(await page.locator('.group-toggle[aria-expanded="true"]').count(), 0, 'Reload keeps the initial collapsed layout')
       assert.match(await page.locator('.draft-origin').innerText(), /已恢复上次草稿/)
       await page.evaluate(() => { document.querySelector('.main').scrollTop = 0 })
       const metrics = await page.evaluate(() => {
@@ -77,7 +82,7 @@ fs.mkdirSync(OUT, { recursive: true })
             return f.left < cell.left - 1 || f.right > cell.right + 1
           }).map(field => field.id) }
       })
-      const result = { viewport, newDefaultFit: snapshot.results.length, storedDefaultFit: persisted.items.length, metrics, pageErrors: errors }
+      const result = { viewport, collapsedGroups: await page.locator('.group-toggle[aria-expanded="false"]').count(), newDefaultFit: snapshot.results.length, storedDefaultFit: persisted.items.length, metrics, pageErrors: errors }
       results.push(result)
       console.log(JSON.stringify(result))
       await page.screenshot({ path: path.join(OUT, `home-${viewport.width}.png`) })
