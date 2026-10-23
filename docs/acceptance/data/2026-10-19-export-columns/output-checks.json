@@ -1,0 +1,80 @@
+[
+  {
+    "case": "normal",
+    "pages": 12,
+    "docx_grid": [
+      619,
+      1434,
+      4616,
+      1130,
+      685,
+      685,
+      697
+    ],
+    "evaluation_rows": 66,
+    "pdf_first_evaluation_page": 2,
+    "pdf_edges_x": [
+      51.0,
+      82.0,
+      153.7,
+      384.5,
+      441.0,
+      475.2,
+      509.5,
+      544.3
+    ],
+    "pdf_ratios": [
+      0.06284208392458951,
+      0.1453476586255828,
+      0.4678694506385567,
+      0.11453476586255829,
+      0.06932900871680517,
+      0.06953172511656196,
+      0.07054530711534554
+    ],
+    "max_template_deviation_pp": 1.7708515095557376,
+    "highest_risks_and_measures": 1,
+    "pdf_and_word_render_texts_preserved": true,
+    "bounded_widths_ok": true,
+    "exact_template_grid": false
+  },
+  {
+    "case": "large",
+    "pages": 18,
+    "docx_grid": [
+      619,
+      1438,
+      4637,
+      1102,
+      686,
+      686,
+      698
+    ],
+    "evaluation_rows": 66,
+    "pdf_first_evaluation_page": 3,
+    "pdf_edges_x": [
+      51.0,
+      82.0,
+      153.9,
+      385.7,
+      440.8,
+      475.1,
+      509.4,
+      544.3
+    ],
+    "pdf_ratios": [
+      0.06284208392458951,
+      0.14575309142509632,
+      0.4698966146361241,
+      0.11169673626596398,
+      0.06953172511656196,
+      0.06953172511656185,
+      0.07074802351510233
+    ],
+    "max_template_deviation_pp": 1.5579992898111628,
+    "highest_risks_and_measures": 32,
+    "pdf_and_word_render_texts_preserved": true,
+    "bounded_widths_ok": true,
+    "exact_template_grid": false
+  }
+]

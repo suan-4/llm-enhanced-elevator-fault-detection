@@ -35,6 +35,9 @@ backend/data/
 # ── 本机分析 / 临时产物 ──
 $out/
 .playwright-cli/
+output/playwright/
+output/acceptance-*/
+output/terminal-ui-acceptance/
 _extracted/
 _patent_extract/
 _render/

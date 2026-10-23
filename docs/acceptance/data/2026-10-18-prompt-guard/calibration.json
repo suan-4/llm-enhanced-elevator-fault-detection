@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "status": "calibrated",
+  "tokenizer_sha256": "5f9e4d4901a92b997e463c1f46055088b6cca5ca61a6522d1b9f64c4bb81cb42",
+  "model_id": "Qwen3.5-4B_W8A8_RK3588",
+  "context_size": 4096,
+  "template_reserve": 128,
+  "samples": [
+    {
+      "group": "chinese",
+      "text_sha256": "917f427f2436a4ab59fe955c82d053a568215a0d93e31beeebdd844f58272411",
+      "input_tokens": 14,
+      "sdk_input_tokens": 26,
+      "sdk_finished": true
+    },
+    {
+      "group": "english",
+      "text_sha256": "621e7d72362b3c40d7a0f0de9a190c839db887a85c21e8096f1d455a4a84bbfd",
+      "input_tokens": 12,
+      "sdk_input_tokens": 24,
+      "sdk_finished": true
+    },
+    {
+      "group": "digits_symbols",
+      "text_sha256": "1e9fd6e8e9e4ca179c6f4c89b6dfcff5ae428b13ef8d1140e419c0f2936f61e1",
+      "input_tokens": 56,
+      "sdk_input_tokens": 72,
+      "sdk_finished": true
+    },
+    {
+      "group": "report_all_fit",
+      "text_sha256": "edbf052b511a7619de9e6c517db61fdee7cb33a30e1f61db011cc95886f0829c",
+      "input_tokens": 111,
+      "sdk_input_tokens": 125,
+      "sdk_finished": true
+    },
+    {
+      "group": "report_selected_risks",
+      "text_sha256": "b84ec9297ee16120123be3d9f6d6fc4a60c7b50d08c685983f9c3c1ce1441d13",
+      "input_tokens": 482,
+      "sdk_input_tokens": 498,
+      "sdk_finished": true
+    },
+    {
+      "group": "report_match_risk",
+      "text_sha256": "9f717f880ff0705596bdc5b640d61c49d1abec8ab03dbe5bd7f630b141b9d63c",
+      "input_tokens": 1467,
+      "sdk_input_tokens": 1482,
+      "sdk_finished": true
+    },
+    {
+      "group": "report_natural_language",
+      "text_sha256": "4eec0bc7d8bd7d179fe2dfb38402c528fa894dbb3a5a7e3449154a5d0f9df7c3",
+      "input_tokens": 509,
+      "sdk_input_tokens": 527,
+      "sdk_finished": true
+    }
+  ]
+}

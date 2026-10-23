@@ -1,0 +1,102 @@
+[
+  {
+    "file": "test_auth_service.py",
+    "exit_code": 0,
+    "tests": 13
+  },
+  {
+    "file": "test_expert_risk.py",
+    "exit_code": 0,
+    "tests": 22
+  },
+  {
+    "file": "test_export_collision.py",
+    "exit_code": 0,
+    "tests": 1
+  },
+  {
+    "file": "test_export_columns.py",
+    "exit_code": 0,
+    "tests": 2
+  },
+  {
+    "file": "test_export_service.py",
+    "exit_code": 0,
+    "tests": 9
+  },
+  {
+    "file": "test_migrate.py",
+    "exit_code": 0,
+    "tests": 8
+  },
+  {
+    "file": "test_model_guard.py",
+    "exit_code": 0,
+    "tests": 5
+  },
+  {
+    "file": "test_overview_priority.py",
+    "exit_code": 0,
+    "tests": 6
+  },
+  {
+    "file": "test_performance.py",
+    "exit_code": 0,
+    "tests": 8
+  },
+  {
+    "file": "test_performance_benchmark.py",
+    "exit_code": 0,
+    "tests": 6
+  },
+  {
+    "file": "test_prepare_tokenizer.py",
+    "exit_code": 0,
+    "tests": 2
+  },
+  {
+    "file": "test_prompt_budget.py",
+    "exit_code": 0,
+    "tests": 9
+  },
+  {
+    "file": "test_recovery_tools.py",
+    "exit_code": 0,
+    "tests": 5
+  },
+  {
+    "file": "test_repo.py",
+    "exit_code": 0,
+    "tests": 7
+  },
+  {
+    "file": "test_report_workflow.py",
+    "exit_code": 0,
+    "tests": 11
+  },
+  {
+    "file": "test_rkllm_metrics.py",
+    "exit_code": 0,
+    "tests": 7
+  },
+  {
+    "file": "test_save_consistency.py",
+    "exit_code": 0,
+    "tests": 3
+  },
+  {
+    "file": "test_snowflake.py",
+    "exit_code": 0,
+    "tests": 10
+  },
+  {
+    "file": "test_system_service.py",
+    "exit_code": 0,
+    "tests": 7
+  },
+  {
+    "file": "test_tokenizer_tools.py",
+    "exit_code": 0,
+    "tests": 3
+  }
+]

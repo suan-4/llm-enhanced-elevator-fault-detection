@@ -125,8 +125,8 @@ async function exitSystem(): Promise<void> {
     >
       <svg
         viewBox="0 0 24 24"
-        width="21"
-        height="21"
+        width="25"
+        height="25"
         fill="none"
         stroke="currentColor"
         stroke-width="1.7"
@@ -146,38 +146,52 @@ async function exitSystem(): Promise<void> {
 <style scoped>
 .settings-fab {
   position: fixed;
-  right: 20px;
+  right: 22px;
   /* 让开底部操作条（宽屏单行约 84px） */
-  bottom: 100px;
-  width: 44px;
-  height: 44px;
+  bottom: 104px;
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
-  border: 1px solid var(--c-line);
-  background: var(--c-panel);
-  color: var(--c-primary);
+  border: 1px solid rgba(27, 94, 122, 0.9);
+  background: linear-gradient(135deg, #2d8ab5 0%, #1b5e7a 100%);
+  color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: var(--shadow-lg);
+  box-shadow:
+    0 10px 24px rgba(27, 94, 122, 0.42),
+    0 2px 6px rgba(0, 0, 0, 0.18);
   /* 低于导出结果卡（40），导出成功时卡片会盖住齿轮，关掉卡片即可见 */
   z-index: 30;
-  transition: all 0.2s;
+  transition:
+    transform 0.18s,
+    box-shadow 0.18s,
+    filter 0.18s;
 }
 
 .settings-fab:hover {
-  background: var(--c-primary);
-  border-color: var(--c-primary);
-  color: #fff;
+  transform: scale(1.06);
+  filter: brightness(1.08);
+  box-shadow:
+    0 14px 30px rgba(27, 94, 122, 0.5),
+    0 3px 8px rgba(0, 0, 0, 0.2);
+}
+
+.settings-fab:active {
+  transform: scale(0.98);
 }
 
 @media (max-width: 900px) {
   /* 板端底部操作条是两行，齿轮再往上让一点 */
   .settings-fab {
     right: 14px;
-    bottom: 152px;
-    width: 46px;
-    height: 46px;
+    bottom: 158px;
+    width: 60px;
+    height: 60px;
+    box-shadow:
+      0 12px 26px rgba(27, 94, 122, 0.46),
+      0 2px 6px rgba(0, 0, 0, 0.18);
   }
 }
 </style>

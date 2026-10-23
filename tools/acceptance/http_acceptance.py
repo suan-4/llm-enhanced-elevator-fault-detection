@@ -94,26 +94,17 @@ def main() -> int:
                   all(k in items[0] for k in ("no", "name", "sub", "req", "opts")),
                   f"首条 {items[0]['no']} {items[0]['name']}")
 
-        print("═══ 第 4 层：导出失败必须可见且可读 ═══")
+        print("═══ 第 4 层：导出必须绑定服务端报告快照 ═══")
         r = c.post("/api/report/export", headers=H, json={
             "fmt": "pdf", "title": "验收", "meta": [], "body_html": "<p>x</p>", "filename": "验收",
         })
-        detail = ""
-        try:
-            detail = r.json().get("detail", "")
-        except Exception:  # noqa: BLE001
-            detail = r.text
-        if r.status_code == 200:
-            check(4, "导出成功", True, "本机具备 LibreOffice")
-        else:
-            check(4, "导出失败非静默", r.status_code >= 400, f"status={r.status_code}")
-            check(4, "提示指向具体原因",
-                  ("导出目录" in detail) or ("LibreOffice" in detail) or ("soffice" in detail),
-                  detail[:110])
-            check(4, "提示不泄漏内部异常",
-                  not any(k in detail for k in
-                          ("FileNotFoundError", "WinError", "Traceback", "AttributeError")),
-                  detail[:110])
+        check(4, "旧HTML请求/缺少快照绑定 → 422", r.status_code == 422)
+        r = c.post("/api/report/export", headers=H, json={
+            "fmt": "docx", "report_id": "123456789", "version": 1, "result_digest": "a"*64,
+        })
+        check(4, "不存在的报告 → 404", r.status_code == 404)
+        check(4, "提示不泄漏内部异常",
+              not any(k in r.text for k in ("Traceback", "FileNotFoundError", "WinError")))
 
         print("═══ 第 5 层：打开文件的安全边界 ═══")
         outside = r"C:\Windows\win.ini" if os.name == "nt" else "/etc/passwd"
@@ -294,9 +285,45 @@ def main() -> int:
               and len(str(body.get("catalog", {}).get("hash", ""))) >= 8)
 
         conf = c.get("/api/system/config", headers=H)
-        items_cfg = conf.json().get("items", []) if conf.status_code == 200 else []
-        check(9, "配置只读展示（基础版）",
-              bool(items_cfg) and all(i.get("editable") is False for i in items_cfg))
+        conf_body = conf.json() if conf.status_code == 200 else {}
+        items_cfg = conf_body.get("items", [])
+        readonly_cfg = conf_body.get("readonly_items", [])
+        editable = [i for i in items_cfg if i.get("editable")]
+        editable_keys = {i["key"] for i in editable}
+        check(9, "基本配置提供可编辑白名单",
+              conf.status_code == 200 and bool(editable)
+              and {"institution_name", "report_no_prefix", "backup_keep", "worker_id"} <= editable_keys,
+              f"可编辑 {len(editable)} 项 / 总计 {len(items_cfg)} 项")
+        check(9, "只读系统信息移出基本配置（改走关于本机）",
+              bool(items_cfg) and all(i.get("editable") for i in items_cfg)
+              and {i.get("key") for i in readonly_cfg} >= {"app_version", "model", "sqlite_path"},
+              f"只读 {[i.get('key') for i in readonly_cfg]}")
+        check(9, "可编辑项带表单类型与重启标记",
+              all(i.get("type") in ("str", "int", "bool") and "restart" in i for i in editable))
+        by_key = {i["key"]: i for i in editable}
+        check(9, "目录类配置带 directory 标记",
+              by_key.get("export_dir", {}).get("ui") == "directory"
+              and by_key.get("backup_dir", {}).get("ui") == "directory")
+        picker = c.get("/api/system/folder-picker", headers=H)
+        picker_body = picker.json() if picker.status_code == 200 else {}
+        check(9, "目录选择器可用性接口 → 200",
+              picker.status_code == 200
+              and isinstance(picker_body.get("available"), bool)
+              and picker_body.get("platform") in ("windows", "linux"),
+              f"available={picker_body.get('available')} method={picker_body.get('method')} platform={picker_body.get('platform')}")
+
+        bad_cfg = c.put("/api/system/config", headers=H, json={"values": {"backup_keep": 0}})
+        check(9, "基本配置非法值 → 400 且原因可读",
+              bad_cfg.status_code == 400
+              and "备份保留份数" in str(bad_cfg.json().get("detail", "")),
+              str(bad_cfg.json().get("detail", ""))[:80])
+        unknown_cfg = c.put("/api/system/config", headers=H, json={"values": {"__nope__": 1}})
+        check(9, "基本配置未知键 → 400", unknown_cfg.status_code == 400,
+              str(unknown_cfg.json().get("detail", ""))[:80])
+        cur_keep = next((i["value"] for i in editable if i["key"] == "backup_keep"), None)
+        same_cfg = c.put("/api/system/config", headers=H, json={"values": {"backup_keep": cur_keep}})
+        check(9, "基本配置保存（同值不落盘） → 200", same_cfg.status_code == 200,
+              str(same_cfg.json().get("detail", ""))[:80])
 
         audit = c.get("/api/system/audit?event=login_ok&size=5", headers=H)
         check(9, "GET /api/system/audit → 200", audit.status_code == 200)

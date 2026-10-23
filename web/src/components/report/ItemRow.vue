@@ -16,22 +16,14 @@ const reasonsId = computed(() => rowId.value + '-reasons')
 
 const RESULTS = ['符合', '不符合', '无此项'] as const
 
-/* 「其他」与清单选项二选一：选了其中一个，另一个立即置灰（并清空值），
-   保证落库时不会同时出现两种来源。 */
+/* 「其他」与清单选项二选一，停用内容仍保留在草稿中，不参与评定。 */
 const otherOn = computed(() => state.value.other)
-const hasReasons = computed(() => state.value.reasons.length > 0)
-const reasonsLocked = computed(() => unfit.value && otherOn.value)
-const otherLocked = computed(() => !unfit.value || hasReasons.value)
-
-function clearUnfitInputs(): void {
-  state.value.reasons = []
-  state.value.other = false
-  state.value.otherText = ''
-}
+const hasReasons = computed(() => !otherOn.value && state.value.reasons.length > 0)
+const reasonsLocked = computed(() => unfit.value && otherOn.value && !state.value.legacyCombined)
+const otherLocked = computed(() => !unfit.value || (hasReasons.value && !state.value.legacyCombined))
 
 function setResult(value: (typeof RESULTS)[number]): void {
   state.value.result = value
-  if (value !== '不符合') clearUnfitInputs()
 }
 
 /* 三态/情形都走「点 label 自己改状态」，而不是让浏览器去激活里面的
@@ -41,6 +33,7 @@ function setResult(value: (typeof RESULTS)[number]): void {
    鼠标/触摸走 label 的 @click.prevent，键盘仍走 input 的 @change，两条路都能用。 */
 function toggleReason(text: string, checked: boolean): void {
   if (reasonsLocked.value) return
+  state.value.legacyCombined = false
   const list = state.value.reasons
   const index = list.indexOf(text)
   if (checked && index < 0) list.push(text)
@@ -48,7 +41,6 @@ function toggleReason(text: string, checked: boolean): void {
   // 二选一：只要选了清单项，「其他」就让位并置灰
   if (list.length) {
     state.value.other = false
-    state.value.otherText = ''
   }
 }
 
@@ -60,10 +52,9 @@ function pickReason(text: string): void {
 
 function toggleOther(): void {
   if (otherLocked.value) return
+  state.value.legacyCombined = false
   state.value.other = !state.value.other
-  // 二选一：勾选「其他」即清掉清单勾选；取消勾选则清掉已填文字
-  if (state.value.other) state.value.reasons = []
-  else state.value.otherText = ''
+  // Inactive inputs remain in the draft editing metadata, not in risk assessment.
 }
 </script>
 
@@ -140,7 +131,7 @@ function toggleOther(): void {
         >
           <input
             type="checkbox"
-            :checked="state.reasons.includes(opt)"
+            :checked="(!state.other || state.legacyCombined) && state.reasons.includes(opt)"
             :disabled="reasonsLocked"
             @change="toggleReason(opt, ($event.target as HTMLInputElement).checked)"
           />

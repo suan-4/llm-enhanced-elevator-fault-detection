@@ -1,0 +1,11 @@
+{
+  "commands": ["npm test", "npm run build"],
+  "cwd": "web",
+  "tests": 33,
+  "test_files": 6,
+  "test_exit_code": 0,
+  "build_exit_code": 0,
+  "typecheck_included": true,
+  "vite": "6.4.4",
+  "note": "Final fresh run on 2026-10-18; no login/style/report-template edits."
+}

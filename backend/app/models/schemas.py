@@ -105,6 +105,14 @@ class ResetPasswordRequest(BaseModel):
 
 
 # ── 报告作业（/api/reports）────────────────────────────────
+class ItemEditingState(BaseModel):
+    """Draft-only inactive inputs; risk assessment ignores these fields."""
+    reasons: list[str] = Field(default_factory=list)
+    other: bool = False
+    other_text: str = Field(default="", max_length=500)
+    legacy_combined: bool = False
+
+
 class ItemAnswer(BaseModel):
     """一条评价结果。result 取值见《数据库设计 v1》§7.2。"""
 
@@ -112,6 +120,7 @@ class ItemAnswer(BaseModel):
     result: str = Field(default="", description="fit / unfit / na / 空=未填")
     reasons: list[str] = Field(default_factory=list)
     other_text: str = Field(default="", max_length=500)
+    editing: Optional[ItemEditingState] = None
 
 
 class ReportCreateRequest(BaseModel):
@@ -133,3 +142,15 @@ class ReportGenerateRequest(BaseModel):
 class ReportVoidRequest(BaseModel):
     reason: str = Field(..., min_length=1, max_length=200, description="作废原因，必填")
     confirm: bool = False
+
+
+class SystemConfigUpdateRequest(BaseModel):
+    """基本配置保存：key 必须是后端白名单里的可编辑项。"""
+
+    values: dict[str, object] = Field(..., min_length=1, description="配置项 key → 新值")
+
+
+class PickDirectoryRequest(BaseModel):
+    """打开系统目录选择框（初始定位目录，可空）。"""
+
+    initial: Optional[str] = Field(default=None, max_length=512)

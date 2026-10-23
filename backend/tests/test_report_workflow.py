@@ -26,6 +26,7 @@ FORM = {
     "clientName": "佛山某公司",
     "userName": "佛山某公司",
     "deviceCategory": "曳引驱动电梯",
+    "deviceVariety": "曳引驱动乘客电梯",
     "productNo": "44786091",
     "installSite": "3号楼",
     "assessDate": "2026-10-13",
@@ -167,7 +168,8 @@ def test_generate_falls_back_when_llm_fails() -> None:
         assert report["narrative"], "降级后叙述文字不能为空"
         assert report["provenance"]["llm_used"] is False
         assert "超时" in str(report["provenance"].get("llm_error", ""))
-        assert "未使用大模型" in report["narrative"], "报告里要写明没用模型"
+        assert report['provenance']['llm_status'] == 'degraded', '降级原因在页面工具栏展示'
+        assert "未使用大模型" not in report["narrative"], "模型运行提示不能进入报告正文"
 
 
 def test_void_keeps_number_and_delete_rules() -> None:
@@ -220,7 +222,9 @@ def test_clone_copies_header_only() -> None:
         assert cloned["id"] != source["id"]
         assert cloned["status"] == "draft" and cloned["report_no"] is None
         assert cloned["form"]["clientName"] == "佛山某公司"
-        assert cloned["items"] == [], "复制后不应带评价结果"
+        assert len(cloned['items']) == 66
+        assert all(item['result'] == 'fit' and not item['reasons'] and not item['other_text']
+                   for item in cloned['items']), '复制不带上次风险，按新建规则默认符合'
 
 
 def test_list_filters_and_pagination() -> None:

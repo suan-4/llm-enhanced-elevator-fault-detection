@@ -1,0 +1,88 @@
+{
+  "before": {
+    "report_count": 18,
+    "reports_sha256": "1f96fb09061392f6e09c5832385870419e11994f01a02075b04895d882efc277",
+    "db_sha256": "8c2332546de02aac68950ce73c4d8240766ca1441b93fd5fe9e31802a3048bc5"
+  },
+  "candidate": "20261020-regression-01",
+  "regressions": {
+    "test_save_consistency.py": {
+      "exit_code": 0,
+      "log": "...\n----------------------------------------------------------------------\nRan 3 tests in 0.329s\n\nOK\n"
+    },
+    "test_export_collision.py": {
+      "exit_code": 0,
+      "log": ".\n----------------------------------------------------------------------\nRan 1 test in 0.004s\n\nOK\n"
+    }
+  },
+  "stale_save_rejected": true,
+  "generation": {
+    "error_type": "ValueError",
+    "message": "项目 16.1 的其他文字解析失败：本机分词组件或文件无效，尚未调用模型。请稍后重试或手动选择风险；原文已保存"
+  },
+  "exports": [
+    {
+      "filename": "regression.pdf",
+      "path": "/userdata/releases/20261020-regression-01/acceptance/exports/regression.pdf",
+      "dir": "/userdata/releases/20261020-regression-01/acceptance/exports",
+      "size": 14512,
+      "fmt": "pdf",
+      "performance": {
+        "convert_ms": 2428.984,
+        "publish_ms": 0.517,
+        "cleanup_ms": 3.419,
+        "export_total_ms": 2433.926
+      },
+      "sha256": "8a13b355951d99e4e04b4f78a0bdfa457ac4f9509d3da80fc5a23985039e15fb"
+    },
+    {
+      "filename": "regression_120000.pdf",
+      "path": "/userdata/releases/20261020-regression-01/acceptance/exports/regression_120000.pdf",
+      "dir": "/userdata/releases/20261020-regression-01/acceptance/exports",
+      "size": 14611,
+      "fmt": "pdf",
+      "performance": {
+        "convert_ms": 1949.51,
+        "publish_ms": 0.499,
+        "cleanup_ms": 3.25,
+        "export_total_ms": 1953.855
+      },
+      "sha256": "01991af1471740136b8cd74cecffe47f9301d31e46be9d2767c019e66d22b95b"
+    },
+    {
+      "filename": "regression_120000_2.pdf",
+      "path": "/userdata/releases/20261020-regression-01/acceptance/exports/regression_120000_2.pdf",
+      "dir": "/userdata/releases/20261020-regression-01/acceptance/exports",
+      "size": 14734,
+      "fmt": "pdf",
+      "performance": {
+        "convert_ms": 2038.372,
+        "publish_ms": 0.578,
+        "cleanup_ms": 3.343,
+        "export_total_ms": 2042.769
+      },
+      "sha256": "5cf3c7ab1e7b6f398fea1f0483abd444e0f9ae7aa81ce608350a7ef91cb8ff2f"
+    },
+    {
+      "filename": "regression.docx",
+      "path": "/userdata/releases/20261020-regression-01/acceptance/exports/regression.docx",
+      "dir": "/userdata/releases/20261020-regression-01/acceptance/exports",
+      "size": 5000,
+      "fmt": "docx",
+      "performance": {
+        "convert_ms": 1798.166,
+        "publish_ms": 0.768,
+        "cleanup_ms": 10.853,
+        "export_total_ms": 1810.414
+      },
+      "sha256": "173ee2dffe0179eebfd6238466632c39ea87f8ec99badac0621d57ba2ba88ec2"
+    }
+  ],
+  "saved_version": 2,
+  "after": {
+    "report_count": 18,
+    "reports_sha256": "1f96fb09061392f6e09c5832385870419e11994f01a02075b04895d882efc277",
+    "db_sha256": "8c2332546de02aac68950ce73c4d8240766ca1441b93fd5fe9e31802a3048bc5"
+  },
+  "formal_unchanged": true
+}

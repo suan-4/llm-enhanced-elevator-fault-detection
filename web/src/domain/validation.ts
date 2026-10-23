@@ -13,6 +13,8 @@ export interface ItemState {
   other: boolean
   /** 「其他」的自由填写内容 */
   otherText: string
+  /** Historical reports may contain both inputs; never silently discard either. */
+  legacyCombined?: boolean
 }
 
 /** 新条目默认「符合」：现场只关注例外项，逐条点 66 次「符合」不现实。
@@ -32,7 +34,7 @@ export interface MissingEntry {
 export const REQUIRED_FIELDS = [
   { key: 'clientName', label: '委托单位名称' },
   { key: 'userName', label: '使用单位名称' },
-  { key: 'deviceCategory', label: '设备类别' },
+  { key: 'deviceVariety', label: '设备品种' },
   { key: 'productNo', label: '产品编号' },
 ] as const
 
@@ -43,8 +45,8 @@ export function itemProblem(state: ItemState): string {
   if (!state.result) return '未选择评价结果'
   if (
     state.result === '不符合' &&
-    state.reasons.length === 0 &&
-    !(state.other && state.otherText.trim())
+    !(state.other && state.otherText.trim()) &&
+    !(state.reasons.length && (!state.other || state.legacyCombined))
   ) {
     return '选择了「不符合」但未填写具体情形'
   }
@@ -102,7 +104,7 @@ export function countItems(items: JteItem[], stateOf: (no: string) => ItemState)
 
 /** 「存在风险」列文本：已勾选情形 + 其他自由填写 */
 export function reasonsText(state: ItemState): string {
-  const parts = state.reasons.slice()
+  const parts = state.other && state.legacyCombined === false ? [] : state.reasons.slice()
   if (state.other && state.otherText.trim()) parts.push(state.otherText.trim())
   return parts.join('；')
 }

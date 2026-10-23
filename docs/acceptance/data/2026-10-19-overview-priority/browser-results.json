@@ -1,0 +1,37 @@
+{
+  "cases": [
+    {
+      "case": "natural_llm",
+      "pdf_path": "/userdata/releases/20261019-overview-priority-01/benchmark/exports/GDSEI-JTE-20261019-001_最高风险摘要演示（非真实评估）.pdf",
+      "bytes": 308895,
+      "export_performance": {
+        "convert_ms": 2509.936,
+        "publish_ms": 2.315,
+        "cleanup_ms": 12.047,
+        "export_total_ms": 2526.559,
+        "html_build_ms": 1.674,
+        "api_total_ms": 2528.35
+      },
+      "priority_in_paper": true
+    },
+    {
+      "case": "selected_rule",
+      "pdf_path": "/userdata/releases/20261019-overview-priority-01/benchmark/exports/GDSEI-JTE-20261019-002_最高风险摘要演示（非真实评估）.pdf",
+      "bytes": 309100,
+      "export_performance": {
+        "convert_ms": 2295.734,
+        "publish_ms": 1.1,
+        "cleanup_ms": 3.275,
+        "export_total_ms": 2301.609,
+        "html_build_ms": 1.383,
+        "api_total_ms": 2303.064
+      },
+      "priority_in_paper": true
+    }
+  ],
+  "page_errors": 0,
+  "viewport": {
+    "width": 600,
+    "height": 960
+  }
+}

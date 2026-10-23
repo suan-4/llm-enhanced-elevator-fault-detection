@@ -1,0 +1,7 @@
+{
+  "save_failure_blocks_new": true,
+  "repeated_attempt_preserves_input": true,
+  "recovery_saves_input": true,
+  "new_after_save_works": true,
+  "page_errors": []
+}

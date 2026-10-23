@@ -1,4 +1,4 @@
-/* 系统管理接口：信息、配置（只读）、审计、诊断、备份、恢复。 */
+/* 系统管理接口：信息、基本配置（可读写）、审计、诊断、备份、恢复。 */
 import { request } from '@/utils/http'
 
 export interface CatalogInfo {
@@ -21,11 +21,29 @@ export interface SystemInfo {
   clock_rollbacks: number
 }
 
+export type ConfigValue = string | number | boolean
+
 export interface ConfigItem {
   key: string
-  value: string
+  label: string
+  value: ConfigValue
   editable: boolean
+  type: 'str' | 'int' | 'bool'
+  /** 特殊控件：directory = 目录项，可调起系统文件夹选择框 */
+  ui?: 'directory' | string
   desc: string
+  restart: boolean
+  min?: number
+  max?: number
+  min_length?: number
+  max_length?: number
+  pattern?: string
+}
+
+export interface FolderPickerInfo {
+  available: boolean
+  method: 'tkinter' | 'zenity' | 'kdialog' | 'none' | string
+  platform: string
 }
 
 export interface AuditEvent {
@@ -58,8 +76,41 @@ export function systemInfo(): Promise<SystemInfo> {
   return request('/system/info')
 }
 
-export function systemConfig(): Promise<{ success: boolean; items: ConfigItem[] }> {
+/** 基本配置接口返回：items 只有可编辑项，只读系统信息在 readonly_items（「关于本机」展示） */
+export interface SystemConfig {
+  success: boolean
+  items: ConfigItem[]
+  readonly_items: ConfigItem[]
+}
+
+export function systemConfig(): Promise<SystemConfig> {
   return request('/system/config')
+}
+
+export function updateSystemConfig(values: Record<string, ConfigValue>): Promise<
+  SystemConfig & {
+    updated: string[]
+    restart_required: string[]
+  }
+> {
+  return request('/system/config', { method: 'PUT', body: { values } })
+}
+
+export function folderPickerInfo(): Promise<{ success: boolean } & FolderPickerInfo> {
+  return request('/system/folder-picker')
+}
+
+/** 让服务端在本机弹出系统目录选择框（Windows 资源管理器 / Linux zenity 等） */
+export function pickDirectory(initial?: string): Promise<{
+  success: boolean
+  path: string
+  cancelled: boolean
+}> {
+  return request('/system/pick-directory', {
+    method: 'POST',
+    body: { initial: initial || null },
+    timeout: 200_000,
+  })
 }
 
 export function auditEvents(
@@ -79,7 +130,7 @@ export function auditEvents(
   if (params.date_to) query.set('date_to', params.date_to)
   query.set('page', String(params.page ?? 1))
   query.set('size', String(params.size ?? 50))
-  return request(`/system/audit?${query.toString()}`)
+  return request('/system/audit?' + query.toString())
 }
 
 export function diagnose(): Promise<{
@@ -101,8 +152,8 @@ export function runBackup(targetDir?: string): Promise<{
   files: number
   size: number
 }> {
-  const query = targetDir ? `?target_dir=${encodeURIComponent(targetDir)}` : ''
-  return request(`/system/backup${query}`, { method: 'POST' })
+  const query = targetDir ? '?target_dir=' + encodeURIComponent(targetDir) : ''
+  return request('/system/backup' + query, { method: 'POST' })
 }
 
 export function runRestore(sourceDir: string): Promise<{
@@ -110,7 +161,7 @@ export function runRestore(sourceDir: string): Promise<{
   pre_backup: string
   restart_required: boolean
 }> {
-  return request(`/system/restore?source_dir=${encodeURIComponent(sourceDir)}&confirm=true`, {
+  return request('/system/restore?source_dir=' + encodeURIComponent(sourceDir) + '&confirm=true', {
     method: 'POST',
   })
 }

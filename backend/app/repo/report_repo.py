@@ -35,8 +35,22 @@ def find_by_id(conn: Any, report_id: int) -> dict | None:
 
 def lock_for_generation(conn: Any, report_id: int) -> dict | None:
     """Take a short write lock only after model work, then re-read the report."""
+    return lock_for_update(conn, report_id)
+
+
+def lock_for_update(conn: Any, report_id: int) -> dict | None:
+    """Read/check/write must share one write transaction, including draft saves."""
     conn.execute("BEGIN IMMEDIATE")
     return _one(conn, report_id)
+
+
+def invalidate_content(conn: Any, report_id: int) -> None:
+    """Advance the edit version once; changed generated input becomes a draft."""
+    conn.execute(
+        "UPDATE report SET version = version + 1,"
+        " status = CASE WHEN status = 'generated' THEN 'draft' ELSE status END WHERE id = ?",
+        (report_id,),
+    )
 
 
 def update_content(conn: Any, report_id: int, *, form: dict, items: list,

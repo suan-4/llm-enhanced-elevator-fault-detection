@@ -1,5 +1,5 @@
 from contextlib import asynccontextmanager
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -21,6 +21,7 @@ from app.repo import ids as id_gen
 from app.services import auth_service
 from app.services.kg_service import kg_service
 from app.services.llm_service import llm_service
+from app.services.report_export import recover_pending
 
 ROOT_DIR = Path(__file__).parent.parent.parent
 WEB_DIR = ROOT_DIR / "web"
@@ -32,6 +33,7 @@ DIST_DIR = WEB_DIR / "dist"
 async def lifespan(app: FastAPI):
     # 业务数据库（SQLite）：建表（幂等）
     init_db()
+    recover_pending()
     # 雪花 ID 生成器就位：用各业务表 MAX(id) 当下界。
     # 这台板子每次开机 RTC 都会回到 2021 年，没有这道保护就会发重号。
     id_gen.configure(settings.worker_id, max_business_id())
@@ -129,7 +131,14 @@ async def serve_frontend():
 
 @app.get("/api/health")
 async def health_check():
-    return {"status": "ok", "service": "elevator-report-api"}
+    result = {"status": "ok", "service": "elevator-report-api"}
+    # Only an explicitly isolated benchmark DB can identify itself before login.
+    # Production response remains unchanged; no production path is disclosed.
+    path = PurePosixPath(settings.sqlite_path)
+    if (str(path).startswith('/userdata/releases/') and 'benchmark' in path.parts
+            and path.name == 'performance-benchmark.db' and '..' not in path.parts):
+        result['benchmark_db'] = str(path)
+    return result
 
 
 @app.get("/api/health/ready")

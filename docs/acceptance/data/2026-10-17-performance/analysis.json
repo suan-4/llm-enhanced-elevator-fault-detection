@@ -1,0 +1,550 @@
+{
+  "all_fit": {
+    "stage_ms": {
+      "catalog_load": {
+        "n": 5,
+        "mean": 0.008,
+        "median": 0.009,
+        "min": 0.003,
+        "max": 0.01
+      },
+      "db_commit": {
+        "n": 5,
+        "mean": 12.521,
+        "median": 13.016,
+        "min": 10.671,
+        "max": 13.887
+      },
+      "db_read": {
+        "n": 5,
+        "mean": 2.419,
+        "median": 2.55,
+        "min": 0.946,
+        "max": 3.053
+      },
+      "model_result_validate": {
+        "n": 5,
+        "mean": 0.096,
+        "median": 0.098,
+        "min": 0.091,
+        "max": 0.102
+      },
+      "overview": {
+        "n": 5,
+        "mean": 7043.328,
+        "median": 6775.498,
+        "min": 6674.805,
+        "max": 8208.091
+      },
+      "prompt_build": {
+        "n": 5,
+        "mean": 0.164,
+        "median": 0.171,
+        "min": 0.069,
+        "max": 0.213
+      },
+      "risk_assessment": {
+        "n": 5,
+        "mean": 0.615,
+        "median": 0.648,
+        "min": 0.191,
+        "max": 0.801
+      },
+      "score": {
+        "n": 5,
+        "mean": 0.102,
+        "median": 0.111,
+        "min": 0.035,
+        "max": 0.129
+      },
+      "validate": {
+        "n": 5,
+        "mean": 0.178,
+        "median": 0.175,
+        "min": 0.067,
+        "max": 0.25
+      }
+    },
+    "backend_non_model_ms": {
+      "n": 5,
+      "mean": 17.979,
+      "median": 18.544,
+      "min": 13.787,
+      "max": 20.393
+    },
+    "save_http_ms": {
+      "n": 5,
+      "mean": 21.269,
+      "median": 20.495,
+      "min": 19.417,
+      "max": 24.038
+    },
+    "prefill_share": {
+      "n": 5,
+      "mean": 75.905,
+      "median": 76.281,
+      "min": 74.166,
+      "max": 76.905
+    },
+    "batches": {
+      "2026-10-16": {
+        "n": 1,
+        "mean": 8230.074,
+        "median": 8230.074,
+        "min": 8230.074,
+        "max": 8230.074
+      },
+      "2026-10-17": {
+        "n": 4,
+        "mean": 6783.869,
+        "median": 6766.13,
+        "min": 6705.241,
+        "max": 6897.977
+      }
+    },
+    "inputs": [
+      {
+        "purpose": "overview",
+        "input_chars": 511,
+        "input_utf8_bytes": 919,
+        "sdk_input_tokens": 291
+      }
+    ],
+    "browser": {
+      "schema_version": 1,
+      "name": "report_generate",
+      "status": "ok",
+      "total_ms": 7628.699999999953,
+      "stages": [
+        {
+          "name": "save",
+          "duration_ms": 54,
+          "status": "ok"
+        },
+        {
+          "name": "generate_http",
+          "duration_ms": 7357.299999999814,
+          "status": "ok"
+        },
+        {
+          "name": "render",
+          "duration_ms": 212.60000000009313,
+          "status": "ok"
+        }
+      ],
+      "click_to_visible_ms": 7629.40000000014
+    }
+  },
+  "selected_risks": {
+    "stage_ms": {
+      "catalog_load": {
+        "n": 5,
+        "mean": 0.009,
+        "median": 0.009,
+        "min": 0.009,
+        "max": 0.011
+      },
+      "db_commit": {
+        "n": 5,
+        "mean": 13.598,
+        "median": 13.629,
+        "min": 11.032,
+        "max": 15.456
+      },
+      "db_read": {
+        "n": 5,
+        "mean": 2.783,
+        "median": 2.564,
+        "min": 2.529,
+        "max": 3.23
+      },
+      "model_result_validate": {
+        "n": 5,
+        "mean": 0.122,
+        "median": 0.119,
+        "min": 0.118,
+        "max": 0.132
+      },
+      "overview": {
+        "n": 5,
+        "mean": 41506.844,
+        "median": 39606.758,
+        "min": 39376.655,
+        "max": 47605.988
+      },
+      "prompt_build": {
+        "n": 5,
+        "mean": 0.373,
+        "median": 0.356,
+        "min": 0.348,
+        "max": 0.423
+      },
+      "risk_assessment": {
+        "n": 5,
+        "mean": 5.398,
+        "median": 5.055,
+        "min": 4.985,
+        "max": 6.609
+      },
+      "score": {
+        "n": 5,
+        "mean": 0.135,
+        "median": 0.124,
+        "min": 0.122,
+        "max": 0.159
+      },
+      "validate": {
+        "n": 5,
+        "mean": 0.187,
+        "median": 0.174,
+        "min": 0.169,
+        "max": 0.228
+      }
+    },
+    "backend_non_model_ms": {
+      "n": 5,
+      "mean": 25.222,
+      "median": 25.315,
+      "min": 21.888,
+      "max": 29.082
+    },
+    "save_http_ms": {
+      "n": 5,
+      "mean": 22.396,
+      "median": 21.06,
+      "min": 19.778,
+      "max": 27.552
+    },
+    "prefill_share": {
+      "n": 5,
+      "mean": 90.899,
+      "median": 90.957,
+      "min": 90.128,
+      "max": 91.494
+    },
+    "batches": {
+      "2026-10-16": {
+        "n": 1,
+        "mean": 47648.824,
+        "median": 47648.824,
+        "min": 47648.824,
+        "max": 47648.824
+      },
+      "2026-10-17": {
+        "n": 4,
+        "mean": 40017.733,
+        "median": 39543.213,
+        "min": 39415.138,
+        "max": 41569.369
+      }
+    },
+    "inputs": [
+      {
+        "purpose": "overview",
+        "input_chars": 3943,
+        "input_utf8_bytes": 6417,
+        "sdk_input_tokens": 2063
+      }
+    ],
+    "browser": {
+      "schema_version": 1,
+      "name": "report_generate",
+      "status": "ok",
+      "total_ms": 39669.5,
+      "stages": [
+        {
+          "name": "save",
+          "duration_ms": 28.399999999906868,
+          "status": "ok"
+        },
+        {
+          "name": "generate_http",
+          "duration_ms": 39558.89999999991,
+          "status": "ok"
+        },
+        {
+          "name": "render",
+          "duration_ms": 70.9000000001397,
+          "status": "ok"
+        }
+      ],
+      "click_to_visible_ms": 39670
+    }
+  },
+  "natural_language": {
+    "stage_ms": {
+      "catalog_load": {
+        "n": 5,
+        "mean": 0.009,
+        "median": 0.009,
+        "min": 0.009,
+        "max": 0.01
+      },
+      "db_commit": {
+        "n": 5,
+        "mean": 13.107,
+        "median": 13.712,
+        "min": 10.154,
+        "max": 14.238
+      },
+      "db_read": {
+        "n": 5,
+        "mean": 2.725,
+        "median": 2.591,
+        "min": 2.54,
+        "max": 3.143
+      },
+      "match_risk": {
+        "n": 5,
+        "mean": 42947.362,
+        "median": 42943.345,
+        "min": 42906.511,
+        "max": 42975.494
+      },
+      "model_result_validate": {
+        "n": 5,
+        "mean": 0.336,
+        "median": 0.242,
+        "min": 0.234,
+        "max": 0.698
+      },
+      "overview": {
+        "n": 5,
+        "mean": 44185.585,
+        "median": 44069.314,
+        "min": 44020.156,
+        "max": 44550.013
+      },
+      "prompt_build": {
+        "n": 5,
+        "mean": 0.726,
+        "median": 0.706,
+        "min": 0.68,
+        "max": 0.778
+      },
+      "risk_assessment": {
+        "n": 5,
+        "mean": 42956.36,
+        "median": 42951.471,
+        "min": 42914.596,
+        "max": 42987.848
+      },
+      "score": {
+        "n": 5,
+        "mean": 0.127,
+        "median": 0.125,
+        "min": 0.125,
+        "max": 0.131
+      },
+      "validate": {
+        "n": 5,
+        "mean": 0.184,
+        "median": 0.183,
+        "min": 0.167,
+        "max": 0.206
+      }
+    },
+    "backend_non_model_ms": {
+      "n": 5,
+      "mean": 29.823,
+      "median": 29.523,
+      "min": 29.12,
+      "max": 31.128
+    },
+    "save_http_ms": {
+      "n": 5,
+      "mean": 22.603,
+      "median": 19.958,
+      "min": 19.541,
+      "max": 33.315
+    },
+    "prefill_share": {
+      "n": 5,
+      "mean": 90.278,
+      "median": 90.308,
+      "min": 90.181,
+      "max": 90.372
+    },
+    "batches": {
+      "2026-10-17": {
+        "n": 5,
+        "mean": 87171.913,
+        "median": 87067.976,
+        "min": 87033.458,
+        "max": 87531.098
+      }
+    },
+    "inputs": [
+      {
+        "purpose": "match_risk",
+        "input_chars": 4095,
+        "input_utf8_bytes": 7199,
+        "sdk_input_tokens": 2178
+      },
+      {
+        "purpose": "overview",
+        "input_chars": 4472,
+        "input_utf8_bytes": 7268,
+        "sdk_input_tokens": 2318
+      }
+    ],
+    "browser": {
+      "schema_version": 1,
+      "name": "report_generate",
+      "status": "ok",
+      "total_ms": 87357.90000000014,
+      "stages": [
+        {
+          "name": "save",
+          "duration_ms": 30.600000000093132,
+          "status": "ok"
+        },
+        {
+          "name": "generate_http",
+          "duration_ms": 87050.70000000019,
+          "status": "ok"
+        },
+        {
+          "name": "render",
+          "duration_ms": 269.30000000004657,
+          "status": "ok"
+        }
+      ],
+      "click_to_visible_ms": 87358.6000000001
+    },
+    "exports": {
+      "pdf": {
+        "html_build_ms": {
+          "n": 5,
+          "mean": 1.286,
+          "median": 1.176,
+          "min": 1.162,
+          "max": 1.726
+        },
+        "convert_ms": {
+          "n": 5,
+          "mean": 2414.092,
+          "median": 2157.564,
+          "min": 2131.183,
+          "max": 3440.333
+        },
+        "publish_ms": {
+          "n": 5,
+          "mean": 0.464,
+          "median": 0.507,
+          "min": 0.264,
+          "max": 0.644
+        },
+        "cleanup_ms": {
+          "n": 5,
+          "mean": 8.489,
+          "median": 11.773,
+          "min": 3.291,
+          "max": 12.292
+        },
+        "export_total_ms": {
+          "n": 5,
+          "mean": 2424.81,
+          "median": 2162.684,
+          "min": 2145.416,
+          "max": 3455.485
+        },
+        "api_total_ms": {
+          "n": 5,
+          "mean": 2426.196,
+          "median": 2163.922,
+          "min": 2146.702,
+          "max": 3457.341
+        },
+        "click_to_visible_ms": {
+          "n": 5,
+          "mean": 2498.56,
+          "median": 2235.6,
+          "min": 2221.6,
+          "max": 3547.6
+        }
+      },
+      "docx": {
+        "html_build_ms": {
+          "n": 5,
+          "mean": 1.185,
+          "median": 1.174,
+          "min": 1.168,
+          "max": 1.209
+        },
+        "convert_ms": {
+          "n": 5,
+          "mean": 2132.241,
+          "median": 2092.062,
+          "min": 2006.103,
+          "max": 2318.871
+        },
+        "publish_ms": {
+          "n": 5,
+          "mean": 0.572,
+          "median": 0.623,
+          "min": 0.454,
+          "max": 0.689
+        },
+        "cleanup_ms": {
+          "n": 5,
+          "mean": 11.763,
+          "median": 11.767,
+          "min": 11.075,
+          "max": 12.245
+        },
+        "export_total_ms": {
+          "n": 5,
+          "mean": 2146.114,
+          "median": 2105.046,
+          "min": 2020.38,
+          "max": 2332.742
+        },
+        "api_total_ms": {
+          "n": 5,
+          "mean": 2147.415,
+          "median": 2106.307,
+          "min": 2021.667,
+          "max": 2334.083
+        },
+        "click_to_visible_ms": {
+          "n": 5,
+          "mean": 2207.58,
+          "median": 2156.9,
+          "min": 2073.4,
+          "max": 2401.7
+        }
+      }
+    }
+  },
+  "resources": {
+    "temperature_c": {
+      "n": 240,
+      "mean": 44.727,
+      "median": 47.153,
+      "min": 25.5,
+      "max": 52.692
+    },
+    "available_memory_kb": {
+      "n": 30,
+      "mean": 988645.6,
+      "median": 1024998.0,
+      "min": 740904,
+      "max": 1113736
+    },
+    "frequencies_observed": {
+      "policy0_khz": [
+        1800000
+      ],
+      "policy6_khz": [
+        2400000
+      ],
+      "policy4_khz": [
+        2352000
+      ],
+      "npu_hz": [
+        1000000000
+      ]
+    }
+  }
+}

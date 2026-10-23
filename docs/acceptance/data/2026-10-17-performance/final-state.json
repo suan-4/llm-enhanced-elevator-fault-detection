@@ -1,0 +1,64 @@
+{
+  "utc": "2026-10-17T09:24:06.994182+00:00",
+  "formal_data_state": {
+    "integrity": "ok",
+    "account": {
+      "count": 1,
+      "hash": "1260c1ff15bff82881d7feee1b681c7c6db8ee72f36e6d089eaf33e77d77805f"
+    },
+    "report": {
+      "count": 18,
+      "hash": "2c63777c0c5510f64f285a32a7060c61606077b3d8aeb5f9001fe9a4443c6190"
+    }
+  },
+  "unchanged_since_20261017_material_probe": false,
+  "exports_remaining": [
+    {
+      "suffix": ".docx",
+      "bytes": 20353
+    },
+    {
+      "suffix": ".pdf",
+      "bytes": 309230
+    },
+    {
+      "suffix": ".docx",
+      "bytes": 20353
+    },
+    {
+      "suffix": ".pdf",
+      "bytes": 309230
+    },
+    {
+      "suffix": ".pdf",
+      "bytes": 309230
+    },
+    {
+      "suffix": ".pdf",
+      "bytes": 309230
+    },
+    {
+      "suffix": ".docx",
+      "bytes": 20353
+    },
+    {
+      "suffix": ".pdf",
+      "bytes": 309230
+    },
+    {
+      "suffix": ".docx",
+      "bytes": 20353
+    },
+    {
+      "suffix": ".docx",
+      "bytes": 20353
+    }
+  ],
+  "services": {
+    "elevator-api": "active",
+    "elevator-rkllm": "active",
+    "neo4j": "active",
+    "elevator-perf-api-33b51595-resume": "inactive",
+    "elevator-perf-run-33b51595-resume": "inactive"
+  }
+}

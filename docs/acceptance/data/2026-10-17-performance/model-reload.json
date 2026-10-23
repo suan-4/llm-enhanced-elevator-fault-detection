@@ -1,0 +1,10 @@
+{
+  "restart_to_ready_ms": 20161.491,
+  "cache_state": "model_reloaded_OS_page_cache_not_cleared",
+  "data_unchanged": true,
+  "files": {
+    "original_sha256": "f9585696801aeb8c1c27d41b7900b83a8af629716b5991220a6f734819959e52",
+    "flask_server.py": "f877268bc8319f71b018f3ca29a77ac3c07b0ce4aa1be8470e8b5bafc9cf58b8",
+    "rkllm_metrics.py": "5324b58d44745c586ad49011a829602ee912b765b3dc80791727ab201e99d69e"
+  }
+}

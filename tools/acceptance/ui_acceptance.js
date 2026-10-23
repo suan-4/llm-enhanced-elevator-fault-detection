@@ -203,6 +203,43 @@ async function seedEmptyDraft(browser) {
     });
     const defaultFitOk = defaultFit.rows === 66 && defaultFit.fit === 66 && defaultFit.miss === 0;
 
+    // ── 回归：检测项目按项目编号分组，可折叠 / 展开 ──
+    const groupProbe = await page.evaluate(() => {
+      const firstBody = document.querySelector(".items tbody");
+      return {
+        groups: document.querySelectorAll(".items tr.group-row").length,
+        firstGroupItems: firstBody ? firstBody.querySelectorAll("tr.item-main").length : 0,
+        totalItems: document.querySelectorAll(".items tr.item-main").length,
+        firstGroupTitle: (document.querySelector(".items .group-title")?.textContent || "").trim(),
+      };
+    });
+    await page.locator(".items .group-toggle").first().click();
+    await page.waitForTimeout(250);
+    const collapsedItems = await page.locator(".items tbody tr.item-main").count();
+    await page.locator(".items .group-toggle").first().click();
+    await page.waitForTimeout(250);
+    const expandedItems = await page.locator(".items tbody tr.item-main").count();
+    // 点正文会自动收起侧栏（既有行为）：宽屏下做侧栏宽度回归前先恢复展开
+    if (vp.w > 900) {
+      const folded = await page.evaluate(
+        () => !!document.querySelector(".main.expanded"),
+      );
+      if (folded) {
+        await page.click(".sidebar-toggle");
+        await page.waitForTimeout(500);
+      }
+    }
+
+    const groupOk =
+      groupProbe.groups > 1 &&
+      groupProbe.firstGroupTitle.includes("机器空间") &&
+      groupProbe.totalItems === 66 &&
+      collapsedItems === 66 - groupProbe.firstGroupItems &&
+      expandedItems === 66;
+
+    console.log(
+      `  项目分组折叠    ${groupProbe.groups} 组 · 首组「${groupProbe.firstGroupTitle}」· 折叠后 ${collapsedItems} / 展开 ${expandedItems} ${groupOk ? "✓" : "✗"}`,
+    );
     // 左侧可折叠导航：默认 260px，点折叠按钮收成 50px，再点展开
     const sidebarWidth = () =>
       page.evaluate(() => {
@@ -270,7 +307,7 @@ async function seedEmptyDraft(browser) {
         htmlScroll: Math.round(document.scrollingElement ? document.scrollingElement.scrollTop : -1),
         activeTag: a ? a.tagName : "",
         activeType: a && a.type ? a.type : "",
-        radioChecked: !!document.querySelector(".items tbody tr:nth-child(1) input[type=radio]:checked"),
+        radioChecked: !!document.querySelector(".items tbody tr.item-main input[type=radio]:checked"),
       };
     });
     const noRootScroll =
@@ -735,10 +772,45 @@ async function seedEmptyDraft(browser) {
     const actionbarOk =
       exportBtnText.includes("导出 PDF") && !generateBtnGone && exportBtnBg === "rgb(27, 94, 122)";
 
+    // ── 回归：基础信息可保存多套并选择，新建评估自动带入最近应用的一套 ──
+    await page.locator('.sidebar-nav li[data-anchor="items"]').click();
+    await page.waitForTimeout(600);
+    await page.fill("#f-clientName", "常用基础信息单位A");
+    await page.locator(".baseinfo-save").click();
+    await page.waitForSelector(".dialog", { timeout: 5000 });
+    await page.locator(".baseinfo-name").fill("验收方案A");
+    await page.locator(".dialog-foot .btn-primary").click();
+    await page.waitForTimeout(400);
+    await page.fill("#f-clientName", "常用基础信息单位B");
+    await page.locator(".baseinfo-save").click();
+    await page.waitForSelector(".dialog", { timeout: 5000 });
+    await page.locator(".baseinfo-name").fill("验收方案B");
+    await page.locator(".dialog-foot .btn-primary").click();
+    await page.waitForTimeout(400);
+    await page.locator(".baseinfo-trigger").click();
+    await page.waitForSelector(".baseinfo-menu", { timeout: 5000 });
+    const profileOptions = await page.locator(".baseinfo-menu-item").count();
+    const profileDeleteXs = await page.locator(".baseinfo-menu-del").count();
+    await page.locator(".baseinfo-menu-name", { hasText: "验收方案A" }).click();
+    await page.waitForTimeout(200);
+    await page.locator(".baseinfo-apply").click();
+    await page.waitForTimeout(300);
+    const appliedBaseValue = await page.inputValue("#f-clientName");
+    await page.locator(".actionbar .new-btn").click();
+    await page.waitForSelector(".dialog", { timeout: 5000 });
+    await page.locator(".dialog-foot .btn-primary").click();
+    await page.waitForTimeout(900);
+    const baseInfoValue = await page.inputValue("#f-clientName");
+    const baseInfoOk =
+      profileOptions >= 2 &&
+      profileDeleteXs === profileOptions &&
+      appliedBaseValue === "常用基础信息单位A" &&
+      baseInfoValue === "常用基础信息单位A";
+
     const pass =
       loginPageOk && themeOk && warmOk && rowColorOk && labelFontOk && clauseOk &&
       reportClauseOk && clippedOk && borderOk && outlineOk && sidebarOk && actionbarOk &&
-      noRootScroll && defaultFitOk && noReqColumnOk && exclusionOk &&
+      noRootScroll && defaultFitOk && noReqColumnOk && exclusionOk && groupOk && baseInfoOk &&
       paperLayoutOk && cardOk && newBtnOk && actionbarStableOk && defaultsOk &&
       rows === 66 && overflow <= 0 && toastOk && locateOk &&
       counters.includes("未填 0 项") &&
@@ -803,6 +875,9 @@ async function seedEmptyDraft(browser) {
       `  评价内容与要求列 ${JSON.stringify(reqColumn.headers)} 残留格子=${reqColumn.reqCells} ${noReqColumnOk ? "✓ 已移除" : "✗"}`,
     );
     console.log(`  计数栏          ${counters}`);
+    console.log(
+      `  基础信息保存    方案数=${profileOptions - 1} 应用=${JSON.stringify(appliedBaseValue)} 新建带入=${JSON.stringify(baseInfoValue)} ${baseInfoOk ? "✓" : "✗"}`,
+    );
     console.log(`  报告页数        ${papers}`);
     console.log(`  内容校验        一级=${gradeExpected} 得分97.73=${scoreExpected} 附页=${hasAppendix} 附录A=${hasAppendixA} 抬头=${filled}`);
     console.log(

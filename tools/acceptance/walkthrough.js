@@ -82,6 +82,31 @@ async function seedEmptyDraft(browser) {
   await page.waitForSelector(".items tbody tr.item-main", { timeout: 20000 });
   await step("登录进入录入页");
 
+  // 检测项目按项目编号分组：默认展开，点分组头可折叠/恢复
+  const wtGroupTotals = await page.evaluate(() => ({
+    groups: document.querySelectorAll(".items tr.group-row").length,
+    total: document.querySelectorAll(".items tr.item-main").length,
+    firstTitle: (document.querySelector(".items .group-title")?.textContent || "").trim(),
+  }));
+  await page.locator(".items .group-toggle").first().click();
+  await page.waitForTimeout(250);
+  const wtCollapsed = await page.locator(".items tbody tr.item-main").count();
+  await page.locator(".items .group-toggle").first().click();
+  await page.waitForTimeout(250);
+  const wtExpanded = await page.locator(".items tbody tr.item-main").count();
+  const wtGroupOk =
+    wtGroupTotals.groups > 1 &&
+    wtGroupTotals.firstTitle.includes("机器空间") &&
+    wtCollapsed < wtExpanded &&
+    wtExpanded === 66;
+  if (!wtGroupOk) {
+    ok = false;
+    console.log("  ✗ 检测项目分组折叠异常：" + JSON.stringify({ ...wtGroupTotals, wtCollapsed, wtExpanded }));
+  }
+  console.log(
+    "  " + (wtGroupOk ? "✓" : "✗") + " 检测项目分组折叠          " + wtGroupTotals.groups + " 组 · 首组「" + wtGroupTotals.firstTitle + "」折叠=" + wtCollapsed + " 展开=" + wtExpanded,
+  );
+
   await page.click(".actionbar .btn-primary");
   await step("点「校验并生成报告」(有漏填)");
   // 漏填不再有顶部清单模块：改为红色 Toast + 自动滚到第一处
@@ -250,6 +275,23 @@ async function seedEmptyDraft(browser) {
   // ── 系统设置（此时已在设置页）：诊断能出结果、日志能查、窄屏不横向溢出 ──
   await page.waitForSelector(".settings-tree", { timeout: 15000 });
   await step("系统设置页");
+
+  await page.locator('.tree-children li[data-section="config"]').click();
+  await page.waitForTimeout(500);
+  const configFields = await page.locator(".config-table .input, .config-table .select").count();
+  const configSaveCount = await page.locator(".config-save").count();
+  const dirPickCount = await page.locator(".config-table .dir-pick").count();
+  if (configFields < 8 || configSaveCount !== 1 || dirPickCount < 2) {
+    ok = false;
+    console.log("  ✗ 基本配置异常：" + JSON.stringify({ configFields, configSaveCount, dirPickCount }));
+  }
+  const configText = await page.locator(".config-table").innerText();
+  const readonlyInConfig = ["系统版本", "大模型", "业务库路径"].filter((t) => configText.includes(t));
+  if (readonlyInConfig.length) {
+    ok = false;
+    console.log("  ✗ 基本配置里仍出现只读系统信息：" + readonlyInConfig.join("、"));
+  }
+  await step("基本配置可编辑（只读信息已移出）");
   const settingsOverflow = await page.evaluate(
     () => document.documentElement.scrollWidth - window.innerWidth,
   );
@@ -281,7 +323,14 @@ async function seedEmptyDraft(browser) {
     ok = false;
     console.log("  ✗ 关于页没显示模型名");
   }
-  await step("关于页");
+  const aboutTable = await page.locator(".about-table").innerText();
+  const aboutRows = { 版本: aboutTable.includes("系统版本"), 模型: aboutTable.includes("大模型"),
+    业务库: aboutTable.includes("业务库路径") };
+  if (!aboutRows.版本 || !aboutRows.模型 || !aboutRows.业务库 || !aboutTable.includes("评价条目库")) {
+    ok = false;
+    console.log("  ✗ 关于本机信息表缺项：" + JSON.stringify(aboutRows));
+  }
+  await step("关于页（已并入系统版本 / 模型 / 业务库）");
 
   // ── 账号管理页（批 2 新增）：能开户、能删掉、不横向溢出 ──
   await page.locator('.tree-children li[data-section="accounts"]').click();
@@ -322,10 +371,34 @@ async function seedEmptyDraft(browser) {
     console.log("  ✗ 删除账号后列表里仍然存在");
   }
   await step("删除账号");
-  await page.locator(".tree-back").click();
+  await page.locator(".tree-home").click();
   await page.waitForSelector(".items tbody tr.item-main", { timeout: 15000 });
   await page.waitForTimeout(600);
   await step("返回评估录入页");
+
+  // 基础信息：保存成常用方案，新建评估自动带入
+  await page.fill("#f-clientName", "走查常用单位");
+  await page.locator(".baseinfo-save").click();
+  await page.waitForSelector(".dialog", { timeout: 5000 });
+  await page.locator(".baseinfo-name").fill("走查方案");
+  await page.locator(".dialog-foot .btn-primary").click();
+  await page.waitForTimeout(400);
+  await page.locator(".baseinfo-trigger").click();
+  await page.waitForSelector(".baseinfo-menu", { timeout: 5000 });
+  const wtProfileOptions = await page.locator(".baseinfo-menu-item").count();
+  const wtDeleteXs = await page.locator(".baseinfo-menu-del").count();
+  await page.locator(".baseinfo-trigger").click();
+  await page.waitForTimeout(200);
+  await page.locator(".actionbar .new-btn").click();
+  await page.waitForSelector(".dialog", { timeout: 5000 });
+  await page.locator(".dialog-foot .btn-primary").click();
+  await page.waitForTimeout(900);
+  const wtBaseValue = await page.inputValue("#f-clientName");
+  if (wtProfileOptions < 1 || wtDeleteXs !== wtProfileOptions || wtBaseValue !== "走查常用单位") {
+    ok = false;
+    console.log("  ✗ 基础信息常用方案/自动带入异常：" + JSON.stringify({ wtProfileOptions, wtBaseValue }));
+  }
+  await step("基础信息保存并自动带入");
 
   await page.locator(".sidebar-toggle").click();
   await page.waitForTimeout(400);

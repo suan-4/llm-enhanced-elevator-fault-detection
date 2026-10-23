@@ -9,6 +9,7 @@ export interface ItemAnswer {
   result: string
   reasons: string[]
   other_text: string
+  editing?: { reasons: string[]; other: boolean; other_text: string; legacy_combined?: boolean }
 }
 
 export interface RiskValue {
@@ -54,6 +55,10 @@ export interface ReportSummary {
   grade: Grade | null
   narrative: string
   provenance: Record<string, unknown>
+  files?: { fmt: string; filename: string; path: string; size: number;
+    version: number; result_digest: string; sha256: string }[]
+  /** 本次生成响应的计时，不作为报告业务内容保存 */
+  performance?: Record<string, unknown>
 }
 
 export function createReport(

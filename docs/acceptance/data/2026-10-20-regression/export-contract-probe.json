@@ -1,0 +1,53 @@
+{
+  "scope": "isolated SQLite + real HTTP routing + converter stub; no real export files",
+  "cases": [
+    {
+      "case": "missing_report_id",
+      "expected": "reject_before_conversion",
+      "http_status": 200,
+      "converter_called": true,
+      "caller_html_forwarded": true,
+      "passed": false
+    },
+    {
+      "case": "unknown_report_id",
+      "expected": "reject_before_conversion",
+      "http_status": 200,
+      "converter_called": true,
+      "caller_html_forwarded": true,
+      "passed": false
+    },
+    {
+      "case": "generated_report",
+      "expected": "conversion_success",
+      "http_status": 200,
+      "converter_called": true,
+      "caller_html_forwarded": true,
+      "passed": true
+    },
+    {
+      "case": "modified_after_generation",
+      "expected": "reject_before_conversion",
+      "http_status": 200,
+      "converter_called": true,
+      "caller_html_forwarded": true,
+      "passed": false
+    },
+    {
+      "case": "void_report",
+      "expected": "reject_before_conversion",
+      "http_status": 200,
+      "converter_called": true,
+      "caller_html_forwarded": true,
+      "passed": false
+    }
+  ],
+  "registration": {
+    "status": "generated",
+    "exported_at": null,
+    "files": 0,
+    "export_audits": 0,
+    "passed": false
+  },
+  "contract_passed": false
+}

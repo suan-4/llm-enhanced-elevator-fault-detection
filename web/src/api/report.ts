@@ -8,12 +8,9 @@ export function fetchJteItems(): Promise<JteItemsResponse> {
 
 export interface ExportPayload {
   fmt: 'pdf' | 'docx'
-  title: string
-  subtitle?: string
-  /** [[标签, 值], ...]；正文已自带抬头表时不要传 */
-  meta?: string[][]
-  body_html: string
-  footer?: string
+  report_id: string
+  version: number
+  result_digest: string
   filename?: string
 }
 
@@ -22,6 +19,6 @@ export function exportReport(payload: ExportPayload): Promise<ExportResponse> {
   return request<ExportResponse>('/report/export', {
     method: 'POST',
     body: payload,
-    timeout: 180_000,
+    timeout: 270_000,
   })
 }

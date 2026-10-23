@@ -20,7 +20,7 @@ from tests._tempdb import TempDB  # noqa: E402
 from app import db  # noqa: E402
 from app.repo import account_repo  # noqa: E402
 from app.repo.ids import Snowflake  # noqa: E402
-from app.services import auth_service, system_service  # noqa: E402
+from app.services import auth_service, runtime_config, system_service  # noqa: E402
 
 
 def _seed_account(username: str = "zhangsan") -> None:
@@ -122,13 +122,18 @@ def test_restore_brings_back_deleted_account() -> None:
             shutil.rmtree(target, ignore_errors=True)
 
 
-def test_config_is_read_only_for_now() -> None:
-    """基础版配置只读展示（写入随配置界面放 P1）。"""
+def test_config_items_expose_editable_whitelist() -> None:
+    """基本配置要给前端提供可编辑白名单 + 只读信息项。"""
     with TempDB():
-        items = system_service.config_items()
-        assert items and all(item["editable"] is False for item in items)
-        keys = [i["key"] for i in items]
-        assert "报告编号前缀" in keys and "导出目录" in keys
+        items = runtime_config.items()
+        editable = {i["key"]: i for i in items if i["editable"]}
+        for key in ("institution_name", "report_no_prefix", "export_dir",
+                    "backup_dir", "worker_id", "kiosk_exit_enabled"):
+            assert key in editable, f"缺少可编辑配置项 {key}"
+        assert all(item["type"] in ("str", "int", "bool") for item in editable.values())
+        assert all(i["editable"] for i in items)
+        readonly = runtime_config.readonly_items()
+        assert readonly and any(i["key"] == "app_version" for i in readonly)
 
 
 def test_audit_events_are_listed_newest_first() -> None:
@@ -149,7 +154,7 @@ def _main() -> int:
         ("备份为一致性快照", test_backup_creates_consistent_snapshot_with_manifest),
         ("损坏备份被拒", test_verify_backup_rejects_corrupted_file),
         ("恢复回滚数据", test_restore_brings_back_deleted_account),
-        ("配置只读展示", test_config_is_read_only_for_now),
+        ("配置可编辑白名单", test_config_items_expose_editable_whitelist),
         ("审计查询", test_audit_events_are_listed_newest_first),
     ]
     failed = 0

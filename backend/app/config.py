@@ -1,3 +1,6 @@
+import json
+from pathlib import Path
+
 from pydantic_settings import BaseSettings
 
 
@@ -13,6 +16,12 @@ class Settings(BaseSettings):
     rkllm_connect_timeout: float = 5.0
     rkllm_temperature: float = 0.7
     rkllm_max_new_tokens: int = 512
+    rkllm_context_tokens: int = 4096
+    rkllm_template_reserve_tokens: int = 128
+    rkllm_model_id: str = "Qwen3.5-4B_W8A8_RK3588"
+    # Relative to backend/. Assets and successful calibration are offline deployment artifacts.
+    rkllm_tokenizer_path: str = "data/tokenizers/qwen3.5-4b/tokenizer.json"
+    rkllm_calibration_path: str = "data/tokenizers/qwen3.5-4b/calibration.json"
 
     # ── 业务数据库（用户账号 / 报告历史 / 填写记录）──
     # 相对路径按 backend/ 目录解析；知识图谱仍在 Neo4j
@@ -43,4 +52,30 @@ class Settings(BaseSettings):
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 
 
+BACKEND_DIR = Path(__file__).resolve().parent.parent
+# 系统设置「基本配置」写入的运行时覆盖；.env 是部署基线，这里优先级更高。
+# 文件不存在/损坏时安静回退到 .env，避免一个坏 JSON 把服务卡在启动阶段。
+RUNTIME_CONFIG_PATH = BACKEND_DIR / "data" / "runtime_config.json"
+
+
+def load_runtime_overrides(path: Path | None = None) -> dict:
+    target = Path(path) if path is not None else RUNTIME_CONFIG_PATH
+    try:
+        data = json.loads(target.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def apply_runtime_overrides(instance: Settings, values: dict) -> list[str]:
+    """只应用 Settings 上确实存在的字段；未知键忽略（旧文件不会把启动搞挂）。"""
+    applied: list[str] = []
+    for key, value in values.items():
+        if hasattr(instance, key):
+            setattr(instance, key, value)
+            applied.append(key)
+    return applied
+
+
 settings = Settings()
+apply_runtime_overrides(settings, load_runtime_overrides())

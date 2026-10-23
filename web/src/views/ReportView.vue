@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { afterPaint, beginInteraction } from '@/utils/performance'
 import InfoTable from '@/components/report/InfoTable.vue'
 import ItemTable from '@/components/report/ItemTable.vue'
 import ReportDocument from '@/components/report/ReportDocument.vue'
 import AppDialog from '@/components/AppDialog.vue'
+import { defaultProfileName } from '@/domain/baseInfo'
 import { overviewText, countByCategory } from '@/domain/riskScore'
-import { buildAppendixRows } from '@/domain/reportResult'
+import { buildAppendixRows, overviewNarrative } from '@/domain/reportResult'
+import { modelStatus } from '@/domain/modelStatus'
 import { useReportStore } from '@/stores/report'
 import { useShell } from '@/stores/shell'
 import { useExport } from '@/utils/export'
@@ -17,11 +20,27 @@ const exp = useExport()
 const { show } = useToast()
 
 const view = ref<'input' | 'report'>('input')
+/* 常用基础信息：本机可存多套（不同委托/使用单位），在这里选择或保存 */
+const selectedProfileId = ref('')
+const profileMenuOpen = ref(false)
+const pickerRoot = ref<HTMLElement | null>(null)
+const saveProfileOpen = ref(false)
+const deleteProfileOpen = ref(false)
+const deleteProfileId = ref('')
+const profileName = ref('')
+const profileBusy = ref(false)
+
+const selectedProfileName = computed(
+  () =>
+    store.baseInfoProfiles.find((item) => item.id === selectedProfileId.value)?.name || '',
+)
 const generating = ref(false)
 const confirmNew = ref(false)
 const newBusy = ref(false)
 const confirmExport = ref<'pdf' | 'docx' | null>(null)
 const reportWrap = ref<HTMLElement | null>(null)
+const itemTable = ref<InstanceType<typeof ItemTable> | null>(null)
+const locked = computed(() => ['filed', 'void'].includes(store.status) || store.exportUncertain)
 
 /* 侧栏是「项目进度 + 三个滚动锚点」：基础信息 / 检测项目填写 / 所生成报告。
    从别的页面点过来时本页可能还没挂载，所以用 shell.requested 待办标记，
@@ -89,12 +108,25 @@ watch(view, (v) => {
 
 /** A4 宽度（210mm @96dpi），用于按视口等比缩放报告页 */
 const PAPER_WIDTH = 793.7
+let paperObserver: ResizeObserver | undefined
+
+watch(reportWrap, (host) => {
+  paperObserver?.disconnect()
+  if (!host) return
+  paperObserver = new ResizeObserver(fitPapers)
+  paperObserver.observe(host)
+  host.querySelectorAll('.paper').forEach(paper => paperObserver?.observe(paper))
+}, { flush: 'post' })
 
 onMounted(async () => {
   await store.loadItems()
+  store.ensureBaseInfoLoaded()
+  refreshSelectedProfile()
   await startDraft()
   window.addEventListener('resize', fitPapers)
+  void document.fonts?.ready.then(fitPapers)
   mainEl()?.addEventListener('scroll', updateActiveByScroll, { passive: true })
+  document.addEventListener('click', onDocumentClick)
   consumeShellRequest()
   await nextTick()
   updateActiveByScroll()
@@ -116,10 +148,14 @@ watch([() => store.form, () => store.states], () => store.scheduleSave(), { deep
 /* 页面切到后台/被关闭时，尽量把防抖里还压着的改动写下去。
    防抖窗口（800ms）内掉电仍可能丢最后一次改动，所以悬浮岛会显示保存状态。 */
 function flushOnHide(): void {
-  if (document.visibilityState === 'hidden') void store.flush()
+  if (document.visibilityState === 'hidden') flushOnPageHide()
+}
+function flushOnPageHide(): void {
+  // The store retains the failure; lifecycle events have no caller to catch it.
+  void store.flush().catch(() => undefined)
 }
 document.addEventListener('visibilitychange', flushOnHide)
-window.addEventListener('pagehide', () => void store.flush())
+window.addEventListener('pagehide', flushOnPageHide)
 
 const saveHint = computed(() => {
   if (store.saveState === 'saving') return '保存中…'
@@ -128,9 +164,12 @@ const saveHint = computed(() => {
 })
 
 onBeforeUnmount(() => {
+  paperObserver?.disconnect()
   window.removeEventListener('resize', fitPapers)
   mainEl()?.removeEventListener('scroll', updateActiveByScroll)
+  document.removeEventListener('click', onDocumentClick)
   document.removeEventListener('visibilitychange', flushOnHide)
+  window.removeEventListener('pagehide', flushOnPageHide)
 })
 
 /* 风险值只使用服务端专家查表结果，不用演示值填补未确认数据。 */
@@ -150,16 +189,15 @@ const categories = computed(() => Object.values(riskByNo.value).map(risk => risk
 const g = computed(() => store.generated?.score ?? null)
 const grade = computed(() => store.generated?.grade ?? null)
 const assessmentIssues = computed(() => store.generated?.assessment_issues ?? [])
-/* 评估概况 = 模板要求的两行（风险分布 + 得分）+ 大模型写的那段说明。
-   规则摘要兜底的那版不往报告上打印 —— 它逐条罗列，附页已经列过了，
-   塞进概况会把单元格撑得很长（放哪由 PRD Q7 定，这里先按建议默认放概况）。 */
+const modelNotice = computed(() => modelStatus(store.generated))
+/* 模板统计 + 已校验概况。新策略的规则兜底也保留最高风险，故障提示不进入纸张。 */
 const overview = computed(() => {
   const count = countByCategory(categories.value)
   const base = g.value === null
     ? `1、存在Ⅰ类风险 ${count['Ⅰ类']} 项，Ⅱ类风险 ${count['Ⅱ类']} 项。\n2、综合评定暂不可用，详见评定提示。`
     : overviewText(categories.value, g.value)
-  const ai = store.generated?.llm_used ? store.generated.narrative.trim() : ''
-  return ai ? `${base}\n${ai}` : base
+  const narrative = overviewNarrative(store.generated)
+  return narrative ? `${base}\n${narrative}` : base
 })
 const conclusion = computed(() => `综合安全状况等级：${grade.value ?? '待确认'}`)
 const appendixRows = computed(() => buildAppendixRows(store.items, store.stateOf, riskByNo.value))
@@ -185,11 +223,83 @@ function scrollToTop(): void {
 
 async function saveNow(): Promise<void> {
   try {
+    if (locked.value) {
+      show('这份报告已归档或作废，原内容已保留；修改请在报告管理中复制为新建')
+      return
+    }
     await store.save()
     show('草稿已保存')
   } catch (err) {
     show(err instanceof Error ? err.message : '保存失败')
   }
+}
+
+/** 下拉框选中的方案被删除后，自动回退到最近使用/第一套 */
+function refreshSelectedProfile(): void {
+  if (!store.baseInfoProfiles.some((item) => item.id === selectedProfileId.value)) {
+    selectedProfileId.value =
+      store.lastBaseInfoProfileId || store.baseInfoProfiles[0]?.id || ''
+  }
+}
+
+function openSaveProfile(): void {
+  profileName.value = defaultProfileName(store.form)
+  saveProfileOpen.value = true
+}
+
+function confirmSaveProfile(): void {
+  if (profileBusy.value) return
+  profileBusy.value = true
+  const profile = store.saveBaseInfoProfile(profileName.value)
+  profileBusy.value = false
+  if (profile) {
+    saveProfileOpen.value = false
+    selectedProfileId.value = profile.id
+    show('常用基础信息已保存：' + profile.name)
+  } else {
+    show('本机无法保存常用基础信息（浏览器存储不可用）', 3000, 'danger')
+  }
+}
+
+function applyProfile(): void {
+  const id = selectedProfileId.value
+  const profile = store.baseInfoProfiles.find((item) => item.id === id)
+  if (!id || !profile) return
+  if (store.applyBaseInfoProfile(id)) show('已应用常用信息：' + profile.name)
+  else show('本机无法保存方案选择，尚未应用，请检查浏览器存储后重试', 3500, 'danger')
+}
+
+function toggleProfileMenu(): void {
+  profileMenuOpen.value = !profileMenuOpen.value
+}
+
+function selectProfile(id: string): void {
+  selectedProfileId.value = id
+  profileMenuOpen.value = false
+}
+
+function askDeleteProfile(id: string): void {
+  deleteProfileId.value = id
+  deleteProfileOpen.value = true
+}
+
+function confirmDeleteProfile(): void {
+  const profile = store.baseInfoProfiles.find((item) => item.id === deleteProfileId.value)
+  if (!store.deleteBaseInfoProfile(deleteProfileId.value)) {
+    show('删除失败：无法写入浏览器存储，请重试', 3500, 'danger')
+    return
+  }
+  deleteProfileOpen.value = false
+  deleteProfileId.value = ''
+  refreshSelectedProfile()
+  if (profile) show('已删除常用信息：' + profile.name)
+}
+
+/** 点页面其它地方收起常用信息菜单 */
+function onDocumentClick(event: MouseEvent): void {
+  if (!profileMenuOpen.value) return
+  const root = pickerRoot.value
+  if (root && !root.contains(event.target as Node)) profileMenuOpen.value = false
 }
 
 /* ── 新建评估 ──
@@ -234,28 +344,39 @@ async function generate(): Promise<void> {
      jump() 会滚动 + 高亮，字段类还会把光标放进输入框，方便直接补填。 */
   if (store.missing.length) {
     const first = store.missing[0]
-    jump(first.key, first.kind)
+    await jump(first.key, first.kind)
     show(`还有 ${store.missing.length} 项未填写`, 3000, 'danger')
     return
   }
   if (generating.value) return
+  const timing = beginInteraction('report_generate')
   generating.value = true
   try {
-    await store.generate()
-    view.value = 'report'
-    shell.active = 'report'
-    void nextTick(() => {
+    await store.generate(timing)
+    await timing.measure('render', async () => {
+      view.value = 'report'
+      shell.active = 'report'
+      await nextTick()
       fitPapers()
       scrollToSection(SECTION_IDS.report)
+      await afterPaint()
     })
+    timing.finish('ok')
   } catch (err) {
+    timing.finish('error')
     show(err instanceof Error ? err.message : '生成失败')
   } finally {
     generating.value = false
   }
 }
 
-function jump(key: string, kind: 'field' | 'item'): void {
+async function jump(key: string, kind: 'field' | 'item'): Promise<void> {
+  view.value = 'input'
+  await nextTick()
+  if (kind === 'item') {
+    itemTable.value?.expandItem(key)
+    await nextTick()
+  }
   const el =
     kind === 'field'
       ? document.getElementById(`f-${key}`)
@@ -322,14 +443,75 @@ function fitPapers(): void {
           </div>
           <div v-else-if="!store.ready" class="state-tip">正在准备评估…</div>
 
-          <template v-else>
+          <fieldset v-else :disabled="locked || exp.busy.value" style="border: 0; padding: 0; margin: 0; min-width: 0">
+            <div v-if="locked" class="notes" role="status">{{ store.exportUncertain
+              ? '导出状态待确认，暂时只读；恢复连接后请重试导出或重新打开报告。'
+              : '这份报告已归档或作废，只读查看；修改请在报告管理中复制为新建。' }}</div>
             <div id="sec-info">
+              <div class="section-bar">
+                <b class="section-title">基础信息</b>
+                <div class="baseinfo-controls">
+                  <div ref="pickerRoot" class="baseinfo-picker">
+                    <button
+                      class="baseinfo-trigger"
+                      type="button"
+                      aria-haspopup="listbox"
+                      :aria-expanded="profileMenuOpen"
+                      @click="toggleProfileMenu"
+                    >
+                      <span class="baseinfo-trigger-text">
+                        {{ selectedProfileName || '（未选择常用信息）' }}
+                      </span>
+                      <span class="baseinfo-caret" :class="{ open: profileMenuOpen }">▾</span>
+                    </button>
+                    <ul v-if="profileMenuOpen" class="baseinfo-menu" role="listbox">
+                      <li
+                        v-for="profile in store.baseInfoProfiles"
+                        :key="profile.id"
+                        class="baseinfo-menu-item"
+                        :class="{ active: profile.id === selectedProfileId }"
+                      >
+                        <button
+                          class="baseinfo-menu-name"
+                          type="button"
+                          @click="selectProfile(profile.id)"
+                        >
+                          {{ profile.name }}
+                        </button>
+                        <button
+                          class="baseinfo-menu-del"
+                          type="button"
+                          title="删除这套常用信息"
+                          aria-label="删除"
+                          @click.stop="askDeleteProfile(profile.id)"
+                        >
+                          ×
+                        </button>
+                      </li>
+                      <li v-if="!store.baseInfoProfiles.length" class="baseinfo-menu-empty">
+                        还没有常用信息，点「保存为常用…」新建
+                      </li>
+                    </ul>
+                  </div>
+                  <button
+                    class="btn baseinfo-apply"
+                    type="button"
+                    :disabled="!selectedProfileId"
+                    @click="applyProfile"
+                  >
+                    应用
+                  </button>
+                  <button class="btn baseinfo-save" type="button" @click="openSaveProfile">
+                    {{ store.baseInfoProfiles.length ? '保存新方案…' : '保存为常用…' }}
+                  </button>
+                </div>
+              </div>
               <InfoTable />
             </div>
             <div id="sec-items" style="margin-top: 14px">
-              <ItemTable />
+              <ItemTable ref="itemTable" />
             </div>
-          </template>
+          </fieldset>
         </div>
       </section>
 
@@ -345,6 +527,7 @@ function fitPapers(): void {
                 JTE-09-R02-3.00　不符合 {{ riskRows.length }} 项　综合安全状况等级 {{ grade ?? '待确认' }}
               </span>
             </div>
+            <div v-if="modelNotice" class="notes model-status" role="status">{{ modelNotice }}</div>
             <div v-if="assessmentIssues.length" class="notes" role="status">
               <b>待确认预览，尚不能作为正式报告导出。</b>
               <div v-for="issue in assessmentIssues" :key="issue">{{ issue }}</div>
@@ -389,7 +572,7 @@ function fitPapers(): void {
           <button
             class="btn btn-lg btn-save"
             type="button"
-            :disabled="store.saveState === 'saving'"
+            :disabled="store.saveState === 'saving' || locked || exp.busy.value"
             @click="saveNow"
           >
             保存草稿
@@ -399,7 +582,7 @@ function fitPapers(): void {
               v-if="view === 'input'"
               class="btn btn-lg btn-primary"
               type="button"
-              :disabled="generating"
+              :disabled="generating || locked || exp.busy.value"
               @click="generate"
             >
               {{ generating ? '生成中…' : '校验并生成报告' }}
@@ -427,6 +610,38 @@ function fitPapers(): void {
       </div>
 
       <AppDialog
+        :open="saveProfileOpen"
+        title="保存常用基础信息"
+        confirm-text="保存"
+        :busy="profileBusy"
+        @close="saveProfileOpen = false"
+        @confirm="confirmSaveProfile"
+      >
+        <div class="field">
+          <label>方案名称</label>
+          <input
+            v-model="profileName"
+            class="input baseinfo-name"
+            placeholder="例如：XX 小区 1# 梯 / 某公司"
+          />
+        </div>
+        <p class="dialog-p">保存后新建评估默认带入这套抬头；同名会覆盖。</p>
+      </AppDialog>
+      <AppDialog
+        :open="deleteProfileOpen"
+        title="删除常用基础信息"
+        confirm-text="删除"
+        danger
+        :busy="profileBusy"
+        @close="deleteProfileOpen = false"
+        @confirm="confirmDeleteProfile"
+      >
+        <p class="dialog-p">
+          确定删除「{{ store.baseInfoProfiles.find((item) => item.id === deleteProfileId)?.name || '这套常用信息' }}」？
+          删除不影响当前已填写的内容。
+        </p>
+      </AppDialog>
+      <AppDialog
         :open="confirmNew"
         title="新建评估"
         confirm-text="新建"
@@ -453,6 +668,174 @@ function fitPapers(): void {
 </template>
 
 <style scoped>
+.section-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 0 0 8px;
+  border-bottom: 1px solid var(--c-line);
+  padding-bottom: 8px;
+}
+
+.baseinfo-controls {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.baseinfo-picker {
+  position: relative;
+}
+
+.baseinfo-trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 260px;
+  max-width: 100%;
+  height: var(--h-control);
+  padding: 0 10px;
+  border: 1px solid var(--c-line);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  color: var(--c-text);
+  font: inherit;
+  font-size: 13.5px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.baseinfo-trigger:hover {
+  border-color: var(--c-primary);
+}
+
+.baseinfo-trigger-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.baseinfo-caret {
+  flex: 0 0 auto;
+  color: var(--c-muted);
+  font-size: 11px;
+  transition: transform 0.15s;
+}
+
+.baseinfo-caret.open {
+  transform: rotate(180deg);
+}
+
+.baseinfo-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  width: 100%;
+  min-width: 260px;
+  max-height: 260px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: var(--c-panel);
+  border: 1px solid var(--c-line);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-lg);
+  z-index: 60;
+}
+
+.baseinfo-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 5px;
+}
+
+.baseinfo-menu-item:hover,
+.baseinfo-menu-item.active {
+  background: var(--c-primary-soft);
+}
+
+.baseinfo-menu-name {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 8px;
+  border: 0;
+  background: none;
+  color: var(--c-text);
+  font: inherit;
+  font-size: 12.5px;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.baseinfo-menu-del {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  margin-right: 6px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: #fdecec;
+  color: var(--c-danger);
+  font-size: 14px;
+  line-height: 20px;
+  text-align: center;
+  cursor: pointer;
+}
+
+.baseinfo-menu-del:hover {
+  background: var(--c-danger);
+  color: #fff;
+}
+
+.baseinfo-menu-empty {
+  padding: 8px;
+  color: var(--c-muted);
+  font-size: 12px;
+}
+
+@media (max-width: 900px) {
+  .baseinfo-controls {
+    width: 100%;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+  }
+
+  .baseinfo-trigger {
+    width: 210px;
+  }
+
+  .baseinfo-menu {
+    min-width: 210px;
+  }
+}
+
+.section-title {
+  font-family: var(--font-bold);
+  font-size: 15px;
+  color: var(--c-primary);
+}
+
+.section-hint {
+  color: var(--c-muted);
+  font-size: 12px;
+}
+
+.section-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+}
+
 .state-tip {
   padding: 20px 0;
   color: var(--c-muted);
