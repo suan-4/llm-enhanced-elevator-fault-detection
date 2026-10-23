@@ -1,25 +1,26 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { afterPaint, beginInteraction } from '@/utils/performance'
+import { useRoute } from 'vue-router'
+import { beginInteraction } from '@/utils/performance'
 import InfoTable from '@/components/report/InfoTable.vue'
 import ItemTable from '@/components/report/ItemTable.vue'
-import ReportDocument from '@/components/report/ReportDocument.vue'
 import AppDialog from '@/components/AppDialog.vue'
+import ReportCenter from '@/components/report/ReportCenter.vue'
 import { defaultProfileName } from '@/domain/baseInfo'
-import { overviewText, countByCategory } from '@/domain/riskScore'
-import { buildAppendixRows, overviewNarrative } from '@/domain/reportResult'
-import { modelStatus } from '@/domain/modelStatus'
 import { useReportStore } from '@/stores/report'
 import { useShell } from '@/stores/shell'
-import { useExport } from '@/utils/export'
 import { useToast } from '@/utils/toast'
 
 const store = useReportStore()
+const route = useRoute()
 const shell = useShell()
-const exp = useExport()
 const { show } = useToast()
 
-const view = ref<'input' | 'report'>('input')
+/* input = 录入；reports = 报告管理/查看（就地切换，不跳路由） */
+const view = ref<'input' | 'reports'>('input')
+const reportCenter = ref<InstanceType<typeof ReportCenter> | null>(null)
+/** 进报告区域前暂存录入现场，切回录入锚点时恢复 */
+let stashedForReports = false
 /* 常用基础信息：本机可存多套（不同委托/使用单位），在这里选择或保存 */
 const selectedProfileId = ref('')
 const profileMenuOpen = ref(false)
@@ -37,15 +38,16 @@ const selectedProfileName = computed(
 const generating = ref(false)
 const confirmNew = ref(false)
 const newBusy = ref(false)
-const confirmExport = ref<'pdf' | 'docx' | null>(null)
-const reportWrap = ref<HTMLElement | null>(null)
 const itemTable = ref<InstanceType<typeof ItemTable> | null>(null)
-const locked = computed(() => ['filed', 'void'].includes(store.status) || store.exportUncertain)
+/* 已归档 / 已作废的报告统一在报告查看页阅读，不再复用录入页置灰；
+   录入页只剩「导出状态待确认」这一种临时只读。 */
+const locked = computed(() => store.exportUncertain)
 
-/* 侧栏是「项目进度 + 三个滚动锚点」：基础信息 / 检测项目填写 / 所生成报告。
+/* 侧栏是「项目进度 + 三个区域」：基础信息 / 检测项目填写 / 报告管理。
+   前两个是滚动锚点，第三个就地切换到报告管理/查看区域。
    从别的页面点过来时本页可能还没挂载，所以用 shell.requested 待办标记，
    挂载后消费；本页已挂载时 watch 立即消费。 */
-const SECTION_IDS = { info: 'sec-info', items: 'sec-items', report: 'sec-report' } as const
+const SECTION_IDS = { info: 'sec-info', items: 'sec-items' } as const
 
 function mainEl(): HTMLElement | null {
   return document.querySelector('.main') as HTMLElement | null
@@ -60,38 +62,86 @@ function scrollToSection(id: string): void {
   main.scrollTo({ top: Math.max(0, top), behavior: 'smooth' })
 }
 
+/** 进「报告管理」区域：先把当前录入现场暂存起来（查看历史报告会占用 store） */
+let inputScrollTop = 0
+
+async function enterReports(reportId?: string): Promise<void> {
+  if (view.value !== 'reports') {
+    inputScrollTop = mainEl()?.scrollTop ?? 0
+    store.stashSession()
+    stashedForReports = true
+  }
+  // 先把要显示的内容准备好（列表刷新 / 重新装回正在查看的报告），再切区域
+  if (reportId) await reportCenter.value?.showReport(reportId)
+  else await reportCenter.value?.prepareEnter()
+  view.value = 'reports'
+  shell.active = 'reports'
+  shell.reportsView = true
+  await nextTick()
+  mainEl()?.scrollTo({ top: 0 })
+}
+
+/** 从报告区域回到录入页：恢复离开前的现场 */
+async function leaveReports(): Promise<void> {
+  shell.reportsView = false
+  const hadStash = stashedForReports
+  stashedForReports = false
+  if (hadStash) {
+    if (!store.restoreStashedSession()) {
+      store.clearSession()
+      await startDraft()
+    }
+  }
+  view.value = 'input'
+  await nextTick()
+  updateActiveByScroll()
+  // 恢复到离开录入页时的滚动位置（报告区域可能把主容器滚到了顶部）
+  mainEl()?.scrollTo({ top: inputScrollTop })
+}
+
 async function showAnchor(anchor: 'info' | 'items'): Promise<void> {
+  if (view.value === 'reports') await leaveReports()
   view.value = 'input'
   await nextTick()
   shell.active = anchor
   scrollToSection(SECTION_IDS[anchor])
 }
 
-/** 「所生成报告」：没有就先生成；漏填时会留在录入页并已定位第一处 */
-async function showReportSection(): Promise<void> {
-  if (!store.generated) await generate()
-  if (!store.generated) return
-  view.value = 'report'
-  await nextTick()
-  fitPapers()
-  shell.active = 'report'
-  scrollToSection(SECTION_IDS.report)
+/** 侧栏「报告管理」：已在报告区域就保持原状态（查看页继续看，不退回列表） */
+async function showReportsSection(): Promise<void> {
+  if (view.value === 'reports') return
+  await enterReports()
+}
+
+/** 列表里点「继续编辑」：恢复现场并打开该草稿 */
+async function editDraft(id: string): Promise<void> {
+  if (view.value === 'reports') {
+    await leaveReports()
+  }
+  try {
+    await store.openReport(id)
+    shell.active = 'items'
+    await nextTick()
+    scrollToSection(SECTION_IDS.items)
+  } catch (err) {
+    show(err instanceof Error ? err.message : '无法继续编辑这份草稿')
+  }
 }
 
 function consumeShellRequest(): void {
   const want = shell.requested
   if (!want) return
   shell.requested = ''
-  if (want === 'report') void showReportSection()
+  if (want === 'reports') void showReportsSection()
   else void showAnchor(want)
 }
 
 watch(() => shell.requested, consumeShellRequest)
 
-/* 录入视图内按滚动位置高亮侧栏锚点；报告视图固定高亮第三项 */
+/* 录入视图内按滚动位置高亮侧栏锚点；报告区域固定高亮第三项 */
 function updateActiveByScroll(): void {
-  if (view.value === 'report') {
-    shell.active = 'report'
+  if (view.value === 'reports') {
+    shell.active = 'reports'
     return
   }
   const main = mainEl()
@@ -102,32 +152,25 @@ function updateActiveByScroll(): void {
 }
 
 watch(view, (v) => {
-  if (v === 'report') shell.active = 'report'
+  if (v === 'reports') shell.active = 'reports'
   else void nextTick(updateActiveByScroll)
 })
-
-/** A4 宽度（210mm @96dpi），用于按视口等比缩放报告页 */
-const PAPER_WIDTH = 793.7
-let paperObserver: ResizeObserver | undefined
-
-watch(reportWrap, (host) => {
-  paperObserver?.disconnect()
-  if (!host) return
-  paperObserver = new ResizeObserver(fitPapers)
-  paperObserver.observe(host)
-  host.querySelectorAll('.paper').forEach(paper => paperObserver?.observe(paper))
-}, { flush: 'post' })
 
 onMounted(async () => {
   await store.loadItems()
   store.ensureBaseInfoLoaded()
   refreshSelectedProfile()
   await startDraft()
-  window.addEventListener('resize', fitPapers)
-  void document.fonts?.ready.then(fitPapers)
   mainEl()?.addEventListener('scroll', updateActiveByScroll, { passive: true })
   document.addEventListener('click', onDocumentClick)
   consumeShellRequest()
+  // 兜底：恢复的现场若仍指向已归档/已作废报告，直接进报告区域查看
+  if (['filed', 'void'].includes(store.status) && store.reportId) {
+    await enterReports(store.reportId)
+    return
+  }
+  // 旧地址 /#/reports 会带到 ?section=reports
+  if (route.query.section === 'reports') await enterReports()
   await nextTick()
   updateActiveByScroll()
 })
@@ -142,8 +185,12 @@ async function startDraft(): Promise<void> {
 }
 
 /* 改动后防抖自动保存：现场最怕录了半天，一刷新或一掉电全没了。
-   store.ready 之前不保存 —— 否则刚读回来的内容会被立刻写回去。 */
-watch([() => store.form, () => store.states], () => store.scheduleSave(), { deep: true, flush: 'sync' })
+   store.ready 之前不保存 —— 否则刚读回来的内容会被立刻写回去。
+   报告区域里 store 装的是"正在查看的历史报告"，不能触发自动保存。 */
+watch([() => store.form, () => store.states], () => {
+  if (view.value === 'reports') return
+  store.scheduleSave()
+}, { deep: true, flush: 'sync' })
 
 /* 页面切到后台/被关闭时，尽量把防抖里还压着的改动写下去。
    防抖窗口（800ms）内掉电仍可能丢最后一次改动，所以悬浮岛会显示保存状态。 */
@@ -151,6 +198,7 @@ function flushOnHide(): void {
   if (document.visibilityState === 'hidden') flushOnPageHide()
 }
 function flushOnPageHide(): void {
+  if (view.value === 'reports') return
   // The store retains the failure; lifecycle events have no caller to catch it.
   void store.flush().catch(() => undefined)
 }
@@ -164,55 +212,17 @@ const saveHint = computed(() => {
 })
 
 onBeforeUnmount(() => {
-  paperObserver?.disconnect()
-  window.removeEventListener('resize', fitPapers)
+  // 若正停留在报告区域（例如点齿轮去设置页），把录入现场恢复回来再卸载
+  if (stashedForReports) {
+    stashedForReports = false
+    if (!store.restoreStashedSession()) store.clearSession()
+  }
+  shell.reportsView = false
   mainEl()?.removeEventListener('scroll', updateActiveByScroll)
   document.removeEventListener('click', onDocumentClick)
   document.removeEventListener('visibilitychange', flushOnHide)
   window.removeEventListener('pagehide', flushOnPageHide)
 })
-
-/* 风险值只使用服务端专家查表结果，不用演示值填补未确认数据。 */
-const riskRows = computed(() =>
-  store.items
-    .filter((item) => store.stateOf(item.no).result === '不符合')
-    .map((item) => ({
-      item,
-      state: store.stateOf(item.no),
-      risk: store.generated?.risks?.[item.no],
-    })),
-)
-
-const riskByNo = computed(() => store.generated?.risks ?? {})
-
-const categories = computed(() => Object.values(riskByNo.value).map(risk => risk.category))
-const g = computed(() => store.generated?.score ?? null)
-const grade = computed(() => store.generated?.grade ?? null)
-const assessmentIssues = computed(() => store.generated?.assessment_issues ?? [])
-const modelNotice = computed(() => modelStatus(store.generated))
-/* 模板统计 + 已校验概况。新策略的规则兜底也保留最高风险，故障提示不进入纸张。 */
-const overview = computed(() => {
-  const count = countByCategory(categories.value)
-  const base = g.value === null
-    ? `1、存在Ⅰ类风险 ${count['Ⅰ类']} 项，Ⅱ类风险 ${count['Ⅱ类']} 项。\n2、综合评定暂不可用，详见评定提示。`
-    : overviewText(categories.value, g.value)
-  const narrative = overviewNarrative(store.generated)
-  return narrative ? `${base}\n${narrative}` : base
-})
-const conclusion = computed(() => `综合安全状况等级：${grade.value ?? '待确认'}`)
-const appendixRows = computed(() => buildAppendixRows(store.items, store.stateOf, riskByNo.value))
-
-function requestExport(fmt: 'pdf' | 'docx'): void {
-  if (assessmentIssues.value.length) return
-  if (store.generated?.other_matches.length) confirmExport.value = fmt
-  else void exp.run(fmt)
-}
-
-function approveExport(): void {
-  const fmt = confirmExport.value
-  confirmExport.value = null
-  if (fmt) void exp.run(fmt)
-}
 
 /* ── 交互 ── */
 /** 滚动容器是 .main（body 不滚动），因此回到顶部要滚它而不是 window */
@@ -224,7 +234,7 @@ function scrollToTop(): void {
 async function saveNow(): Promise<void> {
   try {
     if (locked.value) {
-      show('这份报告已归档或作废，原内容已保留；修改请在报告管理中复制为新建')
+      show('导出状态待确认，暂时只读；恢复连接后请重试导出或重新打开报告')
       return
     }
     await store.save()
@@ -329,6 +339,9 @@ async function doNewReport(): Promise<void> {
   newBusy.value = true
   try {
     await store.createNew()
+    // 新建即新的录入现场，旧的暂存作废
+    stashedForReports = false
+    shell.reportsView = false
     view.value = 'input'
     show('已新建一份评估')
     scrollToTop()
@@ -352,16 +365,10 @@ async function generate(): Promise<void> {
   const timing = beginInteraction('report_generate')
   generating.value = true
   try {
-    await store.generate(timing)
-    await timing.measure('render', async () => {
-      view.value = 'report'
-      shell.active = 'report'
-      await nextTick()
-      fitPapers()
-      scrollToSection(SECTION_IDS.report)
-      await afterPaint()
-    })
+    const report = await store.generate(timing)
     timing.finish('ok')
+    // 生成完成直接进入报告查看（右侧区域就地切换，不跳路由）
+    await enterReports(report.id)
   } catch (err) {
     timing.finish('error')
     show(err instanceof Error ? err.message : '生成失败')
@@ -397,24 +404,6 @@ async function jump(key: string, kind: 'field' | 'item'): Promise<void> {
   if (focusable) focusable.focus({ preventScroll: true })
 }
 
-/** 报告页整体等比缩放：竖屏下也完整可见，不重排 */
-function fitPapers(): void {
-  const host = reportWrap.value
-  if (!host) return
-  const style = getComputedStyle(host)
-  const padding = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight)
-  const available = host.clientWidth - padding - 1
-  const scale = Math.min(1, Math.max(available, 0) / PAPER_WIDTH)
-  host.querySelectorAll<HTMLElement>('.paper').forEach((paper) => {
-    const holder = paper.parentElement
-    paper.style.transform = scale === 1 ? '' : `scale(${scale})`
-    if (holder) {
-      holder.style.width = `${PAPER_WIDTH * scale}px`
-      holder.style.height = `${paper.offsetHeight * scale}px`
-    }
-  })
-}
-
 </script>
 
 <template>
@@ -443,10 +432,10 @@ function fitPapers(): void {
           </div>
           <div v-else-if="!store.ready" class="state-tip">正在准备评估…</div>
 
-          <fieldset v-else :disabled="locked || exp.busy.value" style="border: 0; padding: 0; margin: 0; min-width: 0">
-            <div v-if="locked" class="notes" role="status">{{ store.exportUncertain
-              ? '导出状态待确认，暂时只读；恢复连接后请重试导出或重新打开报告。'
-              : '这份报告已归档或作废，只读查看；修改请在报告管理中复制为新建。' }}</div>
+          <fieldset v-else :disabled="locked" style="border: 0; padding: 0; margin: 0; min-width: 0">
+            <div v-if="locked" class="notes" role="status">
+              导出状态待确认，暂时只读；恢复连接后请重试导出或重新打开报告。
+            </div>
             <div id="sec-info">
               <div class="section-bar">
                 <b class="section-title">基础信息</b>
@@ -515,39 +504,9 @@ function fitPapers(): void {
         </div>
       </section>
 
-      <section id="sec-report" v-show="view === 'report'">
-        <div ref="reportWrap" class="report-wrap">
-          <div class="sheet report-toolbar">
-            <div style="display: flex; align-items: center; gap: 12px">
-              <b style="color: var(--c-text)">报告预览</b>
-              <span class="report-meta">
-                <template v-if="store.generated?.report_no">
-                  报告编号 {{ store.generated.report_no }}　
-                </template>
-                JTE-09-R02-3.00　不符合 {{ riskRows.length }} 项　综合安全状况等级 {{ grade ?? '待确认' }}
-              </span>
-            </div>
-            <div v-if="modelNotice" class="notes model-status" role="status">{{ modelNotice }}</div>
-            <div v-if="assessmentIssues.length" class="notes" role="status">
-              <b>待确认预览，尚不能作为正式报告导出。</b>
-              <div v-for="issue in assessmentIssues" :key="issue">{{ issue }}</div>
-            </div>
-            <div v-for="match in store.generated?.other_matches ?? []" :key="match.no" class="notes">
-              项目 {{ match.no }} 其他原文：{{ match.original_text }}<br />
-              模型匹配：{{ match.risks.join('；') }}。请核对后采用。
-            </div>
-          </div>
-
-          <ReportDocument
-            :overview="overview"
-            :conclusion="conclusion"
-            :risk-by-no="riskByNo"
-            :appendix-rows="appendixRows"
-            :categories="categories"
-            :g="g"
-            :grade="grade"
-          />
-        </div>
+      <!-- 报告管理 + 查看：在右侧区域内就地切换，不跳路由 -->
+      <section v-show="view === 'reports'">
+        <ReportCenter ref="reportCenter" @continue-edit="editDraft" />
       </section>
 
       <div class="actionbar">
@@ -572,39 +531,20 @@ function fitPapers(): void {
           <button
             class="btn btn-lg btn-save"
             type="button"
-            :disabled="store.saveState === 'saving' || locked || exp.busy.value"
+            :disabled="store.saveState === 'saving' || locked || view === 'reports'"
             @click="saveNow"
           >
             保存草稿
           </button>
           <div class="bar-actions">
             <button
-              v-if="view === 'input'"
               class="btn btn-lg btn-primary"
               type="button"
-              :disabled="generating || locked || exp.busy.value"
+              :disabled="generating || locked || view === 'reports'"
               @click="generate"
             >
               {{ generating ? '生成中…' : '校验并生成报告' }}
             </button>
-            <template v-else>
-              <button
-                class="btn btn-lg btn-primary"
-                type="button"
-                :disabled="exp.busy.value || assessmentIssues.length > 0"
-                @click="requestExport('pdf')"
-              >
-                {{ exp.busy.value ? '导出中…' : '导出 PDF' }}
-              </button>
-              <button
-                class="btn btn-lg btn-primary"
-                type="button"
-                :disabled="exp.busy.value || assessmentIssues.length > 0"
-                @click="requestExport('docx')"
-              >
-                导出 Word
-              </button>
-            </template>
           </div>
         </div>
       </div>
@@ -653,17 +593,9 @@ function fitPapers(): void {
           当前这份评估已填 <b>{{ store.counters.done }}</b> 项。
         </p>
         <p class="dialog-p">
-          新建后它不会丢，仍留在「系统设置 → 报告管理」里，随时可以点「继续编辑」接着填。
+          新建后它不会丢，仍留在左侧「报告管理」里，随时可以点「继续编辑」接着填。
         </p>
         <p class="dialog-p">确定新建一份空白评估吗？</p>
-      </AppDialog>
-      <AppDialog :open="confirmExport !== null" title="核对自然语言匹配" confirm-text="确认并导出"
-        @close="confirmExport = null" @confirm="approveExport">
-        <p v-for="match in store.generated?.other_matches ?? []" :key="match.no" class="dialog-p">
-          项目 {{ match.no }} 原文：{{ match.original_text }}<br />
-          匹配风险：{{ match.risks.join('；') }}
-        </p>
-        <p class="dialog-p">请核对匹配风险及附页措施。存在错误时返回录入页修改。</p>
       </AppDialog>
 </template>
 
