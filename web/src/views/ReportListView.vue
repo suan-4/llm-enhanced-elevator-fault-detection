@@ -210,6 +210,9 @@ defineExpose({ reload: load })
               <span class="status-tag" :class="STATUS_CLASS[r.status]">
                 {{ STATUS_TEXT[r.status] }}
               </span>
+              <div v-if="r.status === 'void' && r.void_reason" class="void-reason">
+                作废原因：{{ r.void_reason }}
+              </div>
             </td>
             <td data-label="使用单位">{{ r.user_name || r.client_name || '—' }}</td>
             <td data-label="产品编号">{{ r.product_no || '—' }}</td>
@@ -227,9 +230,6 @@ defineExpose({ reload: load })
                 <button v-if="canDelete(r)" class="btn" type="button" @click="remove(r)">
                   删除
                 </button>
-                <span v-if="r.status === 'void' && r.void_reason" class="hint">
-                  作废原因：{{ r.void_reason }}
-                </span>
               </div>
             </td>
           </tr>
@@ -278,6 +278,13 @@ defineExpose({ reload: load })
 .void-no {
   color: var(--c-muted);
   text-decoration: line-through;
+}
+
+.void-reason {
+  margin-top: 4px;
+  color: var(--c-muted);
+  font-size: 11px;
+  white-space: normal;
 }
 
 .list-title {

@@ -27,7 +27,7 @@ function numeric(key: string, event: Event, decimal = false): void {
   <div v-else-if="field === 'floorsStopsDoors'" class="floors">
     <label v-for="part in parts" :key="part.key" class="floor-part">
       <input :id="`f-${part.key}`" :value="store.form[part.key]" class="input input-plain floor-input"
-        type="number" min="0" inputmode="numeric" placeholder="/" :aria-label="part.unit + '数'"
+        type="number" min="0" inputmode="numeric" :aria-label="part.unit + '数'"
         @input="numeric(part.key, $event)" />
       <span class="floor-unit">{{ part.unit }}</span>
     </label>
@@ -35,9 +35,10 @@ function numeric(key: string, event: Event, decimal = false): void {
   <div v-else-if="unit" class="unit-field">
     <input :id="`f-${field}`" :value="store.form[field]" class="input input-plain unit-input"
       type="number" min="0" :inputmode="field === 'ratedSpeed' ? 'decimal' : 'numeric'"
-      placeholder="/" :aria-label="label" @input="numeric(field, $event, field === 'ratedSpeed')" />
+      :aria-label="label" @input="numeric(field, $event, field === 'ratedSpeed')" />
     <span class="unit-label">{{ unit }}</span>
   </div>
   <input v-else :id="`f-${field}`" v-model="store.form[field]" class="input input-plain" type="text"
+    :placeholder="field === 'assessDate' ? '不填自动取系统日期' : undefined"
     :aria-label="label" :aria-required="required(field)" :required="required(field)" />
 </template>

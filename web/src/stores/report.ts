@@ -112,35 +112,29 @@ function createForm(): Record<string, string> {
   return {
     clientName: '',
     userName: '',
-    installSite: '/',
-    deviceCategory: '/',
+    installSite: '',
+    deviceCategory: '',
     deviceVariety: '',
-    model: '/',
+    model: '',
     productNo: '',
-    registerNo: '/',
-    manufactureDate: '/',
-    manufacturer: '/',
-    retrofitUnit: '/',
-    retrofitDate: '/',
-    maintainUnit: '/',
-    /* 额定载重/额定速度也只存数字：单位 kg、m/s 是固定标签，不再写进值里。
-       旧草稿的「/ kg」「1000 kg」在 hydrate 时自动把数字提出来。 */
+    registerNo: '',
+    manufactureDate: '',
+    manufacturer: '',
+    retrofitUnit: '',
+    retrofitDate: '',
+    maintainUnit: '',
     ratedLoad: '',
     ratedSpeed: '',
-    /* 层/站/门拆成三个数字框：单位字是固定文字，不是可删的输入内容。
-       旧草稿里的 floorsStopsDoors 字符串在 hydrate 时自动拆回来。 */
     floors: '',
     stops: '',
     doors: '',
-    controlMode: '/',
-    /* 现场规则：除四个必填项（委托/使用单位名称、设备品种、产品编号），其余一律以「/」
-       占位，意思是可填可不填。这两项以前直接照抄了设计稿 mockup 里的演示文案
-       （一长串仪器清单 / 规范清单），打开就像已经填过，会误导操作员。 */
-    instruments: '/',
-    basis: '/',
-    suggestion: '/',
-    remark: '/',
-    assessDate: '/',
+    controlMode: '',
+    /* 空白项不再预填「/」：新建评估的输入框保持真正的空，需要时再填。 */
+    instruments: '',
+    basis: '',
+    suggestion: '',
+    remark: '',
+    assessDate: '',
   }
 }
 
@@ -523,6 +517,11 @@ export const useReportStore = defineStore('report', () => {
   /** 生成报告：编号、风险评定值、得分等级都由服务端给 */
   async function generate(timing?: Interaction): Promise<ReportSummary> {
     if (!reportId.value) throw new Error('还没有正在编辑的报告')
+    /* 评估日期不填时自动取系统当天日期 */
+    if (!form.value.assessDate.trim() || form.value.assessDate === '/') {
+      const now = new Date()
+      form.value.assessDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+    }
     if (timing) await timing.measure('save', save)
     else await save()
     const requestedId = reportId.value

@@ -473,4 +473,11 @@ const percent = computed(() => {
     padding: 8px 14px 0;
   }
 }
+
+/* 横屏板端：展开宽度再收窄 */
+@media (min-width: 901px) and (max-height: 700px) {
+  .sidebar {
+    width: 200px;
+  }
+}
 </style>
