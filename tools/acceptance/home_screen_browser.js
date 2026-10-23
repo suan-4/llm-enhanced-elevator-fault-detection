@@ -16,6 +16,13 @@ fs.mkdirSync(OUT, { recursive: true })
       const page = await context.newPage()
       const errors = []
       page.on('pageerror', error => errors.push(error.message))
+      // The desktop has no IME service; render the actual board-only button as well.
+      let imeLabel = '英'
+      await page.route('**/api/ime/status', route => route.fulfill({ json: { available: true, label: imeLabel } }))
+      await page.route('**/api/ime/toggle', route => {
+        imeLabel = imeLabel === '英' ? '中' : '英'
+        return route.fulfill({ json: { available: true, label: imeLabel } })
+      })
       await page.goto(BASE + '/#/login')
       await page.locator('.login-card .form-input[type=text]').fill('acceptance')
       await page.locator('.login-card .form-input[type=password]').fill('Acceptance2026!')
@@ -45,10 +52,15 @@ fs.mkdirSync(OUT, { recursive: true })
         const rect = table.getBoundingClientRect()
         const bar = document.querySelector('.actionbar').getBoundingClientRect()
         const settings = document.querySelector('.settings-fab').getBoundingClientRect()
+        const ime = document.querySelector('.ime-toggle').getBoundingClientRect()
+        const brand = document.querySelector('.brand').getBoundingClientRect()
         const fields = [...table.querySelectorAll('input')]
         return { tableTop: rect.top, tableBottom: rect.bottom, tableHeight: rect.height,
           actionbarTop: bar.top, viewportHeight: innerHeight,
           settingsCoversTable: settings.left < rect.right && settings.right > rect.left && settings.top < rect.bottom && settings.bottom > rect.top,
+          settingsOverlapsIme: settings.left < ime.right && settings.right > ime.left && settings.top < ime.bottom && settings.bottom > ime.top,
+          imeGap: ime.left - settings.right,
+          settingsOverlapsBrand: settings.left < brand.right && settings.right > brand.left && settings.top < brand.bottom && settings.bottom > brand.top,
           cellDisplay: getComputedStyle(table.querySelector('td')).display,
           tableDisplay: getComputedStyle(table).display,
           rowDisplay: getComputedStyle(table.rows[0]).display,
@@ -71,10 +83,22 @@ fs.mkdirSync(OUT, { recursive: true })
       await page.screenshot({ path: path.join(OUT, `home-${viewport.width}.png`) })
       assert(metrics.fitsFirstScreen, 'The complete information table must fit above the actionbar')
       assert.equal(metrics.settingsCoversTable, false, 'Settings must not cover the information table')
+      assert.equal(metrics.settingsOverlapsIme, false, 'Settings must not overlap the board IME switch')
+      assert.equal(metrics.settingsOverlapsBrand, false, 'Settings must not cover the title or logo')
+      if (viewport.width <= 900) assert(metrics.imeGap >= 12, 'Keep a touch gap between settings and IME')
       assert.equal(metrics.cellDisplay, 'table-cell')
       assert.equal(metrics.tableDisplay, 'table')
       assert.equal(metrics.rowDisplay, 'table-row')
       assert.deepEqual(metrics.outsideInputs, [])
+      await page.locator('.ime-toggle').click()
+      await page.waitForFunction(() => document.querySelector('.ime-toggle')?.textContent.trim() === '中')
+      await page.locator('.ime-toggle').click()
+      await page.waitForFunction(() => document.querySelector('.ime-toggle')?.textContent.trim() === '英')
+      await page.locator('.settings-fab').click()
+      await page.waitForURL('**/#/settings')
+      await page.locator('.config-save').waitFor()
+      result.imeSwitchClickable = true
+      result.settingsClickable = true
       assert.deepEqual(errors, [])
       await context.close()
     }

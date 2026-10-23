@@ -185,7 +185,8 @@ async function exitSystem(): Promise<void> {
 @media (max-width: 900px) {
   /* Compact entry exposes the entire table; keep settings in the top bar, clear of its signature cells. */
   .settings-fab {
-    right: 14px;
+    /* The global IME switch occupies the rightmost 54px; leave 18px between the buttons. */
+    right: 72px;
     top: 4px;
     bottom: auto;
     width: 44px;
