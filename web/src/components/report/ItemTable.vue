@@ -164,18 +164,22 @@ defineExpose({ expandItem })
 }
 
 @media (max-width: 900px) {
-  /* 窄屏卡片式布局：分组头也做成一张独立的窄卡片 */
+  /* 窄屏也保持单行表格：分组头占满整行，内容横排不换行 */
   .items .group-row td {
-    display: block;
+    display: table-cell;
     width: auto;
-    border: 0;
+    border: 1px solid var(--c-line);
     padding: 0;
   }
 
   .group-toggle {
-    padding: 10px 12px;
-    gap: 7px;
-    flex-wrap: wrap;
+    padding: 5px 8px;
+    gap: 6px;
+    flex-wrap: nowrap;
+  }
+
+  .group-title {
+    font-size: 12px;
   }
 
   .group-range {
@@ -183,7 +187,8 @@ defineExpose({ expandItem })
   }
 
   .group-meta {
-    font-size: 11px;
+    margin-left: auto;
+    font-size: 10.5px;
   }
 }
 </style>

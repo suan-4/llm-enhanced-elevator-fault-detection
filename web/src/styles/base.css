@@ -868,8 +868,96 @@ table {
   gap: 10px;
 }
 
+/* ══ 横屏矮视口（板端 960×600）：录入页、条目行与操作条整体压缩 ══ */
+@media (min-width: 901px) and (max-height: 700px) {
+  .sheet {
+    padding: 10px 16px 12px;
+    /* 固定为侧栏展开时的宽度，收起后两侧留白（表格居中） */
+    width: min(var(--sheet-max), calc(100vw - 260px - 56px));
+    max-width: calc(100vw - 260px - 56px);
+  }
+
+  .doc-title {
+    font-size: 17px;
+    margin: 0 0 6px;
+  }
+
+  .actionbar {
+    gap: 10px;
+    padding: 10px 16px;
+  }
+
+  .bar-top,
+  .bar-bottom,
+  .bar-actions {
+    gap: 8px;
+  }
+
+  .count {
+    font-size: 12.5px;
+    white-space: nowrap;
+  }
+
+  .count b {
+    font-size: 15px;
+  }
+
+  .actionbar .btn,
+  .new-btn {
+    height: 32px;
+    padding: 0 10px;
+    font-size: 12.5px;
+  }
+
+  .actionbar .btn-lg {
+    height: 34px;
+    padding: 0 14px;
+    font-size: 13px;
+  }
+
+  .items th {
+    padding: 4px 6px;
+    font-size: 12px;
+  }
+
+  .items td {
+    padding: 4px 6px;
+  }
+
+  .items col:nth-child(1) {
+    width: 56px !important;
+  }
+
+  .items col:nth-child(3) {
+    width: 266px !important;
+  }
+
+  .item-name {
+    font-size: 12.5px;
+    line-height: 1.35;
+  }
+
+  .items .seg {
+    display: flex;
+    width: 100%;
+  }
+
+  .items .seg label {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 4px 4px;
+    font-size: 11.5px;
+  }
+
+  .reasons {
+    margin-top: 4px;
+    padding: 5px;
+  }
+}
+
 /* ══ 竖屏适配：板端逻辑视口 600×960（竖）/ 960×600（横），断点 900px ══ */
 @media (max-width: 900px) {
+  /* 竖屏：侧栏展开时正文跟着收窄，收起后占满整屏 */
   .main {
     margin-left: 186px;
   }
@@ -940,65 +1028,78 @@ table {
     border-bottom: 0;
   }
 
-  /* 评价结果表：窄屏把一行拆成「编号+项目 / 要求 / 结果」三段，
-     但保留表格观感——直角、行与行相接，不用圆角卡片。 */
-  .items,
-  .items tbody,
-  .items tr,
+  /* 竖屏基础信息表：略放宽字段名列，表头不换行 */
+  .sheet .info col:nth-child(1) {
+    width: 11% !important;
+  }
+
+  .sheet .info col:nth-child(2) {
+    width: 13% !important;
+  }
+
+  .sheet .info col:nth-child(3) {
+    width: 28% !important;
+  }
+
+  .sheet .info col:nth-child(4) {
+    width: 15% !important;
+  }
+
+  .sheet .info col:nth-child(5) {
+    width: 16% !important;
+  }
+
+  .sheet .info col:nth-child(6) {
+    width: 17% !important;
+  }
+
+  .sheet .info th {
+    white-space: nowrap;
+    font-size: 11.5px;
+    padding: 3px 4px;
+  }
+
+  .sheet .info td {
+    padding: 3px 4px;
+  }
+
+  /* 评价结果表：竖屏也保持表格单行版式（编号 / 项目 / 三态按钮），
+     与横屏一致；项目名允许换行，不再拆成多行卡片。 */
+  .items th {
+    padding: 4px 6px;
+    font-size: 11.5px;
+  }
+
   .items td {
-    display: block;
+    padding: 5px 6px;
+  }
+
+  .items col:nth-child(1) {
+    width: 48px !important;
+  }
+
+  .items col:nth-child(3) {
+    width: 244px !important;
+  }
+
+  .items .seg {
+    display: flex;
+    width: 100%;
+  }
+
+  .items .seg label {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 4px 4px;
+    font-size: 11.5px;
+  }
+
+  /* 不符合情形展开行：占满整行 */
+  .items .reasons-row td {
+    display: table-cell;
     width: auto;
-  }
-
-  .items {
-    border: 0;
-    /* 窄屏每行自成卡片，外层不再需要整表外框 */
-    box-shadow: none;
-    overflow: visible;
-  }
-
-  .items thead {
-    display: none;
-  }
-
-  .items tr {
-    border: 1px solid var(--c-line);
-    border-radius: var(--radius-sm);
-    margin-bottom: 10px;
-    background: #fff;
-    overflow: hidden;
-  }
-
-  .items td {
-    border: 0;
     border-top: 1px solid var(--c-line);
-    padding: 8px;
-  }
-
-  .items td:nth-child(1),
-  .items td:nth-child(2) {
-    display: inline-block;
-    border-top: 0;
-    padding: 8px;
-  }
-
-  /* 项目编号与项目之间的竖线 */
-  .items td:nth-child(2) {
-    border-left: 1px solid var(--c-line);
-  }
-
-  .items td:nth-child(3)::before {
-    content: '评价结果';
-    display: block;
-    color: var(--c-muted);
-    font-size: 12px;
-    margin-bottom: 6px;
-  }
-
-  /* 三态按钮加大触摸目标 */
-  .seg label {
-    padding: 10px 0;
-    font-size: 13px;
+    padding: 4px 6px;
   }
 
   /* 底部操作条分两行：上行计数/保存状态，下行三个按钮块 */
@@ -1059,16 +1160,78 @@ table {
     margin: 0 0 8px;
   }
 
-  /* 不符合情形展开行：窄屏沿用卡片式布局，自成一张卡、宽度用满；
-     覆盖上面的 td display:inline-block / border-top 规则。 */
+  /* 不符合情形展开行：跟着单行表格占满整行 */
   .items .reasons-row td {
-    display: block;
+    display: table-cell;
     width: auto;
-    border: 0;
-    padding: 0 8px 8px;
+    border-top: 1px solid var(--c-line);
+    padding: 4px 6px;
   }
 
   .items .reasons-row td::before {
     content: none;
+  }
+
+  /* 竖屏工具栏统一收紧：账号/报告/审计/备份都不再被输入框撑满 */
+  .toolbar {
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+
+  .toolbar .input {
+    flex: 1 1 120px;
+    min-width: 0;
+    height: 30px;
+    font-size: 12px;
+  }
+
+  .toolbar .select {
+    flex: 0 1 110px;
+    min-width: 0;
+    height: 30px;
+    font-size: 12px;
+  }
+
+  .toolbar .btn {
+    height: 30px;
+    padding: 0 8px;
+    font-size: 12px;
+  }
+
+  .toolbar .chk {
+    font-size: 11.5px;
+    white-space: nowrap;
+  }
+
+  /* 竖屏底栏整体缩一档 */
+  .actionbar {
+    gap: 6px;
+    padding: 8px 10px;
+  }
+
+  .count {
+    font-size: 12.5px;
+  }
+
+  .count b {
+    font-size: 15px;
+  }
+
+  .new-btn {
+    height: 34px;
+    padding: 0 8px;
+    font-size: 12px;
+  }
+
+  .btn-save {
+    flex: 0 0 96px;
+    height: 34px;
+    font-size: 12px;
+  }
+
+  .bar-actions .btn {
+    height: 34px;
+    padding: 0 6px;
+    font-size: 12px;
   }
 }

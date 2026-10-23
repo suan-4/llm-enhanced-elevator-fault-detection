@@ -1,19 +1,22 @@
 <script setup lang="ts">
 /* 报告管理：查报告、继续编辑、复制为新建、作废、删除。
    行内操作按状态给（设计 §4.7）：草稿只能继续编辑/删除；
-   已生成/已归档只能查看、复制、作废；已作废只剩查看与删除。 */
+   已生成/已归档只能查看、复制、作废；已作废只剩查看与删除。
+   组件内嵌在主页面的「报告管理」区域：查看/继续编辑只发事件，
+   由父组件在右侧区域内就地切换，不跳转路由。 */
 import { onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import * as api from '@/api/reports'
 import AppDialog from '@/components/AppDialog.vue'
-import { useReportStore } from '@/stores/report'
-import { useShell } from '@/stores/shell'
 import { ApiError } from '@/utils/http'
 import { useToast } from '@/utils/toast'
 
-const router = useRouter()
-const store = useReportStore()
-const shell = useShell()
+/* 内嵌在主页面的「报告管理」：查看/继续编辑交给父组件就地切换，
+   不再跳转路由，也不再自己往 report store 里装历史报告。 */
+const emit = defineEmits<{
+  view: [report: api.ReportSummary]
+  continueEdit: [report: api.ReportSummary]
+}>()
+
 const { show } = useToast()
 
 const reports = ref<api.ReportSummary[]>([])
@@ -121,21 +124,10 @@ async function runConfirm(): Promise<void> {
 }
 
 /* ── 行内操作 ───────────────────────────────────────── */
-const opening = ref('')
-
-async function open(report: api.ReportSummary): Promise<void> {
-  if (opening.value) return
-  opening.value = report.id
-  try {
-    const loaded = await store.openReport(report.id)
-    await router.push('/')
-    // 已生成的直接看预览；草稿继续录入
-    shell.requestView(loaded.status === 'draft' ? 'items' : 'report')
-  } catch (err) {
-    show(err instanceof ApiError ? err.detail : '打开失败')
-  } finally {
-    opening.value = ''
-  }
+function open(report: api.ReportSummary): void {
+  // 草稿：父组件切回录入页继续填写；已生成/归档/作废：父组件就地展开查看
+  if (report.status === 'draft') emit('continueEdit', report)
+  else emit('view', report)
 }
 
 function clone(report: api.ReportSummary): void {
@@ -158,12 +150,15 @@ const canVoid = (r: api.ReportSummary): boolean => r.status === 'generated' || r
 const canDelete = (r: api.ReportSummary): boolean => r.status === 'draft' || r.status === 'void'
 
 onMounted(load)
+
+/* 被「报告管理/查看」组合组件复用：返回列表前先刷新，旧列表保持可见不闪 */
+defineExpose({ reload: load })
 </script>
 
 <template>
   <div class="page-pad">
     <div class="sheet">
-      <h1 class="doc-title" style="font-size: 18px">报告管理</h1>
+      <h1 class="doc-title list-title">报告管理</h1>
 
       <div class="toolbar">
         <input
@@ -187,21 +182,21 @@ onMounted(load)
       </div>
 
       <div v-if="loadError" class="err-box">{{ loadError }}</div>
-      <div v-else-if="loading" class="empty-state">加载中…</div>
+      <div v-else-if="loading && !reports.length" class="empty-state">加载中…</div>
       <div v-else-if="!reports.length" class="empty-state">
         还没有报告。回到评估录入页新建一份吧。
       </div>
 
-      <table v-else class="data-table">
+      <table v-else class="data-table report-table">
         <thead>
           <tr>
-            <th style="width: 190px">报告编号</th>
-            <th style="width: 80px">状态</th>
-            <th>使用单位</th>
-            <th style="width: 120px">产品编号</th>
-            <th style="width: 110px">评估日期</th>
-            <th style="width: 140px">创建时间</th>
-            <th style="width: 260px">操作</th>
+            <th class="col-no">报告编号</th>
+            <th class="col-status">状态</th>
+            <th class="col-unit">使用单位</th>
+            <th class="col-product">产品编号</th>
+            <th class="col-date">评估日期</th>
+            <th class="col-created">创建时间</th>
+            <th class="col-actions">操作</th>
           </tr>
         </thead>
         <tbody>
@@ -222,7 +217,7 @@ onMounted(load)
             <td data-label="创建时间">{{ fmt(r.created_at) }}</td>
             <td data-label="操作">
               <div class="actions">
-                <button class="btn" type="button" :disabled="!!opening" @click="open(r)">
+                <button class="btn" type="button" @click="open(r)">
                   {{ canEdit(r) ? '继续编辑' : '查看' }}
                 </button>
                 <button class="btn" type="button" @click="clone(r)">复制为新建</button>
@@ -283,5 +278,190 @@ onMounted(load)
 .void-no {
   color: var(--c-muted);
   text-decoration: line-through;
+}
+
+.list-title {
+  font-size: 18px;
+}
+
+.report-table .col-no {
+  width: 190px;
+}
+
+.report-table .col-status {
+  width: 80px;
+}
+
+.report-table .col-product {
+  width: 120px;
+}
+
+.report-table .col-date {
+  width: 110px;
+}
+
+.report-table .col-created {
+  width: 140px;
+}
+
+.report-table .col-actions {
+  width: 260px;
+}
+
+/* 竖屏（板端 600×960）：报告列表也保持表格版式，与横屏一致；
+   放不下的次要列（产品编号/评估日期/创建时间）隐藏，避免横向滚动。 */
+@media (max-width: 900px) {
+  .report-table {
+    display: table;
+  }
+
+  .report-table thead {
+    display: table-header-group;
+  }
+
+  .report-table tbody {
+    display: table-row-group;
+  }
+
+  .report-table tr {
+    display: table-row;
+    margin: 0;
+    border-radius: 0;
+    overflow: visible;
+  }
+
+  .report-table th,
+  .report-table td {
+    display: table-cell;
+    padding: 4px 5px;
+    font-size: 11.5px;
+    vertical-align: middle;
+  }
+
+  .report-table td {
+    border-top: 1px solid var(--c-line);
+  }
+
+  .report-table td::before {
+    content: none;
+  }
+
+  .report-table .col-no,
+  .report-table th:nth-child(1) {
+    width: 166px;
+  }
+
+  .report-table .col-status,
+  .report-table th:nth-child(2) {
+    width: 46px;
+  }
+
+  .report-table .col-product,
+  .report-table .col-date,
+  .report-table .col-created,
+  .report-table th:nth-child(4),
+  .report-table th:nth-child(5),
+  .report-table th:nth-child(6),
+  .report-table td:nth-child(4),
+  .report-table td:nth-child(5),
+  .report-table td:nth-child(6) {
+    display: none;
+  }
+
+  .report-table .col-actions {
+    width: 154px;
+  }
+
+  .report-table .actions {
+    gap: 3px;
+    align-items: center;
+    justify-content: flex-start;
+  }
+
+  .report-table .actions .btn {
+    height: 22px;
+    padding: 0 3px;
+    font-size: 10px;
+  }
+
+  /* 工具栏：竖屏收成一两行 */
+  .toolbar {
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+
+  .toolbar .input {
+    flex: 1 1 130px;
+    min-width: 0;
+    height: 30px;
+    font-size: 12px;
+  }
+
+  .toolbar .select {
+    flex: 0 1 120px;
+    min-width: 0;
+    height: 30px;
+    font-size: 12px;
+  }
+
+  .toolbar .btn {
+    height: 30px;
+    padding: 0 10px;
+    font-size: 12px;
+  }
+
+  .toolbar .chk {
+    font-size: 11.5px;
+    white-space: nowrap;
+  }
+}
+
+/* 横屏（板端 960×600）：列表整体再压一档 */
+@media (min-width: 901px) and (max-height: 700px) {
+  .list-title {
+    font-size: 16px;
+  }
+
+  .report-table .col-no {
+    width: 168px;
+  }
+
+  .report-table .col-status {
+    width: 62px;
+  }
+
+  .report-table .col-product {
+    width: 92px;
+  }
+
+  .report-table .col-date {
+    width: 82px;
+  }
+
+  .report-table .col-created {
+    width: 112px;
+  }
+
+  .report-table .col-actions {
+    width: 214px;
+  }
+
+  .report-table th,
+  .report-table td {
+    padding: 3px 5px;
+    font-size: 11.5px;
+  }
+
+  .report-table .actions {
+    gap: 3px;
+    flex-wrap: nowrap;
+  }
+
+  .report-table .actions .btn {
+    height: 22px;
+    padding: 0 4px;
+    font-size: 10.5px;
+    white-space: nowrap;
+  }
 }
 </style>

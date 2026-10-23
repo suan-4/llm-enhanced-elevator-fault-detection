@@ -15,7 +15,6 @@ const props = defineProps<{
   items: NavItem[]
   active: string
   userName: string
-  userRole: string
   showExit: boolean
   progress: { done: number; total: number; unfit: number }
 }>()
@@ -24,6 +23,7 @@ const emit = defineEmits<{
   toggle: []
   navigate: [key: string]
   logout: []
+  settings: []
   exitSystem: []
 }>()
 
@@ -76,7 +76,6 @@ const percent = computed(() => {
     <div class="user-bar">
       <span class="u-info">
         <span class="u-name">{{ userName }}</span>
-        <span class="u-role">{{ userRole }}</span>
       </span>
       <span class="u-act">
         <button type="button" @click="emit('logout')">注销</button>
@@ -86,7 +85,29 @@ const percent = computed(() => {
       </span>
     </div>
 
-    <div class="sidebar-footer">依据 GB/T 42615-2023<br />在用电梯安全评估规范</div>
+    <div class="sidebar-footer">
+      <span>依据 GB/T 42615-2023<br />在用电梯安全评估规范</span>
+      <button
+        class="footer-gear"
+        type="button"
+        title="系统设置"
+        aria-label="系统设置"
+        @click="emit('settings')"
+      >
+        ⚙
+      </button>
+    </div>
+
+    <button
+      v-if="collapsed"
+      class="rail-gear"
+      type="button"
+      title="系统设置"
+      aria-label="系统设置"
+      @click="emit('settings')"
+    >
+      ⚙
+    </button>
   </aside>
 </template>
 
@@ -151,6 +172,11 @@ const percent = computed(() => {
 }
 
 /* ── 项目进度 ── */
+/* 按现场要求去掉项目进度卡片 */
+.progress {
+  display: none;
+}
+
 .progress {
   margin: 0 14px 16px;
   padding: 12px 12px 11px;
@@ -322,6 +348,34 @@ const percent = computed(() => {
   font-size: 9.3px;
   color: rgba(255, 255, 255, 0.3);
   white-space: nowrap;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.footer-gear,
+.rail-gear {
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.rail-gear {
+  position: absolute;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  width: 40px;
+  height: 40px;
+  font-size: 22px;
 }
 
 /* ── 折叠态 ── */

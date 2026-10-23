@@ -50,12 +50,12 @@ const trailing = [
 <template>
   <table class="info" :class="{ 'info-entry': !readonly }" aria-label="电梯评估信息表">
     <colgroup>
-      <col style="width: 12%" />
-      <col style="width: 12%" />
-      <col style="width: 30%" />
-      <col style="width: 16%" />
-      <col style="width: 15%" />
-      <col style="width: 15%" />
+      <col style="width: 10%" />
+      <col style="width: 10%" />
+      <col style="width: 32%" />
+      <col style="width: 14%" />
+      <col style="width: 17%" />
+      <col style="width: 17%" />
     </colgroup>
     <tbody>
       <tr v-for="row in rows" :key="row[0].key">

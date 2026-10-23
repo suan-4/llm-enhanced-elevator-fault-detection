@@ -1,13 +1,12 @@
 <script setup lang="ts">
 /* 系统设置（2026-10 调整）：
-   - 报告管理 / 账号管理从侧栏并入本页，统一由左侧树状导航进入；
+   - 账号管理从侧栏并入本页，由左侧树状导航进入；报告管理已移到主页面第三个导航；
    - 右侧按树节点渲染内容，配置类仍是只读展示（基础版以部署 .env 为准）。 */
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import * as api from '@/api/system'
 import AppDialog from '@/components/AppDialog.vue'
 import AccountListView from '@/views/AccountListView.vue'
-import ReportListView from '@/views/ReportListView.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useShell } from '@/stores/shell'
 import { ApiError } from '@/utils/http'
@@ -19,7 +18,7 @@ const auth = useAuthStore()
 const shell = useShell()
 const { show } = useToast()
 
-type Section = 'reports' | 'accounts' | 'config' | 'audit' | 'backup' | 'diagnose' | 'about'
+type Section = 'accounts' | 'config' | 'audit' | 'backup' | 'diagnose' | 'about'
 
 interface TreeGroup {
   key: string
@@ -27,15 +26,13 @@ interface TreeGroup {
   children: { key: Section; label: string }[]
 }
 
-/* 左侧树：业务管理（报告/账号）+ 系统维护（配置/日志/备份/诊断）+ 关于 */
+/* 左侧树：业务管理（账号）+ 系统维护（配置/日志/备份/诊断）+ 关于。
+   报告管理已移到主页面第三个导航（就地查看，不跳路由）。 */
 const TREE: TreeGroup[] = [
   {
     key: 'biz',
     label: '业务管理',
-    children: [
-      { key: 'reports', label: '报告管理' },
-      { key: 'accounts', label: '账号管理' },
-    ],
+    children: [{ key: 'accounts', label: '账号管理' }],
   },
   {
     key: 'ops',
@@ -57,7 +54,6 @@ const TREE: TreeGroup[] = [
 const open = reactive<Record<string, boolean>>({ biz: true, ops: true, about: true })
 
 const SECTION_TITLES: Record<Section, string> = {
-  reports: '报告管理',
   accounts: '账号管理',
   config: '基本配置',
   audit: '审计日志',
@@ -81,15 +77,14 @@ watch(
   },
 )
 
+const treeOpen = ref(false)
+
 function select(next: Section): void {
   section.value = next
+  treeOpen.value = false
   if (route.query.section !== next) {
     void router.replace({ path: '/settings', query: { ...route.query, section: next } })
   }
-}
-
-function goBack(): void {
-  void router.push('/').then(() => shell.requestView('info'))
 }
 
 async function signOut(): Promise<void> {
@@ -316,34 +311,27 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="settings-page">
-    <aside class="settings-tree">
+  <div class="settings-page" :class="{ 'tree-open': treeOpen }">
+    <button
+      v-if="!treeOpen"
+      class="tree-fab"
+      type="button"
+      title="设置导航"
+      aria-label="打开设置导航"
+      @click="treeOpen = true"
+    >
+      ☰
+    </button>
+    <div v-if="treeOpen" class="tree-mask" aria-hidden="true" @click="treeOpen = false" />
+    <aside class="settings-tree" :class="{ open: treeOpen }">
       <div class="tree-head">
-        <button
-          class="tree-home"
-          type="button"
-          title="返回评估"
-          aria-label="返回评估"
-          @click="goBack"
-        >
-          <svg
-            viewBox="0 0 24 24"
-            width="16"
-            height="16"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            aria-hidden="true"
-          >
-            <path d="M15 18l-6-6 6-6" />
-          </svg>
-        </button>
         <div class="tree-head-text">
           <span class="tree-title">系统设置</span>
           <span class="tree-sub">报告 / 账号 / 运维</span>
         </div>
+        <button class="tree-close" type="button" title="收起" aria-label="收起导航" @click="treeOpen = false">
+          ×
+        </button>
       </div>
       <nav class="tree-body">
         <div v-for="group in TREE" :key="group.key" class="tree-group">
@@ -375,21 +363,20 @@ onMounted(async () => {
     </aside>
 
     <main class="settings-body">
-      <ReportListView v-if="section === 'reports'" />
-      <AccountListView v-else-if="section === 'accounts'" />
+      <AccountListView v-if="section === 'accounts'" />
 
       <div v-else class="page-pad">
         <div class="sheet">
-          <h1 class="doc-title" style="font-size: 18px">{{ sectionTitle }}</h1>
+          <h1 class="doc-title settings-title">{{ sectionTitle }}</h1>
 
           <template v-if="section === 'config'">
             <div v-if="configError" class="err-box">{{ configError }}</div>
             <table class="data-table config-table">
               <thead>
                 <tr>
-                  <th style="width: 190px">配置项</th>
-                  <th style="width: 320px">当前值</th>
-                  <th>说明</th>
+                  <th class="config-key">配置项</th>
+                  <th class="config-val">当前值</th>
+                  <th class="config-desc">说明</th>
                 </tr>
               </thead>
               <tbody>
@@ -471,7 +458,7 @@ onMounted(async () => {
             </div>
             <div v-if="auditLoading" class="empty-state">加载中…</div>
             <div v-else-if="!auditRows.length" class="empty-state">没有符合条件的日志。</div>
-            <table v-else class="data-table">
+            <table v-else class="data-table audit-table">
               <thead>
                 <tr>
                   <th style="width: 150px">时间</th>
@@ -623,7 +610,7 @@ onMounted(async () => {
   background: var(--c-bg);
 }
 
-/* ── 左侧树 ── */
+/* ── 左侧树（悬浮、可展开/折叠） ── */
 .settings-tree {
   width: 216px;
   flex: 0 0 216px;
@@ -631,6 +618,58 @@ onMounted(async () => {
   flex-direction: column;
   background: var(--c-panel);
   border-right: 1px solid var(--c-line);
+  position: fixed;
+  top: 52px;
+  bottom: 0;
+  left: 0;
+  z-index: 130;
+  transform: translateX(-104%);
+  transition: transform 0.22s ease;
+  box-shadow: 6px 0 22px rgba(0, 0, 0, 0.16);
+}
+
+.settings-tree.open {
+  transform: none;
+}
+
+.tree-fab {
+  position: fixed;
+  left: 0;
+  top: 64px;
+  z-index: 125;
+  width: 34px;
+  height: 64px;
+  padding: 0;
+  border: 1px solid var(--c-line);
+  border-left: 0;
+  border-radius: 0 10px 10px 0;
+  background: var(--c-panel);
+  color: var(--c-primary);
+  font-size: 18px;
+  cursor: pointer;
+  box-shadow: 4px 0 14px rgba(0, 0, 0, 0.1);
+}
+
+.tree-mask {
+  position: fixed;
+  inset: 52px 0 0 0;
+  z-index: 120;
+  background: rgba(15, 25, 38, 0.28);
+}
+
+.tree-close {
+  margin-left: auto;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--c-muted);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.tree-home {
+  display: none;
 }
 
 .tree-head {
@@ -787,6 +826,14 @@ onMounted(async () => {
   overflow-y: auto;
 }
 
+.config-key {
+  width: 190px;
+}
+
+.config-val {
+  width: 320px;
+}
+
 .config-table .input,
 .config-table .select {
   max-width: 300px;
@@ -845,19 +892,369 @@ onMounted(async () => {
   text-align: left;
 }
 
-@media (max-width: 900px) {
+/* 横屏矮视口（板端 960×600）：设置页的树与内容同步收缩 */
+@media (min-width: 901px) and (max-height: 700px) {
+  /* 横屏矮视口：左树改成按内容高度的卡片，不再拉成整列白底 + 下方一大片空白 */
+  .settings-page {
+    align-items: flex-start;
+    gap: 8px;
+    padding: 8px;
+  }
+
+  .settings-tree {
+    height: auto;
+    max-height: calc(100vh - 52px - 16px);
+    border: 1px solid var(--c-line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+
+  .tree-body {
+    flex: 0 0 auto;
+    overflow-y: auto;
+  }
+
+  .settings-body {
+    flex: 1 1 auto;
+    min-width: 0;
+    height: calc(100vh - 52px - 16px);
+  }
+
+  /* 左右两张卡片顶边对齐：去掉 page-pad 与 sheet 的上外边距，
+     否则内容卡片会比左侧树卡片低 20px */
+  .settings-body .page-pad {
+    padding: 0;
+  }
+
+  .settings-body .page-pad .sheet {
+    width: 100%;
+    margin: 0 auto;
+  }
+
+  .settings-title {
+    font-size: 16px;
+  }
+
+  /* 基本配置表：收窄「配置项/当前值」，把宽度让给「说明」，避免说明被挤成多行 */
+  .config-key {
+    width: 118px;
+  }
+
+  .config-val {
+    width: 236px;
+  }
+
+  /* 横屏审计日志：覆盖模板固定列宽，给备注留足空间 */
+  .audit-table th:nth-child(1),
+  .audit-table td:nth-child(1) {
+    width: 112px !important;
+  }
+
+  .audit-table th:nth-child(2),
+  .audit-table td:nth-child(2) {
+    width: 98px !important;
+  }
+
+  .audit-table th:nth-child(3),
+  .audit-table td:nth-child(3) {
+    width: 70px !important;
+  }
+
+  .audit-table th:nth-child(4),
+  .audit-table td:nth-child(4) {
+    width: 118px !important;
+  }
+
+  .audit-table th:nth-child(5),
+  .audit-table td:nth-child(5) {
+    width: auto !important;
+    min-width: 150px;
+  }
+
+  .config-table th,
+  .config-table td {
+    padding: 3px 6px;
+    font-size: 11.5px;
+    line-height: 1.4;
+  }
+
+  .config-table .input,
+  .config-table .select {
+    height: 28px;
+    font-size: 12px;
+  }
+
+  .config-table .dir-pick {
+    height: 28px;
+    padding: 0 8px;
+    font-size: 12px;
+  }
+
+  .config-table .restart-tag {
+    margin-left: 4px;
+    padding: 0 4px;
+    font-size: 9.5px;
+  }
+
+  .dir-field {
+    gap: 6px;
+  }
+
   .settings-tree {
     width: 176px;
     flex-basis: 176px;
   }
 
-  .tree-children li {
-    padding: 8px 6px 8px 22px;
-    font-size: 12px;
+  .tree-head {
+    gap: 8px;
+    padding: 10px 12px 8px;
+  }
+
+  .tree-home {
+    width: 26px;
+    height: 26px;
+  }
+
+  .tree-title {
+    font-size: 13.5px;
+  }
+
+  .tree-sub {
+    font-size: 9.5px;
+  }
+
+  .tree-body {
+    padding: 6px;
   }
 
   .tree-group-head {
-    padding: 7px 6px;
+    padding: 6px;
+    font-size: 11.5px;
+  }
+
+  .tree-children li {
+    padding: 6px 8px 6px 22px;
+    font-size: 11.5px;
+  }
+
+  .tree-foot {
+    padding: 8px;
+    gap: 6px;
+  }
+
+  .tree-user {
+    font-size: 10.5px;
+  }
+}
+
+@media (max-width: 900px) {
+  /* 竖屏悬浮树也做成和横屏一致的圆角卡片 */
+  .settings-tree {
+    width: 160px;
+    flex-basis: 160px;
+    top: 60px;
+    bottom: 8px;
+    left: 8px;
+    border: 1px solid var(--c-line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+
+  .tree-head {
+    padding: 10px 8px 8px;
+    gap: 6px;
+  }
+
+  .tree-home {
+    width: 26px;
+    height: 26px;
+  }
+
+  .tree-title {
+    font-size: 13.5px;
+  }
+
+  .tree-sub {
+    font-size: 9.5px;
+  }
+
+  .tree-body {
+    padding: 6px;
+  }
+
+  .tree-children li {
+    padding: 6px 4px 6px 18px;
+    font-size: 11.5px;
+  }
+
+  .tree-group-head {
+    padding: 6px;
+    font-size: 11.5px;
+  }
+
+  .settings-body .page-pad {
+    padding: 8px;
+  }
+
+  .settings-body .doc-title {
+    font-size: 16px;
+  }
+
+  /* 基本配置/审计/备份/诊断表：竖屏也保持表格版式，不再拆成竖排卡片 */
+  .settings-body .data-table {
+    display: table;
+  }
+
+  .settings-body .data-table thead {
+    display: table-header-group;
+  }
+
+  .settings-body .data-table tbody {
+    display: table-row-group;
+  }
+
+  .settings-body .data-table tr {
+    display: table-row;
+    margin: 0;
+    border-radius: 0;
+    overflow: visible;
+  }
+
+  .settings-body .data-table th,
+  .settings-body .data-table td {
+    display: table-cell;
+    padding: 3px 5px;
+    font-size: 11.5px;
+    vertical-align: top;
+  }
+
+  .settings-body .data-table td::before {
+    content: none;
+  }
+
+  .settings-body .data-table .actions .btn {
+    height: 22px;
+    padding: 0 5px;
+    font-size: 10.5px;
+  }
+
+  .config-table .config-key {
+    width: 96px;
+  }
+
+  .config-table .config-val {
+    width: auto;
+  }
+
+  /* 竖屏基本配置：第二列（当前值）输入框占满，选择按钮贴右 */
+  .config-table td:nth-child(2) .input,
+  .config-table td:nth-child(2) .select {
+    width: 100%;
+    max-width: none;
+  }
+
+  .config-table td:nth-child(2) .dir-field {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+  }
+
+  .config-table td:nth-child(2) .dir-field .input {
+    flex: 1 1 auto;
+    min-width: 0;
+    width: auto;
+  }
+
+  .config-table td:nth-child(2) .dir-pick {
+    flex: 0 0 auto;
+    margin-left: auto;
+  }
+
+  .config-table th:nth-child(3),
+  .config-table td:nth-child(3) {
+    display: none;
+  }
+
+  /* 各管理页工具栏（报告/账号/审计/备份）：竖屏收成一两行 */
+  .settings-body .toolbar,
+  .settings-body :deep(.toolbar) {
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+
+  .settings-body .toolbar .input,
+  .settings-body :deep(.toolbar .input) {
+    flex: 1 1 130px;
+    min-width: 0;
+    height: 30px;
+    font-size: 12px;
+  }
+
+  .settings-body .toolbar .select,
+  .settings-body :deep(.toolbar .select) {
+    flex: 0 1 120px;
+    min-width: 0;
+    height: 30px;
+    font-size: 12px;
+  }
+
+  .settings-body .toolbar .btn,
+  .settings-body :deep(.toolbar .btn) {
+    flex: 0 0 auto;
+    height: 30px;
+    padding: 0 10px;
+    font-size: 12px;
+  }
+
+  .settings-body .toolbar .chk,
+  .settings-body :deep(.toolbar .chk) {
+    font-size: 11.5px;
+    white-space: nowrap;
+  }
+
+  /* 竖屏设置内容占满宽度 */
+  .settings-body .page-pad {
+    padding: 6px;
+  }
+
+  .settings-body .page-pad .sheet {
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+  }
+
+  .settings-body .data-table {
+    width: 100%;
+  }
+
+  /* 审计日志列宽：备注列给足宽度 */
+  .audit-table th:nth-child(1),
+  .audit-table td:nth-child(1) {
+    width: 84px;
+  }
+
+  .audit-table th:nth-child(2),
+  .audit-table td:nth-child(2) {
+    width: 62px;
+  }
+
+  .audit-table th:nth-child(3),
+  .audit-table td:nth-child(3) {
+    width: 58px;
+  }
+
+  .audit-table th:nth-child(4),
+  .audit-table td:nth-child(4) {
+    width: 70px;
+  }
+
+  .audit-table th:nth-child(5),
+  .audit-table td:nth-child(5) {
+    width: auto;
+    min-width: 110px;
   }
 }
 </style>
