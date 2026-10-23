@@ -2,14 +2,18 @@
 /* 评价结果表：按项目编号的第一段（1.x / 2.x / …）分组，可折叠展开。
    组名按 GB/T 42615-2023 附录 A 的表名展示（见 domain/itemGroups.ts）；
    分组只是视图层行为：数据、评分与导出仍按 66 条平铺，不改变业务口径。 */
-import { computed, reactive } from 'vue'
+import { computed, reactive, watch } from 'vue'
 import ItemRow from './ItemRow.vue'
 import { itemGroupName } from '@/domain/itemGroups'
 import { useReportStore } from '@/stores/report'
 import type { JteItem } from '@/types/api'
 
 const store = useReportStore()
-const collapsed = reactive<Record<string, boolean>>({})
+const expanded = reactive<Record<string, boolean>>({})
+
+watch(() => store.reportId, () => {
+  for (const key of Object.keys(expanded)) delete expanded[key]
+}, { flush: 'sync' })
 
 interface ItemGroup {
   key: string
@@ -41,12 +45,12 @@ const groups = computed<ItemGroup[]>(() => {
 })
 
 function toggle(key: string): void {
-  collapsed[key] = !collapsed[key]
+  expanded[key] = !expanded[key]
 }
 
 function expandItem(no: string): void {
   const group = groups.value.find(group => group.items.some(item => item.no === no))
-  if (group) collapsed[group.key] = false
+  if (group) expanded[group.key] = true
 }
 
 defineExpose({ expandItem })
@@ -72,10 +76,10 @@ defineExpose({ expandItem })
           <button
             class="group-toggle"
             type="button"
-            :aria-expanded="!collapsed[group.key]"
+            :aria-expanded="!!expanded[group.key]"
             @click="toggle(group.key)"
           >
-            <span class="group-caret" :class="{ open: !collapsed[group.key] }">▸</span>
+            <span class="group-caret" :class="{ open: expanded[group.key] }">▸</span>
             <span class="group-no">{{ group.key }}</span>
             <span class="group-title">{{ group.name }}</span>
             <span class="group-range">{{ group.range }}</span>
@@ -85,7 +89,7 @@ defineExpose({ expandItem })
           </button>
         </td>
       </tr>
-      <template v-if="!collapsed[group.key]">
+      <template v-if="expanded[group.key]">
         <ItemRow v-for="item in group.items" :key="item.no" :item="item" />
       </template>
     </tbody>

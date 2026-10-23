@@ -183,12 +183,15 @@ async function exitSystem(): Promise<void> {
 }
 
 @media (max-width: 900px) {
-  /* 板端底部操作条是两行，齿轮再往上让一点 */
+  /* Compact entry exposes the entire table; keep settings in the top bar, clear of its signature cells. */
   .settings-fab {
-    right: 14px;
-    bottom: 158px;
-    width: 60px;
-    height: 60px;
+    /* The global IME switch occupies the rightmost 54px; leave 18px between the buttons. */
+    right: 72px;
+    top: 4px;
+    bottom: auto;
+    width: 44px;
+    height: 44px;
+    z-index: 40;
     box-shadow:
       0 12px 26px rgba(27, 94, 122, 0.46),
       0 2px 6px rgba(0, 0, 0, 0.18);

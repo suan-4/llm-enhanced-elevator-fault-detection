@@ -27,11 +27,6 @@ defineProps<{
     <div class="paper">
       <h1>在用曳引驱动电梯安全评估报告</h1>
       <InfoTable readonly :overview="overview" :conclusion="conclusion" />
-      <div class="notes">
-        评估：　　　　　　　　日期：　　年　　月　　日　　　检验机构核准证号：TS7Ⅰ10007-2029<br />
-        审核：　　　　　　　　日期：　　年　　月　　日　　　（检验机构检验专用章）<br />
-        批准：　　　　　　　　日期：　　年　　月　　日
-      </div>
     </div>
   </div>
 
