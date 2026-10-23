@@ -58,6 +58,20 @@ export interface GeneratedInfo {
   other_matches: { no: string; original_text: string; risks: string[] }[]
 }
 
+/** 报告查看页打开前暂存的录入现场：返回时原样恢复，
+    避免「看一份历史报告」把正在填写的草稿顶掉。 */
+interface SessionSnapshot {
+  reportId: string
+  version: number
+  status: string
+  generated: GeneratedInfo | null
+  exportUncertain: boolean
+  form: Record<string, string>
+  items: ItemAnswer[]
+}
+
+let sessionStash: SessionSnapshot | null = null
+
 /** 旧草稿只有 floorsStopsDoors 一个字符串（如「10 层　12 站　12 门」），
     新表单拆成三个数字框。读回时按数字顺序拆出来，避免历史草稿丢数据。 */
 function migrateLegacyFloors(form: Record<string, string>): void {
@@ -582,6 +596,59 @@ export const useReportStore = defineStore('report', () => {
     return report
   }
 
+  /* ── 查看页与录入现场之间的往返 ───────────────────── */
+  /** 把当前正在填写的报告暂存起来（报告查看页会临时换掉 store 内容）。
+      已归档/已作废的报告没有可恢复的编辑现场，不再进暂存。 */
+  function stashSession(): void {
+    if (!reportId.value) return
+    if (['filed', 'void'].includes(status.value)) return
+    sessionStash = {
+      reportId: reportId.value,
+      version: version.value,
+      status: status.value,
+      generated: generated.value ? { ...generated.value } : null,
+      exportUncertain: exportUncertain.value,
+      form: { ...form.value },
+      items: serializeItems(),
+    }
+  }
+
+  /** 从查看页返回：恢复离开前的录入现场 */
+  function restoreStashedSession(): boolean {
+    const stash = sessionStash
+    sessionStash = null
+    if (!stash || ['filed', 'void'].includes(stash.status)) return false
+    hydrate({
+      form: stash.form,
+      items: stash.items,
+      version: stash.version,
+      status: stash.status,
+    })
+    reportId.value = stash.reportId
+    generated.value = stash.generated
+    markExportUncertain(stash.reportId, stash.exportUncertain)
+    ready.value = true
+    saveState.value = 'idle'
+    savedAt.value = ''
+    return true
+  }
+
+  /** 没有可恢复的现场（例如直接打开查看页链接）时清空当前报告，
+      回到评估页后由 ensureDraft 续录或新建。 */
+  function clearSession(): void {
+    sessionStash = null
+    ready.value = false
+    reportId.value = ''
+    version.value = 1
+    status.value = 'draft'
+    generated.value = null
+    draftError.value = ''
+    saveState.value = 'idle'
+    savedAt.value = ''
+    resetForm(createForm())
+    resetItemStates()
+  }
+
   /** 查看已有快照是只读动作，绝不隐式保存或重新评定历史报告。 */
   async function ensurePreview(): Promise<void> {
     if (!generated.value) await generate()
@@ -630,5 +697,8 @@ export const useReportStore = defineStore('report', () => {
     generate,
     ensurePreview,
     openReport,
+    stashSession,
+    restoreStashedSession,
+    clearSession,
   }
 })

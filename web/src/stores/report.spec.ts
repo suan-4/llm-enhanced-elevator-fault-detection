@@ -193,3 +193,43 @@ describe('旧草稿抬头兼容', () => {
     expect(store.form.ratedSpeed).toBe('')
   })
 })
+
+describe('报告查看页往返（暂存录入现场）', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    vi.clearAllMocks()
+    vi.stubGlobal('window', { clearTimeout, setTimeout })
+  })
+
+  it('查看归档报告后返回，恢复原草稿与预览状态', async () => {
+    vi.mocked(api.getReport)
+      .mockResolvedValueOnce({ report: report('draft') } as never)
+      .mockResolvedValueOnce({ report: { ...report('filed'), id: '999', report_no: 'OLD-999' } } as never)
+    const store = useReportStore()
+    await store.openReport('123')
+    store.form.clientName = '正在填写的草稿'
+    store.stashSession()
+    await store.openReport('999')
+    expect(store.reportId).toBe('999')
+    expect(store.status).toBe('filed')
+    expect(store.restoreStashedSession()).toBe(true)
+    expect(store.reportId).toBe('123')
+    expect(store.status).toBe('draft')
+    expect(store.form.clientName).toBe('正在填写的草稿')
+    expect(store.generated?.narrative).toBe('历史结果')
+    expect(api.saveReport).not.toHaveBeenCalled()
+  })
+
+  it('直接打开查看页（没有现场）时清空当前报告，回评估页重新准备', async () => {
+    vi.mocked(api.getReport).mockResolvedValue({ report: report('filed') } as never)
+    const store = useReportStore()
+    store.stashSession()
+    await store.openReport('123')
+    expect(store.restoreStashedSession()).toBe(false)
+    store.clearSession()
+    expect(store.reportId).toBe('')
+    expect(store.status).toBe('draft')
+    expect(store.generated).toBeNull()
+    expect(store.form.clientName).toBe('')
+  })
+})

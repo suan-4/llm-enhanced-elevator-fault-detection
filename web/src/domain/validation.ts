@@ -102,9 +102,27 @@ export function countItems(items: JteItem[], stateOf: (no: string) => ItemState)
   return { total: items.length, done, unfit, miss }
 }
 
-/** 「存在风险」列文本：已勾选情形 + 其他自由填写 */
+/** 不符合项明细列表：勾选的情形 + 「其他」自行填写的内容。
+    清单项与「其他」二选一，但历史草稿可能两者都有（legacyCombined），都要保留。 */
+export function reasonList(state: ItemState): string[] {
+  const list = (state.other && state.legacyCombined === false ? [] : state.reasons.slice())
+    .map((text) => text.trim())
+    .filter(Boolean)
+  if (state.other && state.otherText.trim()) list.push(state.otherText.trim())
+  return list
+}
+
+/** 非末条去掉收尾标点：条文本身多以「。」结尾，
+    直接拼接会出现「。；」，读起来像两句话没接上；末条保留原有结尾。 */
+function trimMiddleReason(text: string): string {
+  return text.trim().replace(/[。；;，,、\s]+$/g, '')
+}
+
+/** 「存在风险」列文本：不符合项明细，多条用「；」连接 */
 export function reasonsText(state: ItemState): string {
-  const parts = state.other && state.legacyCombined === false ? [] : state.reasons.slice()
-  if (state.other && state.otherText.trim()) parts.push(state.otherText.trim())
-  return parts.join('；')
+  const parts = reasonList(state)
+  if (!parts.length) return ''
+  return parts
+    .map((text, i) => (i === parts.length - 1 ? text : trimMiddleReason(text)))
+    .join('；')
 }

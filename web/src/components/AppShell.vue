@@ -22,7 +22,7 @@ import { useToast } from '@/utils/toast'
 const NAV: NavItem[] = [
   { key: 'info', label: '基础信息' },
   { key: 'items', label: '检测项目填写' },
-  { key: 'report', label: '所生成报告' },
+  { key: 'reports', label: '报告管理' },
 ]
 
 const route = useRoute()
@@ -33,10 +33,12 @@ const shell = useShell()
 const kiosk = useKiosk()
 const { show } = useToast()
 
+/* 系统设置自带左侧树，不显示项目侧栏 */
+const isFullPage = computed(() => route.name === 'settings')
 const isSettings = computed(() => route.name === 'settings')
 
 /** 侧栏高亮：只看录入页的三个锚点 */
-const active = computed(() => (isSettings.value ? '' : shell.active))
+const active = computed(() => (isFullPage.value ? '' : shell.active))
 
 /** 侧栏「项目进度」：当前这份评估的填写进度 */
 const progress = computed(() => ({
@@ -46,7 +48,7 @@ const progress = computed(() => ({
 }))
 
 function onNavigate(key: string): void {
-  const anchor = key as 'info' | 'items' | 'report'
+  const anchor = key as 'info' | 'items' | 'reports'
   if (route.path !== '/') {
     void router.push('/').then(() => shell.requestView(anchor))
     return
@@ -59,6 +61,14 @@ function onMainClick(e: MouseEvent): void {
   if (!shell.collapsed && !(e.target as HTMLElement).closest('.sidebar-toggle')) {
     shell.collapsed = true
   }
+}
+
+function goSettings(): void {
+  void router.push('/settings')
+}
+
+function backFromFullPage(): void {
+  void router.push('/').then(() => shell.requestView('info'))
 }
 
 async function signOut(): Promise<void> {
@@ -81,26 +91,48 @@ async function exitSystem(): Promise<void> {
 <template>
   <div class="app-shell">
     <AppSidebar
-      v-if="!isSettings"
+      v-if="!isFullPage"
       :collapsed="shell.collapsed"
       :items="NAV"
       :active="active"
       :user-name="auth.user?.display_name || auth.user?.username || ''"
-      user-role="检验员"
       :show-exit="kiosk.showExit()"
       :progress="progress"
       @toggle="shell.collapsed = !shell.collapsed"
       @navigate="onNavigate"
       @logout="signOut"
+      @settings="goSettings"
       @exit-system="exitSystem"
     />
 
     <div
       class="main"
-      :class="{ expanded: shell.collapsed, 'no-nav': isSettings }"
+      :class="{ expanded: shell.collapsed, 'no-nav': isFullPage }"
       @click="onMainClick"
     >
       <header class="topbar">
+        <button
+          v-if="isFullPage"
+          class="topbar-back"
+          type="button"
+          title="返回评估"
+          aria-label="返回评估"
+          @click="backFromFullPage"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            width="16"
+            height="16"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M15 18l-6-6 6-6" />
+          </svg>
+        </button>
         <div class="brand">
           <span class="brand-mark">GDSEI</span>
           <span class="brand-text">在用曳引驱动电梯安全评估系统</span>
@@ -114,36 +146,26 @@ async function exitSystem(): Promise<void> {
 
     <ExportResult v-if="!isSettings" />
 
-    <!-- 系统设置入口：右下角单个 icon（报告管理 / 账号管理都收进设置页） -->
-    <button
-      v-if="!isSettings"
-      class="settings-fab"
-      type="button"
-      title="系统设置"
-      aria-label="系统设置"
-      @click="router.push('/settings')"
-    >
-      <svg
-        viewBox="0 0 24 24"
-        width="25"
-        height="25"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="1.7"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        aria-hidden="true"
-      >
-        <circle cx="12" cy="12" r="3.1" />
-        <path
-          d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1.03 1.56V21a2 2 0 1 1-4 0v-.09A1.7 1.7 0 0 0 8.9 19.3a1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.7 15a1.7 1.7 0 0 0-1.56-1.03H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.7 8.9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 8.9 4.7a1.7 1.7 0 0 0 1.03-1.56V3a2 2 0 1 1 4 0v.09A1.7 1.7 0 0 0 15 4.7a1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87 1.7 1.7 0 0 0 1.56 1.03H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.56 1.03z"
-        />
-      </svg>
-    </button>
+
   </div>
 </template>
 
 <style scoped>
+.topbar-back {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  margin-right: 2px;
+  padding: 0;
+  border: 1px solid var(--c-line);
+  border-radius: 9px;
+  background: var(--c-panel);
+  color: var(--c-primary);
+  font-size: 17px;
+  line-height: 1;
+  cursor: pointer;
+}
+
 .settings-fab {
   position: fixed;
   right: 22px;
@@ -183,18 +205,33 @@ async function exitSystem(): Promise<void> {
 }
 
 @media (max-width: 900px) {
-  /* Compact entry exposes the entire table; keep settings in the top bar, clear of its signature cells. */
+  /* 板端底部操作条是两行，齿轮再往上让一点 */
   .settings-fab {
-    /* The global IME switch occupies the rightmost 54px; leave 18px between the buttons. */
-    right: 72px;
-    top: 4px;
-    bottom: auto;
-    width: 44px;
-    height: 44px;
-    z-index: 40;
+    right: 14px;
+    bottom: 158px;
+    width: 60px;
+    height: 60px;
     box-shadow:
       0 12px 26px rgba(27, 94, 122, 0.46),
       0 2px 6px rgba(0, 0, 0, 0.18);
+  }
+}
+
+/* 横屏矮视口（板端 960×600）：操作条压到 55px，齿轮跟着缩小并贴近底部 */
+@media (min-width: 901px) and (max-height: 700px) {
+  .settings-fab {
+    right: 14px;
+    bottom: 72px;
+    width: 44px;
+    height: 44px;
+    box-shadow:
+      0 8px 18px rgba(27, 94, 122, 0.4),
+      0 2px 6px rgba(0, 0, 0, 0.18);
+  }
+
+  .settings-fab svg {
+    width: 20px;
+    height: 20px;
   }
 }
 </style>
