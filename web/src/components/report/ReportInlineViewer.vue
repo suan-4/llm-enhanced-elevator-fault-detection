@@ -302,11 +302,11 @@ onBeforeUnmount(() => {
     <!-- 右侧折叠侧栏：当时的填写页面（只读，不可编辑） -->
     <aside v-if="panelOpen && !loading && !loadError" class="ref-panel" aria-label="评估填写内容（只读）">
       <div class="ref-head">
-        <b>评估填写内容</b>
-        <span class="ref-tag">只读</span>
         <button class="ref-close" type="button" title="收起" aria-label="收起" @click="panelOpen = false">
           ×
         </button>
+        <b>评估填写内容</b>
+        <span class="ref-tag">只读</span>
       </div>
       <div class="ref-body">
         <h3>基础信息</h3>
@@ -611,14 +611,22 @@ onBeforeUnmount(() => {
 }
 
 .ref-close {
-  margin-left: auto;
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
   padding: 0;
-  border: 0;
-  background: none;
-  color: var(--c-muted);
-  font-size: 22px;
+  border: 1px solid var(--c-line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--c-primary);
+  font-size: 20px;
   line-height: 1;
   cursor: pointer;
+}
+
+.ref-close:hover {
+  border-color: var(--c-primary);
+  background: var(--c-primary-soft);
 }
 
 .ref-close:hover {
