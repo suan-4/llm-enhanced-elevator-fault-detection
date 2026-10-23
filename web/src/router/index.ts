@@ -28,10 +28,10 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
-      /* 报告管理 / 账号管理已并入「系统设置」的左侧树；
+      /* 报告管理已移到主页面第三个导航（就地查看，不跳路由）；
          旧地址保留重定向，书签不会失效。 */
       path: '/reports',
-      redirect: { path: '/settings', query: { section: 'reports' } },
+      redirect: { path: '/', query: { section: 'reports' } },
     },
     {
       path: '/accounts',

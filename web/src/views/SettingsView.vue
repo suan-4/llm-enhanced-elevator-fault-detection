@@ -1,13 +1,12 @@
 <script setup lang="ts">
 /* 系统设置（2026-10 调整）：
-   - 报告管理 / 账号管理从侧栏并入本页，统一由左侧树状导航进入；
+   - 账号管理从侧栏并入本页，由左侧树状导航进入；报告管理已移到主页面第三个导航；
    - 右侧按树节点渲染内容，配置类仍是只读展示（基础版以部署 .env 为准）。 */
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import * as api from '@/api/system'
 import AppDialog from '@/components/AppDialog.vue'
 import AccountListView from '@/views/AccountListView.vue'
-import ReportListView from '@/views/ReportListView.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useShell } from '@/stores/shell'
 import { ApiError } from '@/utils/http'
@@ -19,7 +18,7 @@ const auth = useAuthStore()
 const shell = useShell()
 const { show } = useToast()
 
-type Section = 'reports' | 'accounts' | 'config' | 'audit' | 'backup' | 'diagnose' | 'about'
+type Section = 'accounts' | 'config' | 'audit' | 'backup' | 'diagnose' | 'about'
 
 interface TreeGroup {
   key: string
@@ -27,15 +26,13 @@ interface TreeGroup {
   children: { key: Section; label: string }[]
 }
 
-/* 左侧树：业务管理（报告/账号）+ 系统维护（配置/日志/备份/诊断）+ 关于 */
+/* 左侧树：业务管理（账号）+ 系统维护（配置/日志/备份/诊断）+ 关于。
+   报告管理已移到主页面第三个导航（就地查看，不跳路由）。 */
 const TREE: TreeGroup[] = [
   {
     key: 'biz',
     label: '业务管理',
-    children: [
-      { key: 'reports', label: '报告管理' },
-      { key: 'accounts', label: '账号管理' },
-    ],
+    children: [{ key: 'accounts', label: '账号管理' }],
   },
   {
     key: 'ops',
@@ -57,7 +54,6 @@ const TREE: TreeGroup[] = [
 const open = reactive<Record<string, boolean>>({ biz: true, ops: true, about: true })
 
 const SECTION_TITLES: Record<Section, string> = {
-  reports: '报告管理',
   accounts: '账号管理',
   config: '基本配置',
   audit: '审计日志',
@@ -375,8 +371,7 @@ onMounted(async () => {
     </aside>
 
     <main class="settings-body">
-      <ReportListView v-if="section === 'reports'" />
-      <AccountListView v-else-if="section === 'accounts'" />
+      <AccountListView v-if="section === 'accounts'" />
 
       <div v-else class="page-pad">
         <div class="sheet">

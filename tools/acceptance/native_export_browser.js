@@ -49,11 +49,16 @@ fs.mkdirSync(OUT, { recursive: true });
       const row = page.locator('tbody tr').filter({ hasText: report.report_no });
       await row.getByRole('button', { name: '查看', exact: true }).click();
       await page.getByRole('button', { name: '导出 Word', exact: true }).waitFor();
+      assert.equal(await page.locator('.report-viewer').count(), 1);
+      assert.equal(await page.locator('.viewer-back').count(), 1);
       assert.equal(await page.locator('.report-cover').count(), 1);
       assert.equal(await page.locator('.report-notice').count(), 1);
       assert.equal(await page.locator('.paper-holder').count(), 6);
+      // 查看页不渲染录入表单，也没有「保存草稿」这类置灰按钮
+      assert.equal(await page.locator('#f-clientName').count(), 0);
+      assert.equal(await page.getByRole('button', { name: '保存草稿', exact: true }).count(), 0);
       await page.waitForFunction(() => {
-        const buttons = [...document.querySelectorAll('.actionbar button')].filter(b => !b.disabled);
+        const buttons = [...document.querySelectorAll('.viewer-actions button')].filter(b => !b.disabled);
         return buttons.every((b, i) => buttons.every((other, j) => {
           if (i === j) return true;
           const a = b.getBoundingClientRect(), c = other.getBoundingClientRect();
@@ -71,28 +76,29 @@ fs.mkdirSync(OUT, { recursive: true });
       }
       await page.getByRole('button', { name: '导出 Word', exact: true }).click();
       await page.locator('.export-float').waitFor({ timeout: 30000 });
-      assert.equal(await page.getByRole('button', { name: '保存草稿', exact: true }).isDisabled(), true);
       const status = (await (await context.request.get(BASE+`/api/reports/${draft.id}`, { headers })).json()).report;
       assert.equal(status.status, 'filed');
       assert.equal(status.files.length, 1);
       assert.match(status.files[0].sha256, /^[0-9a-f]{64}$/);
       const geom = await page.locator('.export-float').boundingBox();
       assert(geom.x >= 0 && geom.x + geom.width <= viewport.width + 1);
-      await page.locator('.sidebar-nav [data-anchor="info"]').click();
-      await page.locator('#f-clientName').waitFor({ state: 'visible' });
-      assert.equal(await page.locator('#f-clientName').isDisabled(), true);
-      await page.screenshot({ path: path.join(OUT, `archived-${viewport.width}.png`), fullPage: false });
-      await page.getByRole('button', { name: '＋ 新建评估', exact: true }).click();
-      const dialog = page.locator('.dialog-mask');
-      await dialog.getByRole('button', { name: '新建', exact: true }).click();
+      await page.screenshot({ path: path.join(OUT, `archived-viewer-${viewport.width}.png`), fullPage: false });
+      // 「返回评估填写」：回到可编辑的录入现场，不再是只读表单
+      await page.locator('.export-float .close').click();
+      // 查看页返回按钮回报告管理列表；再点侧栏「检测项目填写」恢复录入现场
+      await page.locator('.viewer-back').click();
+      await page.waitForSelector('.data-table', { timeout: 15000 });
+      await page.locator('.sidebar-nav li[data-anchor="items"]').click();
+      await page.locator('.group-toggle').first().waitFor({ timeout: 15000 });
       await page.waitForFunction(() => {
         const el = document.querySelector('#f-clientName');
-        return el && el.value === '' && !el.disabled;
+        return el && !el.disabled;
       });
+      assert.equal(await page.locator('#f-clientName').isEditable(), true);
       assert.equal(errors.length, 0, errors.join('\n'));
       results.push({ viewport, responseLost: viewport.width === 600, archived: true,
-        coverAndNotice: true, previewPages: 6, nonOverlappingActions: true, filedInputsLocked: true,
-        newAssessment: true, pageErrors: errors, file: status.files[0] });
+        coverAndNotice: true, previewPages: 6, nonOverlappingActions: true,
+        standaloneViewer: true, backToEditableEditor: true, pageErrors: errors, file: status.files[0] });
       await context.close();
     }
     fs.writeFileSync(path.join(OUT, 'results.json'), JSON.stringify(results, null, 2));

@@ -137,6 +137,7 @@ async function seedEmptyDraft(browser) {
   await page.fill("#f-clientName", "佛山市展翰房地产开发有限公司");
   await page.fill("#f-userName", "佛山市展翰房地产开发有限公司");
   await page.fill("#f-deviceCategory", "曳引驱动电梯");
+  await page.fill("#f-deviceVariety", "曳引驱动乘客电梯");
   await page.fill("#f-productNo", "44786091");
   await page.click(".actionbar .btn:not(.btn-primary)");
   await step("点「保存草稿」");
@@ -185,74 +186,103 @@ async function seedEmptyDraft(browser) {
   await step("刷新后数据仍在（已落库）");
 
   await page.click(".actionbar .btn-primary");
-  await page.waitForSelector(".paper", { timeout: 20000 });
-  await step("点「校验并生成报告」");
+  await page.waitForSelector(".report-viewer", { timeout: 20000 });
+  await step("点「校验并生成报告」→ 自动进入查看");
 
   const reportNo = await page
-    .locator(".report-meta")
+    .locator(".viewer-head .viewer-no")
     .innerText()
     .then((t) => (t.match(/GDSEI-JTE-\d{8}-\d{3}/) || [""])[0])
     .catch(() => "");
   if (!reportNo) {
     ok = false;
-    console.log("  ✗ 生成后报告页没显示报告编号");
+    console.log("  ✗ 生成后查看区域没显示报告编号");
   } else {
     console.log(`  · 后端分配的报告编号：${reportNo}`);
   }
 
-  await page.locator(".actionbar .btn-primary").first().click();
-  await page.waitForTimeout(2500);
-  await step("点「导出 PDF」(本机无 LibreOffice)");
-
-  await page.locator('.sidebar-nav li[data-anchor="items"]').click();
-  // 只断言"不是空白页"会漏掉"点了没反应"这类问题，
-  // 所以这里必须确认真的回到了录入视图（条目表可见）。
-  await page.waitForTimeout(400);
-  const backToInput = await page
-    .locator(".items tbody tr.item-main")
-    .first()
-    .isVisible()
-    .catch(() => false);
-  const stillPreview = await page
-    .locator(".actionbar .btn-primary")
-    .first()
-    .innerText()
-    .catch(() => "");
-  if (!backToInput || stillPreview.includes("导出")) {
-    ok = false;
-    console.log(`  ✗ 点「检测项目填写」锚点没有回到录入视图（条目表可见=${backToInput} 悬浮岛按钮=${stillPreview}）`);
-  }
-  await step("返回录入页");
-
-  // ── 报告管理（系统设置 → 报告管理）：能查到刚才生成的报告、能作废、能删除 ──
-  await page.locator(".settings-fab").click();
-  await page.waitForSelector(".settings-tree", { timeout: 15000 });
-  await page.locator('.tree-children li[data-section="reports"]').click();
-  await page.waitForSelector(".data-table, .empty-state", { timeout: 15000 });
+  // 查看区域内：返回/导出/侧栏/得分等
   await page.waitForTimeout(600);
-  const listText = await page.locator(".settings-body").innerText();
+  const viewerToast = await page.locator(".toast").innerText().catch(() => "");
+  const viewer = {
+    hash: await page.evaluate(() => location.hash),
+    back: await page.locator(".viewer-back").count(),
+    inputs: (await page.locator(".report-viewer #f-clientName").count()),
+    pages: await page.locator(".paper-holder").count(),
+    exports: await page.locator(".viewer-actions button").count(),
+    panelFab: await page.locator(".viewer-panel-fab").count(),
+    score: (await page.locator(".viewer-head .report-meta").innerText().catch(() => ""))
+      .includes("得分"),
+    activeSidebar: (await page.locator(".sidebar-nav li.active").innerText().catch(() => "")).trim(),
+    toastNotice: viewerToast.trim().length > 0,
+  };
+  if (viewer.back !== 1 || viewer.inputs !== 0
+      || viewer.pages < 4 || viewer.exports !== 2 || viewer.panelFab !== 1 || !viewer.score
+      || viewer.hash !== "#/" || !viewer.toastNotice) {
+    ok = false;
+    console.log("  ✗ 生成后查看区域异常：" + JSON.stringify(viewer));
+  }
+  // 右侧折叠侧栏：只读渲染当时的填写页面，带风险评定值三列
+  await page.locator(".viewer-panel-fab").click();
+  await page.waitForSelector(".ref-panel", { timeout: 8000 });
+  const panelText = await page.locator(".ref-items").innerText();
+  const panel = {
+    rows: await page.locator(".ref-items .ref-no").count(),
+    inputs: await page.locator(".ref-panel input, .ref-panel textarea, .ref-panel select").count(),
+    riskHead: ["风险评定值", "严重程度", "概率等级", "风险类别"].every((t) => panelText.includes(t)),
+  };
+  await page.locator(".ref-close").click();
+  await page.waitForTimeout(250);
+  const panelClosed = (await page.locator(".ref-panel").count()) === 0;
+  if (panel.rows !== 66 || panel.inputs !== 0 || !panel.riskHead || !panelClosed) {
+    ok = false;
+    console.log("  ✗ 只读填写内容抽屉异常：" + JSON.stringify({ ...panel, panelClosed }));
+  }
+
+  // 在查看区域导出 PDF（本机无 LibreOffice → 可读失败）
+  await page.locator(".viewer-actions button", { hasText: "导出 PDF" }).first().click();
+  await page.waitForTimeout(2500);
+  await step("查看区域导出 PDF（本机无 LibreOffice）");
+
+  // 返回按钮 → 报告管理列表（就地，不跳路由）
+  await page.locator(".viewer-back").click();
+  await page.waitForSelector(".data-table", { timeout: 15000 });
+  await page.waitForTimeout(600);
+  const listText = await page.locator(".main").innerText();
   if (reportNo && !listText.includes(reportNo)) {
     ok = false;
-    console.log(`  ✗ 报告管理页里查不到刚生成的报告 ${reportNo}`);
+    console.log(`  ✗ 返回报告管理后列表里查不到刚生成的报告 ${reportNo}`);
   }
   const reportOverflow = await page.evaluate(
     () => document.documentElement.scrollWidth - window.innerWidth,
   );
   if (reportOverflow > 0) {
     ok = false;
-    console.log(`  ✗ 报告管理页横向溢出 ${reportOverflow}px`);
+    console.log(`  ✗ 报告管理区域横向溢出 ${reportOverflow}px`);
   }
-  await step("报告管理页");
+  await step("返回报告管理");
 
   if (reportNo) {
+    // 列表再点一次「查看」：右侧就地替换成查看页，仍不跳路由
+    const viewRow = page.locator(".data-table tbody tr", { hasText: reportNo });
+    await viewRow.locator("button", { hasText: "查看" }).click();
+    await page.waitForSelector(".report-viewer", { timeout: 15000 });
+    await page.waitForTimeout(500);
+    if ((await page.evaluate(() => location.hash)) !== "#/") {
+      ok = false;
+      console.log("  ✗ 点「查看」跳转到了新页面");
+    }
+    await page.locator(".viewer-back").click();
+    await page.waitForSelector(".data-table", { timeout: 15000 });
+    await page.waitForTimeout(500);
+
     const row = page.locator(".data-table tbody tr", { hasText: reportNo });
     await row.locator("button", { hasText: "作废" }).click();
     await page.waitForSelector(".dialog-mask .dialog", { timeout: 8000 });
     await page.locator(".dialog .input").first().fill("走查用，作废");
     await page.locator(".dialog-foot button:last-child").click();
     await page.waitForTimeout(1200);
-    const voidText = await page.locator(".settings-body").innerText();
-    if (!voidText.includes("已作废")) {
+    if (!(await page.locator(".main").innerText()).includes("已作废")) {
       ok = false;
       console.log("  ✗ 作废后列表里没看到「已作废」");
     }
@@ -265,14 +295,30 @@ async function seedEmptyDraft(browser) {
     await page.waitForSelector(".dialog-mask .dialog", { timeout: 8000 });
     await page.locator(".dialog-foot button:last-child").click();
     await page.waitForTimeout(1200);
-    if ((await page.locator(".settings-body").innerText()).includes(reportNo)) {
+    if ((await page.locator(".main").innerText()).includes(reportNo)) {
       ok = false;
       console.log("  ✗ 删除作废报告后仍在列表里");
     }
     await step("删除作废报告");
   }
 
-  // ── 系统设置（此时已在设置页）：诊断能出结果、日志能查、窄屏不横向溢出 ──
+  // 侧栏回「检测项目填写」：应恢复离开前的录入现场
+  await page.locator('.sidebar-nav li[data-anchor="items"]').click();
+  await page.waitForTimeout(500);
+  const backToInput = await page
+    .locator(".items tbody tr.item-main")
+    .first()
+    .isVisible()
+    .catch(() => false);
+  const inputEditable = await page.locator("#f-clientName").isEditable().catch(() => false);
+  if (!backToInput || !inputEditable) {
+    ok = false;
+    console.log(`  ✗ 从报告区域切回录入没有恢复现场（条目可见=${backToInput} 可编辑=${inputEditable}）`);
+  }
+  await step("切回录入页（恢复现场）");
+
+  // ── 系统设置：诊断能出结果、日志能查、窄屏不横向溢出 ──
+  await page.locator(".settings-fab").click();
   await page.waitForSelector(".settings-tree", { timeout: 15000 });
   await step("系统设置页");
 

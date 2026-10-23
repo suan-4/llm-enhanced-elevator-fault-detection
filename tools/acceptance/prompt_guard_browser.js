@@ -22,11 +22,14 @@ async (page) => {
   await page.goto('http://127.0.0.1:18084/#/reports');
   const row = page.getByRole('row').filter({hasText:number});
   await row.getByRole('button',{name:'查看',exact:true}).click();
-  await page.locator('.model-status:visible').waitFor();
-  const saved = await page.locator('.model-status:visible').innerText();
-  if (!saved.includes('已保存的预览') || !saved.includes('未重新调用模型')) throw new Error('Saved preview notice incorrect');
+  await page.locator('.report-viewer').waitFor();
+  const toast = page.locator('.toast').filter({hasText:'已保存的预览'});
+  await toast.waitFor({timeout:20000});
+  const saved = await toast.innerText();
+  if (!saved.includes('未重新调用模型')) throw new Error('Saved preview notice incorrect');
+  if (await page.locator('.report-toolbar .model-status').count()) throw new Error('Saved preview notice leaked into report preview');
   await page.screenshot({path:'output/playwright/prompt-guard-saved.png'});
-  const bounds = await page.locator('.model-status:visible').evaluate(node=>{
+  const bounds = await toast.evaluate(node=>{
     const box=node.getBoundingClientRect();
     return {left:box.left,right:box.right,width:innerWidth};
   });
