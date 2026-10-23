@@ -38,6 +38,8 @@ table {
   height: 100vh;
   overflow-y: auto;
   overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
   /* 时长与缓动必须与 .sidebar 的 width 一致，否则展开时侧边栏会压住正文 */
   transition: margin-left 0.3s ease;
 }
@@ -523,6 +525,8 @@ table {
 .actionbar {
   position: sticky;
   bottom: 0;
+  margin-top: auto;
+  flex: 0 0 auto;
   z-index: 30;
   display: flex;
   align-items: center;
@@ -870,16 +874,18 @@ table {
 
 /* ══ 横屏矮视口（板端 960×600）：录入页、条目行与操作条整体压缩 ══ */
 @media (min-width: 901px) and (max-height: 700px) {
-  /* 横屏板端同理：正文不做 margin 过渡，避免大表格逐帧重排 */
+  /* 横屏板端同理：正文不做 margin 过渡，避免大表格逐帧重排；
+     侧栏展开宽度收窄到 230px，正文同步 */
   .main {
+    margin-left: 200px;
     transition: none;
   }
 
   .sheet {
     padding: 10px 16px 12px;
     /* 固定为侧栏展开时的宽度，收起后两侧留白（表格居中） */
-    width: min(var(--sheet-max), calc(100vw - 260px - 56px));
-    max-width: calc(100vw - 260px - 56px);
+    width: min(var(--sheet-max), calc(100vw - 200px - 56px));
+    max-width: calc(100vw - 200px - 56px);
   }
 
   .doc-title {

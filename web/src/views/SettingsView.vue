@@ -215,6 +215,20 @@ async function loadInfo(): Promise<void> {
 }
 
 const auditEvent = ref('')
+const AUDIT_EVENTS: { value: string; label: string }[] = [
+  { value: 'login_ok', label: '登录成功' },
+  { value: 'login_fail', label: '登录失败' },
+  { value: 'report_generate', label: '生成报告' },
+  { value: 'report_export', label: '导出报告' },
+  { value: 'report_void', label: '作废报告' },
+  { value: 'report_delete', label: '删除报告' },
+  { value: 'account_create', label: '新增账号' },
+  { value: 'account_update', label: '修改账号' },
+  { value: 'account_delete', label: '删除账号' },
+  { value: 'config_update', label: '修改配置' },
+  { value: 'backup_create', label: '新建备份' },
+  { value: 'backup_restore', label: '恢复备份' },
+]
 const auditActor = ref('')
 const auditRows = ref<api.AuditEvent[]>([])
 const auditTotal = ref(0)
@@ -452,7 +466,12 @@ onMounted(async () => {
 
           <template v-else-if="section === 'audit'">
             <div class="toolbar">
-              <input v-model="auditEvent" class="input" placeholder="事件类型，如 login_ok" @keyup.enter="loadAudit" />
+              <select v-model="auditEvent" class="select" @change="loadAudit">
+                <option value="">全部事件</option>
+                <option v-for="evt in AUDIT_EVENTS" :key="evt.value" :value="evt.value">
+                  {{ evt.label }}
+                </option>
+              </select>
               <input v-model="auditActor" class="input" placeholder="操作者姓名或 ID" @keyup.enter="loadAudit" />
               <button class="btn" type="button" @click="loadAudit">查询</button>
             </div>
