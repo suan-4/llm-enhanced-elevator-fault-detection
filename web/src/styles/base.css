@@ -1054,9 +1054,9 @@ table {
   }
 
   .sheet .info th {
-    white-space: nowrap;
-    font-size: 11.5px;
-    padding: 3px 4px;
+    white-space: nowrap !important;
+    font-size: 11.5px !important;
+    padding: 3px 4px !important;
   }
 
   .sheet .info td {
@@ -1233,5 +1233,42 @@ table {
     height: 34px;
     padding: 0 6px;
     font-size: 12px;
+  }
+}
+
+/* ══ 大屏竖屏（宽 >900 但仍是竖屏）：基础信息表同样不换行 ══ */
+@media (min-width: 901px) and (orientation: portrait) {
+  .sheet .info col:nth-child(1) {
+    width: 11% !important;
+  }
+
+  .sheet .info col:nth-child(2) {
+    width: 13% !important;
+  }
+
+  .sheet .info col:nth-child(3) {
+    width: 28% !important;
+  }
+
+  .sheet .info col:nth-child(4) {
+    width: 15% !important;
+  }
+
+  .sheet .info col:nth-child(5) {
+    width: 16% !important;
+  }
+
+  .sheet .info col:nth-child(6) {
+    width: 17% !important;
+  }
+
+  .sheet .info th {
+    white-space: nowrap !important;
+    font-size: 11.5px !important;
+    padding: 3px 4px !important;
+  }
+
+  .sheet .info td {
+    padding: 3px 4px;
   }
 }
