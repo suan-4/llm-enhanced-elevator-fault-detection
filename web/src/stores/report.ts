@@ -382,7 +382,6 @@ export const useReportStore = defineStore('report', () => {
     for (const item of items.value) {
       const saved = draft.items.find((i) => i.no === item.no)
       const state = createItemState()
-      state.result = ''
       if (saved) {
         state.result = CODE_TO_RESULT[saved.result] ?? ''
         state.reasons = saved.reasons ?? []
