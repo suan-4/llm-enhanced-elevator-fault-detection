@@ -870,6 +870,11 @@ table {
 
 /* ══ 横屏矮视口（板端 960×600）：录入页、条目行与操作条整体压缩 ══ */
 @media (min-width: 901px) and (max-height: 700px) {
+  /* 横屏板端同理：正文不做 margin 过渡，避免大表格逐帧重排 */
+  .main {
+    transition: none;
+  }
+
   .sheet {
     padding: 10px 16px 12px;
     /* 固定为侧栏展开时的宽度，收起后两侧留白（表格居中） */
@@ -968,6 +973,12 @@ table {
 
   .main.no-nav {
     margin-left: 0;
+  }
+
+  /* 板端 WebKit：margin-left 动画会让整张录入表格每帧重排，展开侧栏很卡；
+     侧栏自身仍有宽度动画，正文直接切换宽度（只重排一次）。 */
+  .main {
+    transition: none;
   }
 
   .topbar {
