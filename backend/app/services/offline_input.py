@@ -77,7 +77,7 @@ def capture_command():
         if not sources:
             raise ValueError('未发现麦克风，请连接录音设备')
         return DESKTOP + ['/usr/bin/parec', '--device=' + sources[0], '--raw',
-                          '--rate=16000', '--channels=1', '--format=s16le']
+                          '--rate=16000', '--channels=1', '--format=s16le', '--latency-msec=60']
     except (OSError, subprocess.SubprocessError):
         raise ValueError('录音设备未就绪') from None
 
