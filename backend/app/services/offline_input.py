@@ -93,7 +93,7 @@ def pcm_samples(content):
     return len(samples) / 16000, peak
 
 
-def transcribe(path):
+def transcribe(path, cancel=None):
     binary = RUNTIME / 'bin/sherpa-onnx-offline'
     model = MODEL / 'model.int8.onnx'
     if not binary.is_file() or not model.is_file():
@@ -102,17 +102,46 @@ def transcribe(path):
     args = [str(binary), '--sense-voice-model=' + str(model), '--tokens=' + str(MODEL / 'tokens.txt'),
             '--sense-voice-language=auto', '--sense-voice-use-itn=true', '--num-threads=2', str(path)]
     try:
-        result = subprocess.run(args, capture_output=True, text=True, timeout=60, env=env)
+        result = _decode(args, env, cancel)
         if result.returncode == 0:
-            for line in result.stdout.splitlines():
+            for line in (result.stdout + '\n' + result.stderr).splitlines():
                 if line.startswith('{'):
-                    text = json.loads(line).get('text', '').strip()
+                    try:
+                        data = json.loads(line)
+                    except ValueError:
+                        continue
+                    text = data.get('text', '') if isinstance(data, dict) else ''
+                    if not isinstance(text, str):
+                        continue
+                    text = text.strip()
                     text = re.sub(r'<\|[^>]*\|>', '', text).strip()
                     if text:
                         return text
     except (OSError, subprocess.TimeoutExpired, ValueError):
         pass
     raise ValueError('未能识别出文字，请靠近麦克风重新录入')
+
+
+def _decode(args, env, cancel):
+    process = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                               text=True, env=env)
+    started = time.monotonic()
+    try:
+        while True:
+            if (cancel and cancel.is_set()) or time.monotonic() - started > 60:
+                raise ValueError('语音识别已取消或超时')
+            try:
+                stdout, stderr = process.communicate(timeout=.1)
+                return subprocess.CompletedProcess(args, process.returncode, stdout, stderr)
+            except subprocess.TimeoutExpired:
+                continue
+    finally:
+        if process.poll() is None:
+            process.terminate()
+            try:
+                process.communicate(timeout=2)
+            except subprocess.TimeoutExpired:
+                process.kill(); process.communicate()
 
 
 class VoiceCapture:
@@ -125,11 +154,15 @@ class VoiceCapture:
         self.timer = None
         self.expiry = None
         self.id = ''
+        self.canceled = threading.Event()
+        self.decoding = False
 
     def start(self):
         with self.lock:
             if self.id:
                 raise ValueError('已有录音进行中，请先结束录音')
+            self.canceled = threading.Event()
+            self.decoding = False
             self.folder = Path(tempfile.mkdtemp(prefix='elevator-voice-', dir=self.temp_root))
             try:
                 self.output = (self.folder / 'audio.pcm').open('wb')
@@ -177,6 +210,7 @@ class VoiceCapture:
                 self._cleanup()
 
     def _cleanup(self):
+        self.canceled.set()
         for timer in (self.timer, self.expiry):
             if timer:
                 timer.cancel()
@@ -199,6 +233,8 @@ class VoiceCapture:
     def stop(self, record_id):
         with self.lock:
             self._check(record_id)
+            if self.decoding:
+                raise ValueError('正在识别，请稍候')
             try:
                 self._halt()
                 content = (self.folder / 'audio.pcm').read_bytes()
@@ -209,12 +245,22 @@ class VoiceCapture:
                     wav.setsampwidth(2)
                     wav.setframerate(16000)
                     wav.writeframes(content)
-                start = time.monotonic()
-                text = transcribe(path)
-                return {'text': text, 'duration_seconds': round(duration, 2),
-                        'recognition_ms': round((time.monotonic() - start) * 1000)}
-            finally:
+                canceled = self.canceled
+                self.decoding = True
+            except Exception:
                 self._cleanup()
+                raise
+        try:
+            start = time.monotonic()
+            text = transcribe(path, canceled)
+            if canceled.is_set():
+                raise ValueError('语音识别已取消')
+            return {'text': text, 'duration_seconds': round(duration, 2),
+                    'recognition_ms': round((time.monotonic() - start) * 1000)}
+        finally:
+            with self.lock:
+                if self.id == record_id:
+                    self._cleanup()
 
 
 voice = VoiceCapture()

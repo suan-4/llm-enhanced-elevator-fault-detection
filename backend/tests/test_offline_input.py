@@ -2,16 +2,58 @@ import os
 from pathlib import Path
 import sys
 import tempfile
+import threading
 import unittest
 from types import SimpleNamespace
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from app.services.offline_input import VoiceCapture, validate_actions, pcm_samples
+from app.services.offline_input import VoiceCapture, validate_actions, pcm_samples, transcribe, _decode
 from app.api.input import require_local
 
 
 class OfflineInputTests(unittest.TestCase):
+    def test_cancel_terminates_real_decoder_process(self):
+        canceled = threading.Event()
+        timer = threading.Timer(.15, canceled.set)
+        timer.start()
+        try:
+            with self.assertRaises(ValueError):
+                _decode([sys.executable, '-c', 'import time; time.sleep(60)'], dict(os.environ), canceled)
+        finally:
+            timer.cancel()
+
+    def test_cancel_during_recognition_is_prompt_and_removes_audio(self):
+        entered, release = threading.Event(), threading.Event()
+        def decoding(path, cancel=None):
+            entered.set(); release.wait(3)
+            return 'old transcript'
+        with tempfile.TemporaryDirectory() as folder:
+            capture = VoiceCapture(temp_root=Path(folder))
+            with patch('app.services.offline_input.capture_command', return_value=[sys.executable, '-c', 'import time; time.sleep(60)']):
+                record_id = capture.start()['id']
+            (capture.folder / 'audio.pcm').write_bytes(b'\x00\x10' * 16000)
+            failures = []
+            def stop():
+                try: capture.stop(record_id)
+                except ValueError: failures.append('canceled')
+            with patch('app.services.offline_input.transcribe', side_effect=decoding):
+                worker = threading.Thread(target=stop); worker.start()
+                self.assertTrue(entered.wait(2))
+                cancel = threading.Thread(target=lambda: capture.cancel(record_id)); cancel.start()
+                try:
+                    cancel.join(.5)
+                    self.assertFalse(cancel.is_alive(), 'Cancel must not wait for model inference')
+                    self.assertEqual(list(Path(folder).iterdir()), [])
+                finally:
+                    release.set(); worker.join(4); cancel.join(4)
+            self.assertEqual(failures, ['canceled'])
+
+    def test_decoder_accepts_json_on_stderr_among_diagnostic_lines(self):
+        result = SimpleNamespace(returncode=0, stdout='', stderr='loading model\n{invalid diagnostic}\n{"text":"<|zh|>制动器未打开"}\n')
+        with patch('pathlib.Path.is_file', return_value=True), patch('app.services.offline_input._decode', return_value=result):
+            self.assertEqual(transcribe(Path('sample.wav')), '制动器未打开')
+
     def test_rejects_command_like_pinyin_and_limits_replay(self):
         for actions in ([{'key': ';rm -rf /'}], [{'candidate': 'x' * 81}], [{'key': 'a'}] * 161):
             with self.assertRaises(ValueError):

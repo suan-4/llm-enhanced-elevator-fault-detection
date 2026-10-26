@@ -22,6 +22,7 @@ const voiceText = ref('')
 const seconds = ref(0)
 const panel = ref<HTMLElement>()
 let serial = 0, committedLength = 0
+let voiceSerial = 0
 let debounce: ReturnType<typeof setTimeout> | undefined
 let clock: ReturnType<typeof setInterval> | undefined
 let observer: ResizeObserver | undefined
@@ -87,6 +88,7 @@ function enter() {
 function changeLayout(next: 'letters' | 'numbers' | 'symbols') { resetComposition(); layout.value = next }
 function language() { resetComposition(); input.chinese.value = !input.chinese.value }
 async function cancelVoice() {
+  voiceSerial++; voiceBusy.value = false
   clearInterval(clock)
   const id = recordingId.value
   recordingId.value = ''; voiceText.value = ''; seconds.value = 0
@@ -94,33 +96,34 @@ async function cancelVoice() {
     try { await inputRequest('/voice/cancel', { id }) } catch { /* expiry already cleaned it */ }
   }
 }
-async function switchMode(next: typeof mode.value) {
-  resetComposition(); await cancelVoice(); mode.value = next; error.value = ''
+function switchMode(next: typeof mode.value) {
+  if (next !== 'keyboard' && (password.value || numeric.value)) return
+  resetComposition(); void cancelVoice(); mode.value = next; error.value = ''
 }
 async function startVoice() {
   if (voiceBusy.value || recordingId.value || password.value) return
-  const generation = input.generation.value
+  const generation = input.generation.value, request = ++voiceSerial
   voiceBusy.value = true; error.value = ''; voiceText.value = ''
   try {
     const result = await inputRequest<{ id: string }>('/voice/start', {})
-    if (generation !== input.generation.value || !input.opened.value || mode.value !== 'voice') {
+    if (request !== voiceSerial || generation !== input.generation.value || !input.opened.value || mode.value !== 'voice') {
       await inputRequest('/voice/cancel', { id: result.id }); return
     }
     recordingId.value = result.id; seconds.value = 0
     clock = setInterval(() => { seconds.value++; if (seconds.value >= 30) void stopVoice() }, 1000)
-  } catch (err) { error.value = err instanceof Error ? err.message : '麦克风未就绪' }
-  finally { voiceBusy.value = false }
+  } catch (err) { if (request === voiceSerial) error.value = err instanceof Error ? err.message : '麦克风未就绪' }
+  finally { if (request === voiceSerial) voiceBusy.value = false }
 }
 async function stopVoice() {
-  const id = recordingId.value, generation = input.generation.value
+  const id = recordingId.value, generation = input.generation.value, request = voiceSerial
   if (!id || voiceBusy.value) return
-  clearInterval(clock); voiceBusy.value = true; recordingId.value = ''
+  clearInterval(clock); voiceBusy.value = true
   try {
     const result = await inputRequest<{ text: string }>('/voice/stop', { id })
-    if (generation === input.generation.value && input.opened.value && mode.value === 'voice') voiceText.value = result.text
+    if (request === voiceSerial && generation === input.generation.value && input.opened.value && mode.value === 'voice') voiceText.value = result.text
   } catch (err) {
-    if (generation === input.generation.value) error.value = err instanceof Error ? err.message : '语音识别失败'
-  } finally { voiceBusy.value = false }
+    if (request === voiceSerial && generation === input.generation.value) error.value = err instanceof Error ? err.message : '语音识别失败'
+  } finally { if (request === voiceSerial) { voiceBusy.value = false; recordingId.value = '' } }
 }
 function insertVoice() {
   if (!voiceText.value) return
@@ -168,6 +171,7 @@ watch(() => input.chinese.value, resetComposition)
 onMounted(async () => {
   document.addEventListener('focusin', focus)
   document.addEventListener('selectionchange', selection)
+  document.addEventListener('input', input.externalEdit)
   document.addEventListener('pointerdown', pointer, true)
   window.addEventListener('pagehide', close)
   try {
@@ -180,6 +184,7 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   close(); observer?.disconnect(); document.removeEventListener('focusin', focus)
   document.removeEventListener('selectionchange', selection); document.removeEventListener('pointerdown', pointer, true)
+  document.removeEventListener('input', input.externalEdit)
   window.removeEventListener('pagehide', close); offlineBridge(false)
 })
 </script>
@@ -202,6 +207,7 @@ onBeforeUnmount(() => {
       <p v-if="error" class="keyboard-error" role="alert">{{ error }}</p>
       <template v-if="mode === 'keyboard'">
         <div class="keyboard-candidatebar">
+          <span v-if="input.numericDraft.value !== null" class="keyboard-preedit">{{ input.numericDraft.value }}</span>
           <span v-if="pinyinText" class="keyboard-preedit">{{ pinyinText }}</span>
           <div class="keyboard-candidates" aria-label="拼音候选词">
             <button v-for="word in candidates" :key="word" type="button" @click="action({ candidate: word }, true)">{{ word }}</button>
