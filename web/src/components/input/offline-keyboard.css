@@ -1,0 +1,48 @@
+.offline-keyboard { position:fixed; z-index:1400; inset:auto 0 0; height:min(370px,54vh); box-sizing:border-box;
+  display:flex; flex-direction:column; gap:6px; padding:8px 10px max(10px,env(safe-area-inset-bottom));
+  background:#e5edf1; border-top:1px solid #b7cbd4; color:#183b4b; font-family:inherit; user-select:none; touch-action:manipulation }
+.offline-keyboard button { cursor:pointer; font:inherit; color:inherit; -webkit-tap-highlight-color:transparent }
+.offline-keyboard button:disabled { opacity:.42; cursor:default }
+.offline-keyboard button:focus-visible { outline:3px solid #1b5e7a; outline-offset:1px }
+.keyboard-toolbar { display:flex; align-items:center; gap:12px; min-height:38px; flex-shrink:0 }
+.keyboard-modes { display:flex; align-items:center; gap:4px }
+.keyboard-modes button { border:0; border-radius:6px; padding:8px 18px; background:transparent; font-size:15px }
+.keyboard-modes .selected { background:#fff; color:#164e65; font-weight:700 }
+.keyboard-field { flex:1; color:#435e6b; font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+.keyboard-hide { width:44px; height:36px; border:0; background:transparent; font-size:30px!important }
+.keyboard-error { margin:0; color:#9b2331; font-size:13px; line-height:18px; padding:3px 8px; flex-shrink:0 }
+.keyboard-candidatebar { display:flex; align-items:center; min-height:44px; gap:12px; border-bottom:1px solid #cbd9df; flex-shrink:0 }
+.keyboard-preedit { max-width:32%; overflow:hidden; text-overflow:ellipsis; color:#205c74; font-size:16px }
+.keyboard-candidates { display:flex; align-items:center; flex:1; min-width:0; gap:10px; overflow-x:auto; white-space:nowrap }
+.keyboard-candidates button { border:0; background:transparent; padding:6px 8px; min-height:42px; font-size:22px }
+.keyboard-candidates span { color:#47616e; font-size:14px }
+.keyboard-candidatebar>button { background:transparent; border:0; font-size:30px; width:40px }
+.keyboard-rows { display:flex; flex-direction:column; gap:7px; flex:1; min-height:0 }
+.keyboard-row { display:flex; gap:7px; flex:1; min-height:0 }
+.keyboard-row.indented { padding:0 4.4% }
+.keyboard-row .key { flex:1; min-width:0; padding:0; background:#fff; border:0; border-radius:6px;
+  box-shadow:0 2px 0 #bbcbd3; font-size:24px; display:flex; align-items:center; justify-content:center }
+.keyboard-row .key:active,.handwriting-footer button:active { background:#bbd8e5; box-shadow:none; transform:translateY(1px) }
+.keyboard-row .function { background:#cedce4; font-size:18px; min-width:46px; flex:1.3 }
+.keyboard-bottom .key { font-size:18px; flex:1 }
+.keyboard-bottom .space { flex:5; font-size:15px }
+.keyboard-bottom .enter { flex:1.7; min-width:70px; background:#1b5e7a; color:white; font-size:15px }
+.handwriting-footer { display:flex; gap:10px; margin-top:3px; min-height:38px }
+.handwriting-footer button { flex:1; border:0; background:#fff; border-radius:6px; font-size:15px }
+.voice-panel { display:flex; flex:1; min-height:0; align-items:center; justify-content:center; flex-direction:column; gap:8px; overflow:auto }
+.voice-record { width:84px; height:84px; border:0; border-radius:50%; background:#1b5e7a; color:white!important }
+.voice-record svg { width:38px; height:38px; fill:none; stroke:currentColor; stroke-width:1.7; stroke-linecap:round }
+.voice-record.recording { background:#b83243 }
+.voice-state { font-size:16px; margin:4px 0; color:#244855 }
+.voice-hint { margin:0; color:#49616d; font-size:13px }
+.voice-result { margin:0; padding:14px 18px; background:#fff; border-radius:8px; max-width:640px; max-height:140px; overflow:auto; font-size:20px; line-height:1.7; user-select:text }
+.voice-actions { display:flex; gap:14px; padding:8px }
+.voice-actions button,.voice-cancel { border:1px solid #aec7d3; border-radius:6px; padding:10px 26px; background:#fff; font-size:15px }
+.voice-actions .primary { background:#1b5e7a; color:white }
+.offline-input-launcher { position:fixed; right:20px; bottom:20px; z-index:1400; background:#fff; border:1px solid #1b5e7a; color:#1b5e7a; border-radius:6px; padding:10px 16px }
+body.offline-input-open .main { height:calc(100vh - var(--offline-keyboard-height,370px))!important; padding-bottom:20px!important }
+body.offline-input-open .actionbar { display:none }
+body.offline-input-open .login-view { bottom:var(--offline-keyboard-height,370px); align-items:flex-start }
+body.offline-input-open .login-card { flex-shrink:0; margin:auto }
+@media (max-width:700px) { .offline-keyboard { padding-left:7px; padding-right:7px } .keyboard-row { gap:5px } .keyboard-modes button { padding:8px 14px } }
+@media (prefers-reduced-motion:reduce) { .offline-keyboard * { transition:none!important; animation:none!important } }

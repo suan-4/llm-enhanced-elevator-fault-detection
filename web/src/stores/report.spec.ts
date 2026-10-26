@@ -166,7 +166,7 @@ describe('旧草稿抬头兼容', () => {
   it('只提交有效分支，草稿仍保留停用输入及旧报告漏填状态', () => {
     const store = useReportStore()
     store.items = [{ no: '1.1', name: '项目', sub: '', req: [], opts: [] }]
-    store.hydrate({form: {}, items: [], version: 1, status: 'draft'})
+    store.hydrate({form: {}, items: [{ no: '1.1', result: '', reasons: [], other_text: '' }], version: 1, status: 'draft'})
     expect(store.stateOf('1.1').result).toBe('')
     Object.assign(store.stateOf('1.1'), {
       result: '符合', reasons: ['先前风险'], other: true, otherText: '先前描述',

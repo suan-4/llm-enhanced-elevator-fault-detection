@@ -1,0 +1,8 @@
+Offline handwriting assets
+
+Source: https://github.com/gugray/HanziLookupJS (retrieved 2026-10-26)
+hanzilookup.min.js: GNU GPL, see LICENSE-HanziLookup. Corresponding source:
+https://github.com/gugray/HanziLookupJS/tree/master/library
+mmah.json: Make Me a Hanzi-derived data, Arphic Public License, see LICENSE-APL.
+
+Both assets are served locally. No stroke data is sent to an external service.
