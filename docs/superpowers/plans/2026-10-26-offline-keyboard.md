@@ -25,22 +25,24 @@
 
 **Files:** backend/app/services/offline_input.py、fcitx_worker.py、backend/app/api/input.py、backend/tests/test_offline_input.py、backend/app/main.py。
 **Interfaces:** GET /api/input/status；POST /api/input/pinyin {actions} 返回候选/已提交；voice/start返回id，voice/stop {id}返回text，voice/cancel {id}释放。
-- [ ] 写服务边界测试（远程/跨源拒绝、动作限制、音频静音与长度、录音取消），运行确认缺功能失败。
-- [ ] 实现参数化本机命令、隔离上下文、最长30秒录音与临时文件清理；按接口回传可读错误。
-- [ ] 运行后端测试与板端真实拼音/ASR样本，记录性能并提交。
+- [x] 写服务边界测试（远程/跨源拒绝、动作限制、音频静音与长度、录音取消），运行确认缺功能失败。
+- [x] 实现参数化本机命令、隔离上下文、最长30秒录音与临时文件清理；按接口回传可读错误。
+- [x] 运行后端测试与板端真实拼音/ASR样本，记录性能并提交。
 
 ### Task 2: 面板与编辑
 
 **Files:** web/src/components/input/*、web/src/utils/offlineInput.ts、web/src/domain/inputEditing.ts及测试、web/src/App.vue。
 **Interfaces:** 输入组件消费Task1接口；focusin绑定原生input/textarea，setNativeValue派发input事件；Native旗标window.__elevatorInputManaged。
-- [ ] 写编辑边界测试并运行确认缺模块失败。
-- [ ] 实现选区/数字/长度编辑与面板；候选请求加版本与字段身份保护；离线手写本地资产；录音只在明确点击后开始。
-- [ ] 类型检查、前端全套测试、构建与浏览器交互验收，提交。
+- [x] 写编辑边界测试并运行确认缺模块失败。
+- [x] 实现选区/数字/长度编辑与面板；候选请求加版本与字段身份保护；离线手写本地资产；录音只在明确点击后开始。
+- [x] 类型检查、前端全套测试、构建与浏览器交互验收，提交。
 
 ### Task 3: 原生桥与正式更新
 
 **Files:** kiosk/install_offline_input.py、tools/acceptance/offline_input_browser.js、docs/acceptance/2026-10-26-离线键盘.md。
 **Interfaces:** 安装脚本备份原生启动文件并局部更改焦点探针；/userdata/elevator/input存储固定版本ASR资产。
-- [ ] 候选服务和原生兼容测试，核对板端现有代码及业务数据摘要。
-- [ ] 明确暂停/恢复API、备份app/dist/原生启动器；复制同一已构建产物上板；重启界面并保留旧版回退路径。
-- [ ] 实机截图与数据不变校验；记录未能实测的麦克风人声质量；完成审查。
+- [x] 候选服务和原生兼容测试，核对板端现有代码及业务数据摘要。
+- [x] 明确暂停/恢复API、备份app/dist/原生启动器；复制同一已构建产物上板；重启界面并保留旧版回退路径。
+- [x] 实机截图与数据不变校验；记录未能实测的麦克风人声质量；完成审查。
+
+验收记录：`docs/acceptance/2026-10-26-离线键盘.md`。现场人声质量、实机竖屏及截图可见桌面Dock覆盖仍列为待现场确认项，不声称已通过。
