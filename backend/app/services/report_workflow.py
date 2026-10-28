@@ -378,6 +378,9 @@ async def _run_kg_prompt_flow(*, kg_evidence: dict, unfit: list[dict], risks: di
             "category": risk.get("category", ""),
             "measure": risk_rules.CATEGORY_MEASURE.get(risk.get("category", ""), ""),
             "has_candidate_evidence": True,
+            "fault_chain": summary.get("fault_chain") or [],
+            "risk": summary.get("risk") or "",
+            "action": summary.get("action") or "",
         })
     prompt4 = kg_prompt.build_t4_overview_prompt(
         overview_facts=_overview_facts(unfit, risks, score, grade),
@@ -553,6 +556,7 @@ async def generate(report_id: int | str, *, use_llm: bool = False,
         required_keys = _priority_fact_keys(unfit, risks)
         narrative = _narrative(unfit, risks, score, grade)
     kg_evidence = _build_kg_evidence(kg_selections)
+    analysis_text = ""
     kg_prompt_result: dict = {"used": False, "errors": []}
     if settings.kg_prompt_enabled and kg_evidence and kg_evidence.get("paths") and use_llm:
         try:
@@ -568,7 +572,7 @@ async def generate(report_id: int | str, *, use_llm: bool = False,
                                             "item_no": "", "detail": str(exc)[:120]}]}
     llm_used, llm_error, llm_error_code = False, "", ""
     if kg_prompt_result.get("used"):
-        narrative = str(kg_prompt_result.get("narrative") or narrative).strip() or narrative
+        analysis_text = str(kg_prompt_result.get("narrative") or "").strip()
         llm_used = True
     elif kg_prompt_result.get("partial") and kg_prompt_result.get("appendix"):
         # T3 已成功、T4 失败：正文用规则摘要，附页保留 T3；不再重复调用模型
@@ -581,9 +585,9 @@ async def generate(report_id: int | str, *, use_llm: bool = False,
             with stage('overview'):
                 text = (await model_text(prompt) or "").strip()
             if text:
-                with stage('model_result_validate', purpose='overview'):
-                    narrative = _grounded_overview(text, _overview_facts(unfit, risks, score, grade), required_keys)
-                record_model_validation('overview')
+                with stage('model_result_validate', purpose='analysis'):
+                    analysis_text = _grounded_overview(text, _overview_facts(unfit, risks, score, grade), required_keys)
+                record_model_validation('analysis')
                 llm_used = True
             else:
                 llm_error = "模型返回空内容，已采用原始数据摘要"
@@ -597,9 +601,9 @@ async def generate(report_id: int | str, *, use_llm: bool = False,
                          else '模型概况未通过校验或未完成，已采用规则摘要')
     if kg_prompt_result.get("appendix") and (
             kg_prompt_result.get("used") or kg_prompt_result.get("partial")):
-        narrative = narrative.rstrip() + "\n" + kg_prompt_result["appendix"]
+        analysis_text = (analysis_text.rstrip() + "\n" + kg_prompt_result["appendix"]).strip()
     elif kg_evidence and kg_evidence.get("paths"):
-        narrative = narrative.rstrip() + "\n" + _kg_appendix(kg_evidence)
+        analysis_text = (analysis_text.rstrip() + "\n" + _kg_appendix(kg_evidence)).strip()
     provenance = {
         "generation_id": uuid4().hex,
         "llm_used": llm_used, "llm_model": "Qwen3.5-4B" if llm_used or other_matches else "",
@@ -616,6 +620,10 @@ async def generate(report_id: int | str, *, use_llm: bool = False,
         "kg_prompt_version": (kg_prompt_result.get("prompt_version") or ""),
         "kg_prompt_errors": (kg_prompt_result.get("errors") or [])[:5],
         "kg_prompt_validation": kg_prompt_result.get("validation") or {},
+        # 大模型负责报告文末的文本分析；评估概况 narrative 保持规则事实，不混入模型文字
+        "analysis_text": analysis_text,
+        "analysis_status": ("success" if analysis_text and llm_used else
+                            ("partial" if analysis_text else "not_available")),
         "risk_rule": "expert_material", "risk_catalog_version": material["version"],
         "catalog_version": report["catalog_version"], "unfit_count": len(unfit),
         "other_matches": other_matches, "score_basis": basis,

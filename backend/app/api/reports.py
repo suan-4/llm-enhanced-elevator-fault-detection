@@ -137,9 +137,10 @@ async def generate_report_stream(report_id: str, req: ReportGenerateRequest,
         finally:
             if not task.done():
                 task.cancel()
-        narrative = str(report.get("narrative") or "")
-        for i in range(0, len(narrative), 12):
-            yield _sse({"type": "text", "text": narrative[i:i + 12]})
+        # 只流式输出文末「文本分析报告」，不流评估概况/风险数据
+        analysis = str((report.get("provenance") or {}).get("analysis_text") or "")
+        for i in range(0, len(analysis), 12):
+            yield _sse({"type": "text", "text": analysis[i:i + 12]})
             await asyncio.sleep(0.01)
         yield _sse({"type": "report", "report": report})
         yield "data: [DONE]\n\n"

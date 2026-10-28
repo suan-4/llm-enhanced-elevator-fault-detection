@@ -7,11 +7,11 @@ defineProps<{ text: string }>()
     <div class="stream-card">
       <div class="stream-head">
         <span class="dot" />
-        正在生成报告正文
+        正在生成文末文本分析报告
         <span class="count">{{ text.length }} 字</span>
       </div>
       <pre class="stream-text">{{ text || '正在生成最终正文…' }}</pre>
-      <p class="stream-tip">正文生成完成后会自动进入报告查看；风险与得分随后由程序一次填入。</p>
+      <p class="stream-tip">分析报告生成完成后会自动进入报告查看；评估概况、风险与得分由程序单独生成。</p>
     </div>
   </div>
 </template>

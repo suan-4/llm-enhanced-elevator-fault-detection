@@ -18,6 +18,7 @@ defineProps<{
   categories: RiskCategory[]
   g: number | null
   grade: Grade | null
+  analysisText: string
 }>()
 </script>
 
@@ -48,4 +49,29 @@ defineProps<{
       <AppendixA :categories="categories" :g="g" :grade="grade" />
     </div>
   </div>
+
+  <div v-if="analysisText" class="paper-holder">
+    <div class="paper analysis-paper">
+      <h1>文本分析报告</h1>
+      <p class="analysis-note">以下内容由大模型基于本次评估事实与人工勾选的候选路径生成，未签核，供复核。</p>
+      <div class="analysis-body">{{ analysisText }}</div>
+    </div>
+  </div>
 </template>
+
+<style scoped>
+.analysis-paper h1 {
+  margin-top: 0;
+}
+.analysis-note {
+  color: var(--c-muted);
+  font-size: 12px;
+  margin: 6px 0 14px;
+}
+.analysis-body {
+  white-space: pre-wrap;
+  line-height: 1.9;
+  font-size: 14px;
+  color: #222;
+}
+</style>

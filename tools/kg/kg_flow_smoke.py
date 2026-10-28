@@ -32,7 +32,7 @@ async def fake_model(prompt: str) -> str:
             "verification": p.get("verification", ""),
             "evidence_note": "候选证据，未签核",
         }, ensure_ascii=False)
-    if task == "report_overview":
+    if task == "report_analysis":
         facts = data["overview_facts"]
         finding = str(facts.get("finding") or "本次评估发现不符合项。")
         score = str(facts.get("score") or "得分由程序计算。")

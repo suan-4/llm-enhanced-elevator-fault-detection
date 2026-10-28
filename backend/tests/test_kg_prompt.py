@@ -69,7 +69,7 @@ def test_t4_body_has_no_candidate_paths():
         required_keys=["finding", "score"],
         items=[{"item_no": "5.1", "category": "Ⅱ类", "measure": "应整改。", "has_candidate_evidence": True}],
     ))
-    assert data["data"]["task"] == "report_overview"
+    assert data["data"]["task"] == "report_analysis"
     assert "path_id" not in json.dumps(data["data"], ensure_ascii=False)
     assert "候选路径" not in json.dumps(data["data"], ensure_ascii=False)
 

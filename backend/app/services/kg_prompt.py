@@ -126,17 +126,17 @@ def build_t4_overview_prompt(*, overview_facts: dict, required_keys: list[str],
     """T4 正文生成：按评审要求，不传候选路径，只传规则事实与逐项结论。"""
     system = (
         SYSTEM_BASE
-        + "本任务只根据 overview_facts 和 items 写报告叙事，不得新增事实。"
+        + "本任务写报告文末的「文本分析报告」，不是评估概况；不得新增事实。"
         + '输出 JSON：{"overview":"","key_findings":[],"risk_statement":"","limitations":""}。'
-        + "要求：overview 不超过 300 字，先总述不符合项数量，再概括主要系统/部件；"
+        + "要求：overview 是文末分析正文，400–800 字，结合 items 的 fault_chain/risk/action，"
+        + "说明主要不符合项的故障原因、演化过程、风险与处置建议；"
         + "key_findings 最多 5 条，每条不超过 80 字，必须引用 item_no；"
         + "risk_statement 只复述规则给出的类别/得分，不得改分；"
         + "limitations 写「图谱为工程候选、需人工复核」，不得写未提供的限制；"
-        + "正文不得出现 path_id、故障演化链或候选路径细节；"
-        + "不写具体数值限值、条款号；不写「已确认」。"
+        + "文末分析不得出现 path_id；不写具体数值限值、条款号；不写「已确认」。"
     )
     data = {
-        "task": "report_overview",
+        "task": "report_analysis",
         "overview_facts": overview_facts,
         "required_overview_keys": required_keys[:8],
         "items": [
@@ -145,6 +145,9 @@ def build_t4_overview_prompt(*, overview_facts: dict, required_keys: list[str],
                 "category": item.get("category", ""),
                 "measure": _compact(item.get("measure", ""), 260),
                 "has_candidate_evidence": bool(item.get("has_candidate_evidence")),
+                "fault_chain": item.get("fault_chain", [])[:6],
+                "risk": _compact(item.get("risk", ""), 100),
+                "action": _compact(item.get("action", ""), 220),
             }
             for item in items[:8]
         ],

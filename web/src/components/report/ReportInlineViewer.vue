@@ -74,6 +74,7 @@ const overview = computed(() => {
 })
 const conclusion = computed(() => `综合安全状况等级：${grade.value ?? '待确认'}`)
 const appendixRows = computed(() => buildAppendixRows(store.items, store.stateOf, riskByNo.value))
+const analysisText = computed(() => store.generated?.analysis_text ?? '')
 
 /* ── 只读填写内容（右边缘抽屉）───────────────────────── */
 interface RefGroup {
@@ -269,6 +270,7 @@ onBeforeUnmount(() => {
         :categories="categories"
         :g="g"
         :grade="grade"
+        :analysis-text="analysisText"
       />
     </div>
 
@@ -903,5 +905,19 @@ onBeforeUnmount(() => {
   .ref-reasons-list {
     font-size: 11.5px;
   }
+}
+.analysis-paper h1 {
+  margin-top: 0;
+}
+.analysis-note {
+  color: var(--c-muted);
+  font-size: 12px;
+  margin: 6px 0 14px;
+}
+.analysis-body {
+  white-space: pre-wrap;
+  line-height: 1.9;
+  font-size: 14px;
+  color: #222;
 }
 </style>

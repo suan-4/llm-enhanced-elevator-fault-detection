@@ -46,6 +46,8 @@ export interface GeneratedInfo {
   score: number | null
   grade: Grade | null
   narrative: string
+  /** 大模型生成的报告文末「文本分析报告」；评估概况不混入 */
+  analysis_text: string
   /** 模型是否参与概况；带新策略标识的可信规则摘要也可打印。 */
   llm_used: boolean | null
   overview_policy: string
@@ -550,6 +552,7 @@ export const useReportStore = defineStore('report', () => {
       score: report.score,
       grade: report.grade,
       narrative: report.narrative,
+      analysis_text: String(report.provenance?.analysis_text || ''),
       llm_used: typeof report.provenance?.llm_used === 'boolean' ? report.provenance.llm_used : null,
       llm_status: typeof report.provenance?.llm_status === 'string' ? report.provenance.llm_status : '',
       llm_error_code: typeof report.provenance?.llm_error_code === 'string' ? report.provenance.llm_error_code : '',
@@ -587,6 +590,7 @@ export const useReportStore = defineStore('report', () => {
             score: report.score,
             grade: report.grade,
             narrative: report.narrative,
+            analysis_text: String(report.provenance?.analysis_text || ''),
             llm_used: typeof report.provenance?.llm_used === 'boolean' ? report.provenance.llm_used : null,
             llm_status: typeof report.provenance?.llm_status === 'string' ? report.provenance.llm_status : '',
             llm_error_code: typeof report.provenance?.llm_error_code === 'string' ? report.provenance.llm_error_code : '',
