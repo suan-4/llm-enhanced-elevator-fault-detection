@@ -1,0 +1,298 @@
+[
+  {
+    "id": "17",
+    "report_id": "103367961527455747",
+    "item_no": "1.10",
+    "item_name": "作用于钢丝绳系统的减速元件(如夹绳器等)",
+    "query": "作用于钢丝绳系统的减速元件(如夹绳器等) 就",
+    "gold_path_id": null,
+    "gold_decision": "no_candidate",
+    "selection_source": "human",
+    "model_path_id": null,
+    "candidates": [
+      {
+        "rank": 1,
+        "path_id": "PATH_V2_TRACTION_a21ad2439a141e",
+        "path_summary": "导向轮轮体绳路与护绳 → 反绳轮防绳跳装置缺失 → 绳松弛扰动缺少限位 → 钢丝绳离开正常槽位 → 绳摆动时无有效约束 → 悬挂失效风险",
+        "component": "导向轮轮体绳路与护绳",
+        "system": "曳引与悬挂系统",
+        "score": 0.2466
+      },
+      {
+        "rank": 2,
+        "path_id": "PATH_V2_TRACTION_44e095c1e1bed7",
+        "path_summary": "悬挂钢丝绳楔形端接 → 楔形绳头承载绳侧穿反 → 绳力使套体与楔块承受非设计偏载 → 楔紧接触分布恶化 → 绳头有偏斜和局部挤伤 → 悬挂失效风险",
+        "component": "悬挂钢丝绳楔形端接",
+        "system": "曳引与悬挂系统",
+        "score": 0.2148
+      },
+      {
+        "rank": 3,
+        "path_id": "PATH_V2_TRACTION_805ee884a07815",
+        "path_summary": "悬挂钢丝绳内部及绳形 → 钢丝绳绳芯突出 → 绳芯与绳股轴向平衡破坏 → 绳截面与接触形状异常 → 绳芯从股间凸出 → 悬挂失效风险",
+        "component": "悬挂钢丝绳内部及绳形",
+        "system": "曳引与悬挂系统",
+        "score": 0.2125
+      }
+    ]
+  },
+  {
+    "id": "18",
+    "report_id": "103367961527455747",
+    "item_no": "1.9",
+    "item_name": "限速器",
+    "query": "限速器 百合花",
+    "gold_path_id": null,
+    "gold_decision": "no_candidate",
+    "selection_source": "human_override",
+    "model_path_id": "PATH_V2_SAFETY_8385cd589cd6f4",
+    "candidates": [
+      {
+        "rank": 1,
+        "path_id": "PATH_V2_SAFETY_8385cd589cd6f4",
+        "path_summary": "限速器棘爪棘轮 → 棘爪保持扣磨损 → 保持余量降低 → 运行振动触发误释放 → 正常运行出现限速误动作 → 运行中异常停梯",
+        "component": "限速器棘爪棘轮",
+        "system": "安全保护系统",
+        "score": 0.2122
+      },
+      {
+        "rank": 2,
+        "path_id": "PATH_V2_SAFETY_a219f4c7dade47",
+        "path_summary": "限速器离心重块 → 重块连接杆弯曲 → 两侧重块不同步 → 脱扣时序偏离 → 重块展开不对称 → 持续下行超速风险",
+        "component": "限速器离心重块",
+        "system": "安全保护系统",
+        "score": 0.2121
+      },
+      {
+        "rank": 3,
+        "path_id": "PATH_V2_SAFETY_dcd45721952a77",
+        "path_summary": "限速器绳轮与夹绳机构 → 限速器轴承卡滞 → 绳轮转动阻力上升 → 限速绳运行张力异常 → 轮体转动不畅伴绳抖动 → 运行中异常停梯",
+        "component": "限速器绳轮与夹绳机构",
+        "system": "安全保护系统",
+        "score": 0.2121
+      }
+    ]
+  },
+  {
+    "id": "19",
+    "report_id": "103367961527455747",
+    "item_no": "4.5",
+    "item_name": "电动机编码器",
+    "query": "电动机编码器 编码器信号输出应正常",
+    "gold_path_id": "PATH_V2_CONTROL_bb12665cbb08f2",
+    "gold_decision": "selected",
+    "selection_source": "model",
+    "model_path_id": "PATH_V2_CONTROL_bb12665cbb08f2",
+    "candidates": [
+      {
+        "rank": 1,
+        "path_id": "PATH_V2_CONTROL_bb12665cbb08f2",
+        "path_summary": "编码器接收芯片 → 编码器接收芯片:输入保护损伤 → 编码器接收芯片:输入门限漂移 → 编码器接收芯片:正常信号无法识别 → 编码器接收芯片:换编码器仍反馈丢失 → 保护动作停梯及乘客困留风险",
+        "component": "编码器接收芯片",
+        "system": "电气控制系统",
+        "score": 0.2657
+      },
+      {
+        "rank": 2,
+        "path_id": "PATH_V2_CONTROL_704f2de14d1401",
+        "path_summary": "编码器电缆 → 编码器电缆:与动力线长距离并行 → 编码器电缆:感应噪声叠加 → 编码器电缆:接收器门限误触发 → 编码器电缆:加速段反馈突跳 → 控制异常停梯及服务中断风险",
+        "component": "编码器电缆",
+        "system": "电气控制系统",
+        "score": 0.2657
+      },
+      {
+        "rank": 3,
+        "path_id": "PATH_V2_CONTROL_03268b8953bca1",
+        "path_summary": "编码器固定支架 → 编码器固定支架:紧固松动 → 编码器固定支架:壳体跟随振动 → 编码器固定支架:反馈信号调制增大 → 编码器固定支架:速度反馈抖动 → 控制异常停梯及服务中断风险",
+        "component": "编码器固定支架",
+        "system": "电气控制系统",
+        "score": 0.2635
+      }
+    ]
+  },
+  {
+    "id": "20",
+    "report_id": "103367961527455747",
+    "item_no": "13.7",
+    "item_name": "轿架",
+    "query": "轿架 轿架严重变形，导致导靴或安全钳不能正常工作",
+    "gold_path_id": "PATH_V2_CAR_4edb487e62eab1",
+    "gold_decision": "selected",
+    "selection_source": "model",
+    "model_path_id": "PATH_V2_CAR_4edb487e62eab1",
+    "candidates": [
+      {
+        "rank": 1,
+        "path_id": "PATH_V2_CAR_4edb487e62eab1",
+        "path_summary": "轿架立梁与下梁 → 下梁受冲击变形 → 安全钳和轿底安装基准偏移 → 载荷传递偏心 → 下梁弯曲并有残余压痕 → 承载结构失效风险",
+        "component": "轿架立梁与下梁",
+        "system": "轿厢与对重系统",
+        "score": 0.3458
+      },
+      {
+        "rank": 2,
+        "path_id": "PATH_V2_CAR_78f251b87da29c",
+        "path_summary": "轿架上梁与悬挂梁 → 悬挂梁局部屈曲 → 受力几何关系改变 → 绳头载荷分配偏斜 → 梁形位与绳头受力异常 → 承载结构失效风险",
+        "component": "轿架上梁与悬挂梁",
+        "system": "轿厢与对重系统",
+        "score": 0.2536
+      },
+      {
+        "rank": 3,
+        "path_id": "PATH_V2_CAR_964117ea5e8353",
+        "path_summary": "对重框架 → 对重框受冲击弯曲 → 块体与压板配合变化 → 块体保持余量减少 → 框体变形并有撞击痕 → 设备碰撞或进一步损坏风险",
+        "component": "对重框架",
+        "system": "轿厢与对重系统",
+        "score": 0.2429
+      }
+    ]
+  },
+  {
+    "id": "21",
+    "report_id": "103367961527455747",
+    "item_no": "12.1",
+    "item_name": "钢 丝 绳",
+    "query": "钢 丝 绳 钢丝绳在曳引轮进出绳处出现局部明显磨损，最小实测直径小于或等于公称直径的90%。",
+    "gold_path_id": "PATH_V2_TRACTION_50c7c6ff98b0b3",
+    "gold_decision": "selected",
+    "selection_source": "model",
+    "model_path_id": "PATH_V2_TRACTION_50c7c6ff98b0b3",
+    "candidates": [
+      {
+        "rank": 1,
+        "path_id": "PATH_V2_TRACTION_50c7c6ff98b0b3",
+        "path_summary": "曳引轮工作绳槽 → 各曳引绳槽磨损深度不等 → 同转角各绳运行节径不同 → 绳组相对滑移与张力差增大 → 张力均衡后很快再次失衡 → 运行中异常停梯",
+        "component": "曳引轮工作绳槽",
+        "system": "曳引与悬挂系统",
+        "score": 0.2924
+      },
+      {
+        "rank": 2,
+        "path_id": "PATH_V2_TRACTION_7ad8fc3b744274",
+        "path_summary": "悬挂钢丝绳防护与润滑 → 悬挂绳补油过量 → 多余油沿运行绳迁至曳引轮 → 绳轮摩擦条件被改变 → 绳表油腻且槽内积油 → 悬挂失效风险",
+        "component": "悬挂钢丝绳防护与润滑",
+        "system": "曳引与悬挂系统",
+        "score": 0.211
+      },
+      {
+        "rank": 3,
+        "path_id": "PATH_V2_TRACTION_097f742f7d07a2",
+        "path_summary": "曳引轮轮毂及防脱绳装置 → 防脱绳杆间距过大 → 脱离槽口的绳得不到约束 → 松绳扰动下钢丝绳越过轮缘 → 绳位置偏移时保护余量不足 → 运行中异常停梯",
+        "component": "曳引轮轮毂及防脱绳装置",
+        "system": "曳引与悬挂系统",
+        "score": 0.199
+      }
+    ]
+  },
+  {
+    "id": "22",
+    "report_id": "103367961527455747",
+    "item_no": "8.3",
+    "item_name": "接地",
+    "query": "接地 电源进入机房（机器设备间）后，中性导体 N 与保护导体 PE 未分开敷设，存在混接现象",
+    "gold_path_id": "PATH_V2_CONTROL_c7c4aa151b73c3",
+    "gold_decision": "selected",
+    "selection_source": "model",
+    "model_path_id": "PATH_V2_CONTROL_c7c4aa151b73c3",
+    "candidates": [
+      {
+        "rank": 1,
+        "path_id": "PATH_V2_CONTROL_c7c4aa151b73c3",
+        "path_summary": "保护导体PE → 保护导体PE:端子松脱 → 保护导体PE:故障回路阻抗升高 → 保护导体PE:故障切断条件恶化 → 保护导体PE:接地连续性异常 → 外露可导电部件带电及触电风险",
+        "component": "保护导体PE",
+        "system": "电气控制系统",
+        "score": 0.3142
+      },
+      {
+        "rank": 2,
+        "path_id": "PATH_V2_CONTROL_37467be123b076",
+        "path_summary": "再生制动接地线 → 再生制动接地线:电阻外壳PE断开 → 再生制动接地线:外壳保护连接中断 → 再生制动接地线:电阻绝缘故障电位升高 → 再生制动接地线:电阻外壳接地异常 → 外露可导电部件带电及触电风险",
+        "component": "再生制动接地线",
+        "system": "电气控制系统",
+        "score": 0.2585
+      },
+      {
+        "rank": 3,
+        "path_id": "PATH_V2_CONTROL_c5aefbb6a16865",
+        "path_summary": "电机外壳接地线 → 电机外壳接地线:股线疲劳断裂 → 电机外壳接地线:外壳保护连接中断 → 电机外壳接地线:绝缘故障后电位升高 → 电机外壳接地线:外壳接地不连续 → 外露可导电部件带电及触电风险",
+        "component": "电机外壳接地线",
+        "system": "电气控制系统",
+        "score": 0.2537
+      }
+    ]
+  },
+  {
+    "id": "23",
+    "report_id": "103367961527455747",
+    "item_no": "13.8",
+    "item_name": "轿壁、轿顶和轿底",
+    "query": "轿壁、轿顶和轿底 玻璃轿壁、轿顶出现裂纹",
+    "gold_path_id": null,
+    "gold_decision": "no_candidate",
+    "selection_source": "model",
+    "model_path_id": null,
+    "candidates": [
+      {
+        "rank": 1,
+        "path_id": "PATH_V2_CAR_14ab490ca0e252",
+        "path_summary": "轿厢地板与轿底支承 → 轿底减振垫开裂 → 弹性支承特性变化 → 轿厢受力不均 → 轿厢底部振动与高度不均 → 乘坐稳定性下降",
+        "component": "轿厢地板与轿底支承",
+        "system": "轿厢与对重系统",
+        "score": 0.2499
+      },
+      {
+        "rank": 2,
+        "path_id": "PATH_V2_CAR_6efbe13c8a2cd1",
+        "path_summary": "轿顶护栏与踢脚板 → 护栏横杆连接开裂 → 防护连续性中断 → 人员可能越过缺口 → 横杆有裂损或脱接 → 检修人员坠落风险",
+        "component": "轿顶护栏与踢脚板",
+        "system": "轿厢与对重系统",
+        "score": 0.2498
+      },
+      {
+        "rank": 3,
+        "path_id": "PATH_V2_CAR_d22885ff44dc53",
+        "path_summary": "对重框架 → 框架承载焊缝开裂 → 块重传递路径减弱 → 对重保持可靠性下降 → 焊缝出现扩展裂纹 → 承载结构失效风险",
+        "component": "对重框架",
+        "system": "轿厢与对重系统",
+        "score": 0.2405
+      }
+    ]
+  },
+  {
+    "id": "24",
+    "report_id": "103367961527455747",
+    "item_no": "1.9",
+    "item_name": "限速器",
+    "query": "限速器 百合花",
+    "gold_path_id": "PATH_V2_SAFETY_8385cd589cd6f4",
+    "gold_decision": "selected",
+    "selection_source": "model",
+    "model_path_id": "PATH_V2_SAFETY_8385cd589cd6f4",
+    "candidates": [
+      {
+        "rank": 1,
+        "path_id": "PATH_V2_SAFETY_8385cd589cd6f4",
+        "path_summary": "限速器棘爪棘轮 → 棘爪保持扣磨损 → 保持余量降低 → 运行振动触发误释放 → 正常运行出现限速误动作 → 运行中异常停梯",
+        "component": "限速器棘爪棘轮",
+        "system": "安全保护系统",
+        "score": 0.2122
+      },
+      {
+        "rank": 2,
+        "path_id": "PATH_V2_SAFETY_a219f4c7dade47",
+        "path_summary": "限速器离心重块 → 重块连接杆弯曲 → 两侧重块不同步 → 脱扣时序偏离 → 重块展开不对称 → 持续下行超速风险",
+        "component": "限速器离心重块",
+        "system": "安全保护系统",
+        "score": 0.2121
+      },
+      {
+        "rank": 3,
+        "path_id": "PATH_V2_SAFETY_dcd45721952a77",
+        "path_summary": "限速器绳轮与夹绳机构 → 限速器轴承卡滞 → 绳轮转动阻力上升 → 限速绳运行张力异常 → 轮体转动不畅伴绳抖动 → 运行中异常停梯",
+        "component": "限速器绳轮与夹绳机构",
+        "system": "安全保护系统",
+        "score": 0.2121
+      }
+    ]
+  }
+]

@@ -1,0 +1,90 @@
+[
+  {
+    "item_no": "1.10",
+    "gold_decision": "no_candidate",
+    "gold": null,
+    "picked": "PATH_V2_TRACTION_a21ad2439a141e",
+    "none": false,
+    "reason": "夹绳器属减速元件，导向轮缺失限位导致绳摆动无约束。",
+    "correct": false,
+    "elapsed": 26.1,
+    "success": true
+  },
+  {
+    "item_no": "1.9",
+    "gold_decision": "no_candidate",
+    "gold": null,
+    "picked": "PATH_V2_SAFETY_8385cd589cd6f4",
+    "none": false,
+    "reason": "部件限速器棘爪棘轮与查询完全匹配，机理涵盖误动作。",
+    "correct": false,
+    "elapsed": 17.6,
+    "success": true
+  },
+  {
+    "item_no": "4.5",
+    "gold_decision": "selected",
+    "gold": "PATH_V2_CONTROL_bb12665cbb08f2",
+    "picked": "PATH_V2_CONTROL_bb12665cbb08f2",
+    "none": false,
+    "reason": "编码器接收芯片输入保护损伤导致正常信号无法识别，匹配故障机理。",
+    "correct": true,
+    "elapsed": 16.9,
+    "success": true
+  },
+  {
+    "item_no": "13.7",
+    "gold_decision": "selected",
+    "gold": "PATH_V2_CAR_4edb487e62eab1",
+    "picked": "PATH_V2_CAR_4edb487e62eab1",
+    "none": false,
+    "reason": "轿架立梁与下梁变形导致安全钳安装基准偏移，匹配故障机理",
+    "correct": true,
+    "elapsed": 17.5,
+    "success": true
+  },
+  {
+    "item_no": "12.1",
+    "gold_decision": "selected",
+    "gold": "PATH_V2_TRACTION_50c7c6ff98b0b3",
+    "picked": "PATH_V2_TRACTION_50c7c6ff98b0b3",
+    "none": false,
+    "reason": "磨损导致节径不同引发绳组滑移与张力差增大",
+    "correct": true,
+    "elapsed": 18.3,
+    "success": true
+  },
+  {
+    "item_no": "8.3",
+    "gold_decision": "selected",
+    "gold": "PATH_V2_CONTROL_c7c4aa151b73c3",
+    "picked": "PATH_V2_CONTROL_c7c4aa151b73c3",
+    "none": false,
+    "reason": "保护导体 PE 混接导致故障回路阻抗升高，切断条件恶化",
+    "correct": true,
+    "elapsed": 17.8,
+    "success": true
+  },
+  {
+    "item_no": "13.8",
+    "gold_decision": "no_candidate",
+    "gold": null,
+    "picked": null,
+    "none": true,
+    "reason": "模型推荐不在候选范围",
+    "correct": true,
+    "elapsed": 16.8,
+    "success": true
+  },
+  {
+    "item_no": "1.9",
+    "gold_decision": "selected",
+    "gold": "PATH_V2_SAFETY_8385cd589cd6f4",
+    "picked": "PATH_V2_SAFETY_8385cd589cd6f4",
+    "none": false,
+    "reason": "部件限速器棘爪棘轮与查询完全匹配，机理涵盖误动作。",
+    "correct": true,
+    "elapsed": 17.6,
+    "success": true
+  }
+]
