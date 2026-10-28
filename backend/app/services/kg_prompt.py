@@ -133,6 +133,8 @@ def build_t4_overview_prompt(*, overview_facts: dict, required_keys: list[str],
         + "综合得分、等级或「本次评估共发现 X 项」；"
         + "按项目编号逐项说明风险类别、现场事实、候选故障演化、风险后果、"
         + "规则表处置、整改/复验建议；可用 Markdown 小标题和列表；"
+        + "has_candidate_evidence=false 的项目只写现场事实、风险类别和规则表处置，"
+        + "注明「未匹配到候选路径，按规则表处置」，不得编造故障演化链；"
         + "正文不得出现 path_id、PATH_V2_ 编号、条款号或具体限值；"
         + "不写「已确认」「已签核」「违反」「必然」「证明」。"
     )
@@ -148,6 +150,8 @@ def build_t4_overview_prompt(*, overview_facts: dict, required_keys: list[str],
                 "fault_chain": item.get("fault_chain", [])[:6],
                 "risk": _compact(item.get("risk", ""), 100),
                 "action": _compact(item.get("action", ""), 220),
+                "reasons": [ _compact(r, 120) for r in (item.get("reasons") or [])[:2] ],
+                "other_text": _compact(item.get("other_text", ""), 200),
             }
             for item in items[:8]
         ],

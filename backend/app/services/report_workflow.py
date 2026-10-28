@@ -395,19 +395,23 @@ async def _run_kg_prompt_flow(*, kg_evidence: dict, unfit: list[dict], risks: di
             return {"used": False, "errors": result["errors"]}
         summaries.append(summary)
 
-    # T4：正文只传规则事实与逐项结论，不传路径
+    # T4：所有不符合项都要进文本分析；有候选的带证据，无候选的只带规则事实
+    summary_by_no = {str(s.get("item_no") or ""): s for s in summaries}
     t4_items = []
-    for summary in summaries:
-        no = str(summary.get("item_no") or "")
+    for item in unfit:
+        no = str(item.get("no") or "")
         risk = risks.get(no) or {}
+        summary = summary_by_no.get(no) or {}
         t4_items.append({
             "item_no": no,
             "category": risk.get("category", ""),
             "measure": risk_rules.CATEGORY_MEASURE.get(risk.get("category", ""), ""),
-            "has_candidate_evidence": True,
+            "has_candidate_evidence": bool(summary),
             "fault_chain": summary.get("fault_chain") or [],
             "risk": summary.get("risk") or "",
             "action": summary.get("action") or "",
+            "reasons": (item.get("reasons") or [])[:2],
+            "other_text": item.get("other_text") or "",
         })
     prompt4 = kg_prompt.build_t4_overview_prompt(
         overview_facts=_overview_facts(unfit, risks, score, grade),
