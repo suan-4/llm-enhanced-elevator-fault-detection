@@ -90,7 +90,13 @@ def _append_analysis(document, body, analysis_text):
     _append_paragraph(document, body, "以下内容由大模型基于本次评估事实与人工勾选的候选路径生成，未签核，供复核。",
                       size=18)
     for line in str(analysis_text).split("\n"):
-        _append_paragraph(document, body, line, size=22)
+        # Word 不渲染 Markdown；去掉标记，保留可读文本
+        clean = re.sub(r"^\s*#{1,6}\s*", "", line)
+        clean = re.sub(r"\*\*(.+?)\*\*", r"\1", clean)
+        clean = re.sub(r"(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)", r"\1", clean)
+        clean = re.sub(r"`(.+?)`", r"\1", clean)
+        clean = re.sub(r"^\s*[-*+]\s+", "· ", clean)
+        _append_paragraph(document, body, clean, size=22)
 
 
 def build_docx(report):
