@@ -82,6 +82,16 @@ export function fetchKgRecommendation(payload: KgCandidatesRequest): Promise<KgR
   return request('/kg/recommend', { method: 'POST', body: payload })
 }
 
+export interface KgBatchRecommendationResponse {
+  success: boolean
+  recommendations: { item_no: string; recommendation: KgRecommendation }[]
+  error?: string
+}
+
+export function fetchKgRecommendationBatch(items: KgCandidatesRequest[]): Promise<KgBatchRecommendationResponse> {
+  return request('/kg/recommend/batch', { method: 'POST', body: { items } })
+}
+
 export interface KgSelectRequest {
   report_id?: string | null
   item_no: string

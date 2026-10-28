@@ -120,6 +120,37 @@ def build_t2_recommend_prompt(*, item_no: str, item_name: str, query: str,
     return _envelope(system, data)
 
 
+def build_t2_batch_prompt(*, items: list[dict]) -> str:
+    """2–3 项批量推荐：一次模型调用返回每项的 path_id / none。"""
+    system = (
+        SYSTEM_BASE
+        + "本任务为每个 item 只从自己的 candidates 中选一条，不能跨 item 选。"
+        + "没有合适候选时该项 none=true、path_id 为空。"
+        + '只输出 JSON：{"results":[{"index":0,"path_id":"","reason":"","none":false}]}。'
+        + "每项 reason 不超过 20 字。"
+    )
+    data = {
+        "task": "kg_recommend_batch",
+        "items": [
+            {
+                "index": i,
+                "item_no": it.get("item_no", ""),
+                "item_name": _compact(it.get("item_name"), 60),
+                "query": _compact(it.get("query"), 220),
+                "candidates": [
+                    {"path_id": c.get("path_id", ""),
+                     "component": _compact(c.get("component"), 40),
+                     "system": _compact(c.get("system"), 30),
+                     "summary": _compact(c.get("path_summary"), 60)}
+                    for c in (it.get("candidates") or [])[:3]
+                ],
+            }
+            for i, it in enumerate(items[:3])
+        ],
+    }
+    return _envelope(system, data)
+
+
 def build_t3_item_prompt(*, item_no: str, item_name: str, query: str,
                          rule_facts: dict | None, paths: list[dict]) -> str:
     system = (

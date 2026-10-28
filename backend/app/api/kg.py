@@ -46,6 +46,10 @@ class SelectRequest(BaseModel):
     model_reason: str = ""
 
 
+class BatchRecommendRequest(BaseModel):
+    items: list[CandidateRequest] = Field(default_factory=list)
+
+
 class EvidenceRequest(BaseModel):
     path_ids: list[str] = Field(default_factory=list)
 
@@ -182,6 +186,59 @@ async def recommend(req: CandidateRequest, user: dict = Depends(get_current_user
     except Exception:
         return {"success": False, "recommendation": None,
                 "error": "AI 推荐暂不可用，请人工选择"}
+
+
+@router.post("/recommend/batch")
+async def recommend_batch(req: BatchRecommendRequest,
+                          user: dict = Depends(get_current_user)) -> dict:
+    """2–3 项一次模型调用；规则可判的项直接返回，不混入模型输出。"""
+    items = [it for it in req.items if it.item_no][:3]
+    if not items:
+        return {"success": False, "error": "没有可推荐的项", "recommendations": []}
+    recommendations: list[dict] = []
+    unresolved: list[dict] = []
+    try:
+        for item in items:
+            result = kg_v2.retrieve(
+                item_no=item.item_no, item_name=item.item_name,
+                reasons=item.reasons, other_text=item.other_text, top_k=item.top_k,
+            )
+            candidates = result.get("candidates") or []
+            rule = _rule_recommend(candidates, result.get("query") or "")
+            if rule is not None:
+                recommendations.append({"item_no": item.item_no, "recommendation": rule})
+            else:
+                unresolved.append({"item_no": item.item_no,
+                                   "item_name": item.item_name,
+                                   "query": result.get("query") or "",
+                                   "candidates": candidates})
+        if unresolved:
+            prompt = kg_prompt.build_t2_batch_prompt(items=unresolved)
+            raw = await llm_service.generate(prompt, max_tokens=192)
+            parsed = kg_validation.parse_json_output(raw)
+            by_index = {}
+            for row in (parsed or {}).get("results") or []:
+                if isinstance(row, dict):
+                    by_index[int(row.get("index", -1))] = row
+            for idx, item in enumerate(unresolved):
+                row = by_index.get(idx) or {}
+                allowed = {str(c.get("path_id")): c for c in item["candidates"]}
+                path_id = str(row.get("path_id") or "")
+                if row.get("none") or not path_id or path_id not in allowed:
+                    rec = {"path_id": None, "rank": None,
+                           "reason": "模型未选出合适候选", "none": True, "source": "model"}
+                else:
+                    rec = {"path_id": path_id, "rank": allowed[path_id].get("rank"),
+                           "reason": str(row.get("reason") or "")[:40],
+                           "none": False, "source": "model"}
+                recommendations.append({"item_no": item["item_no"], "recommendation": rec})
+        # 按请求顺序返回
+        order = {it.item_no: i for i, it in enumerate(items)}
+        recommendations.sort(key=lambda x: order.get(x["item_no"], 99))
+        return {"success": True, "recommendations": recommendations}
+    except Exception as exc:
+        return {"success": False, "error": "批量推荐暂不可用，请逐项重试",
+                "recommendations": []}
 
 
 @router.post("/select")

@@ -3,8 +3,8 @@
    每个不符合项 / 其他填写 → Top3 候选 → 人工勾选 / 无合适候选 → 生成报告。 */
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { fetchKgCandidates, fetchKgRecommendation, selectKgPath,
-  type KgCandidatesResponse, type KgRecommendation } from '@/api/kg'
+import { fetchKgCandidates, fetchKgRecommendation, fetchKgRecommendationBatch,
+  selectKgPath, type KgCandidatesResponse, type KgRecommendation } from '@/api/kg'
 import { useReportStore } from '@/stores/report'
 import StreamingOverlay from '@/components/StreamingOverlay.vue'
 import type { KgSelection } from '@/api/reports'
@@ -30,11 +30,15 @@ const loading = ref(true)
 const generating = ref(false)
 const error = ref('')
 const streamText = ref('')
+const batchLoading = ref(false)
 const recommendQueue: Row[] = []
 let recommendActive = 0
 
 const allChosen = computed(() => rows.value.length > 0 && rows.value.every((r) => !!r.choice))
 const doneCount = computed(() => rows.value.filter((r) => !!r.choice).length)
+const remainingRows = computed(() => rows.value.filter(
+  (r) => !r.recommendation && !r.recommending && (r.result?.candidates || []).length > 0,
+))
 
 onMounted(async () => {
   if (!store.reportId) {
@@ -88,6 +92,37 @@ async function loadRow(row: Row): Promise<void> {
     row.error = err instanceof Error ? err.message : '检索失败'
   } finally {
     row.loading = false
+  }
+}
+
+async function recommendRemaining(): Promise<void> {
+  const targets = remainingRows.value.slice(0, 3)
+  if (!targets.length || batchLoading.value) return
+  batchLoading.value = true
+  targets.forEach((row) => { row.recommending = true })
+  try {
+    const res = await fetchKgRecommendationBatch(targets.map((row) => ({
+      item_no: row.no,
+      item_name: row.name,
+      reasons: row.reasons,
+      other_text: row.otherText,
+      top_k: 3,
+    })))
+    if (!res.success) throw new Error(res.error || '批量推荐失败')
+    for (const item of res.recommendations) {
+      const row = rows.value.find((r) => r.no === item.item_no)
+      if (!row || !item.recommendation) continue
+      row.recommendation = item.recommendation
+      if (!row.choice) {
+        row.choice = item.recommendation.none ? 'none' : (item.recommendation.path_id || '')
+        row.choiceSource = item.recommendation.source === 'rule' ? 'rule' : 'model'
+      }
+    }
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : '批量推荐失败'
+  } finally {
+    targets.forEach((row) => { row.recommending = false })
+    batchLoading.value = false
   }
 }
 
@@ -250,6 +285,13 @@ function back(): void {
       </div>
       <div class="progress">
         <b>{{ doneCount }}/{{ rows.length }}</b> 已确认
+        <button
+          v-if="remainingRows.length"
+          class="btn tiny batch-btn"
+          type="button"
+          :disabled="batchLoading"
+          @click="recommendRemaining"
+        >{{ batchLoading ? 'AI 批量推荐中…' : 'AI 推荐剩余 ' + Math.min(3, remainingRows.length) + ' 项' }}</button>
       </div>
     </header>
 
@@ -354,6 +396,7 @@ function back(): void {
 h1 { margin: 0; font-size: 21px; }
 .sub { margin: 4px 0 0; color: var(--c-muted); font-size: 12.5px; line-height: 1.5; }
 .progress { background: #eef6f8; color: #1b5e7a; border-radius: 999px; padding: 6px 14px; font-size: 12.5px; white-space: nowrap; }
+.batch-btn { margin-left: 8px; }
 .loading { padding: 30px; text-align: center; color: var(--c-muted); }
 .item {
   background: #fff;
