@@ -62,6 +62,10 @@ install -m 0755 -o "$KIOSK_USER" -g "$KIOSK_USER" /tmp/elevator-kiosk.sh "$LAUNC
   { cp /tmp/elevator-kiosk.sh "$LAUNCHER"; chmod 755 "$LAUNCHER"; chown "$KIOSK_USER:$KIOSK_USER" "$LAUNCHER"; }
 install -m 0755 -o "$KIOSK_USER" -g "$KIOSK_USER" /tmp/elevator-launch.sh "$LAUNCH_WRAPPER" 2>/dev/null || \
   { cp /tmp/elevator-launch.sh "$LAUNCH_WRAPPER"; chmod 755 "$LAUNCH_WRAPPER"; chown "$KIOSK_USER:$KIOSK_USER" "$LAUNCH_WRAPPER"; }
+# Windows 检出的 .py/.sh 可能带 CRLF，直接执行会报 python3\r / set - 错误；安装后再兜底一次
+sed -i 's/\r$//' "$NATIVE_APP" "$LAUNCHER" "$LAUNCH_WRAPPER" 2>/dev/null || true
+chown "$KIOSK_USER:$KIOSK_USER" "$NATIVE_APP" "$LAUNCHER" "$LAUNCH_WRAPPER" 2>/dev/null || true
+chmod 755 "$NATIVE_APP" "$LAUNCHER" "$LAUNCH_WRAPPER" 2>/dev/null || true
 echo "      $LAUNCHER"
 echo "      $LAUNCH_WRAPPER"
 

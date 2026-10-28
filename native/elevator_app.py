@@ -177,6 +177,8 @@ KBD_PROBE_JS = """
 
   document.addEventListener('focusin', function (e) {
     if (!isText(e.target)) { return; }
+    // 新版内置键盘启用时，由页面自己管理输入；不要再呼出 GNOME 系统软键盘
+    if (window.__elevatorInputManaged) { return; }
     if (hideId) { clearTimeout(hideId); hideId = 0; }
     if (refocusing === e.target) {
       // 这次 focusin 是我们自己重新聚焦触发的，不要再滚/再聚焦，否则死循环
@@ -208,6 +210,7 @@ KBD_PROBE_JS = """
 
   document.addEventListener('focusout', function (e) {
     if (!isText(e.target)) { return; }
+    if (window.__elevatorInputManaged) { return; }
     // 输入框之间切换时 focusout 会先于下一个 focusin 触发，
     // 稍作延迟避免键盘闪一下
     if (hideId) { clearTimeout(hideId); }
