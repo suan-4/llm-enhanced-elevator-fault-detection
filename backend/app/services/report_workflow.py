@@ -259,6 +259,27 @@ def _narrative_prompt(report: dict, unfit: list[dict], risks: dict,
     return json.dumps({"system": NARRATIVE_SYSTEM, "data": data}, ensure_ascii=False, separators=(',', ':'))
 
 
+def _rule_analysis_text(unfit: list[dict], risks: dict) -> str:
+    """没有候选路径时的快速规则分析；不调用模型，不等待 90 秒。"""
+    if not unfit:
+        return ""
+    lines = ["### 主要不符合项", ""]
+    for item in unfit:
+        no = str(item.get("no") or "")
+        risk = risks.get(no) or {}
+        category = risk.get("category") or ""
+        measure = risk_rules.CATEGORY_MEASURE.get(category, "")
+        reason = "；".join((item.get("reasons") or [])[:1])
+        text = f"- 项目 {no}：{category}风险。"
+        if reason:
+            text += f"现场描述：{reason[:120]}。"
+        if measure:
+            text += f"规则表处置：{measure}"
+        lines.append(text)
+    lines += ["", "以上为规则表分析；本次未匹配到候选故障路径，未调用图谱证据。"]
+    return "\n".join(lines)
+
+
 def _kg_appendix(kg_evidence: dict) -> str:
     """把操作员勾选的候选路径附在叙述末尾；明确标注未签核。"""
     lines = ["", "附：故障演化候选证据（操作员勾选，未签核）"]
@@ -310,7 +331,8 @@ def _t3_appendix(summaries: list[dict], paths_by_id: dict[str, dict]) -> str:
 
 async def _run_kg_prompt_flow(*, kg_evidence: dict, unfit: list[dict], risks: dict,
                               score: float | None, grade: str | None,
-                              required_keys: list[str], model_text) -> dict:
+                              required_keys: list[str], model_text,
+                              on_analysis_delta=None) -> dict:
     """执行 T3 逐项归纳 + T4 正文；任一步失败返回 used=False，由调用方回退。"""
     from app.services import kg_prompt, kg_validation
 
@@ -387,7 +409,16 @@ async def _run_kg_prompt_flow(*, kg_evidence: dict, unfit: list[dict], risks: di
         required_keys=list(required_keys), items=t4_items,
     )
     try:
-        raw = await model_text(prompt4)
+        if on_analysis_delta:
+            chunks: list[str] = []
+            async for chunk in llm_service.generate_stream(prompt4):
+                if not chunk:
+                    continue
+                chunks.append(chunk)
+                on_analysis_delta(chunk)
+            raw = "".join(chunks)
+        else:
+            raw = await model_text(prompt4)
         analysis = re.sub(r"^\s*#+\s*文本分析报告\s*\n+", "", str(raw or "").strip())
         result = kg_validation.validate_analysis_text(
             analysis,
@@ -476,7 +507,8 @@ def _build_kg_evidence(selections: list[dict] | None) -> dict | None:
 @traced_generation
 async def generate(report_id: int | str, *, use_llm: bool = False,
                    actor: dict | None = None,
-                   kg_selections: list[dict] | None = None) -> dict:
+                   kg_selections: list[dict] | None = None,
+                   on_analysis_delta=None) -> dict:
     """Lookup selected expert risks, match free text, aggregate, then write a snapshot.
 
     Unconfirmed reference/score rules yield a draft preview, never invented formal values.
@@ -563,16 +595,22 @@ async def generate(report_id: int | str, *, use_llm: bool = False,
         required_keys = _priority_fact_keys(unfit, risks)
         narrative = _narrative(unfit, risks, score, grade)
     kg_evidence = _build_kg_evidence(kg_selections)
+    has_kg_paths = bool(kg_evidence and kg_evidence.get("paths"))
     analysis_text = ""
     kg_appendix_text = ""
     kg_prompt_result: dict = {"used": False, "errors": []}
-    if settings.kg_prompt_enabled and kg_evidence and kg_evidence.get("paths") and use_llm:
+    # 全部「无合适候选」/没有勾选路径：不调用模型，直接规则分析，避免白等几十秒
+    rule_only = bool(use_llm and not has_kg_paths)
+    if rule_only:
+        analysis_text = _rule_analysis_text(unfit, risks)
+    if settings.kg_prompt_enabled and has_kg_paths and use_llm:
         try:
             with stage('kg_prompt_flow'):
                 kg_prompt_result = await _run_kg_prompt_flow(
                     kg_evidence=kg_evidence, unfit=unfit, risks=risks,
                     score=score, grade=grade, required_keys=required_keys,
                     model_text=model_text,
+                    on_analysis_delta=on_analysis_delta,
                 )
         except Exception as exc:
             kg_prompt_result = {"used": False,
@@ -586,7 +624,7 @@ async def generate(report_id: int | str, *, use_llm: bool = False,
         # T3 已成功、T4 失败：正文用规则摘要，附页保留 T3；不再重复调用模型
         llm_error = "T4 正文校验失败，已采用规则概况 + T3 附页"
         llm_error_code = "kg_t4_failed"
-    elif use_llm:
+    elif use_llm and not rule_only:
         try:
             with stage('prompt_build', purpose='overview'):
                 prompt = _narrative_prompt(report, unfit, risks, score, grade, kg_evidence)
@@ -630,7 +668,8 @@ async def generate(report_id: int | str, *, use_llm: bool = False,
         "kg_prompt_validation": kg_prompt_result.get("validation") or {},
         # 大模型负责报告文末的文本分析；评估概况 narrative 保持规则事实，不混入模型文字
         "analysis_text": analysis_text,
-        "analysis_status": ("success" if analysis_text and llm_used else "not_available"),
+        "analysis_status": ("success" if analysis_text and llm_used else
+                            ("rule_only" if analysis_text else "not_available")),
         "kg_appendix_text": kg_appendix_text,
         "risk_rule": "expert_material", "risk_catalog_version": material["version"],
         "catalog_version": report["catalog_version"], "unfit_count": len(unfit),

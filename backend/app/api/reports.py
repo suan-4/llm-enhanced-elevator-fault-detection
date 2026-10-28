@@ -117,33 +117,45 @@ async def generate_report_stream(report_id: str, req: ReportGenerateRequest,
 
     async def stream():
         yield ": connected\n\n"
-        task = asyncio.create_task(
-            wf.generate(rid, use_llm=req.use_llm, actor=user,
-                        kg_selections=req.kg_selections)
-        )
+        queue: asyncio.Queue = asyncio.Queue()
+        holder: dict = {}
+
+        def on_delta(text: str) -> None:
+            queue.put_nowait({"type": "text", "text": text})
+
+        async def run():
+            try:
+                holder["report"] = await wf.generate(
+                    rid, use_llm=req.use_llm, actor=user,
+                    kg_selections=req.kg_selections,
+                    on_analysis_delta=on_delta,
+                )
+            except (LookupError, ValueError, wf.VersionConflict) as exc:
+                queue.put_nowait({"type": "error", "message": str(exc)})
+            except Exception:
+                queue.put_nowait({"type": "error", "message": "生成失败，请重试"})
+            finally:
+                queue.put_nowait(None)
+
+        task = asyncio.create_task(run())
         try:
             while True:
-                done, _ = await asyncio.wait({task}, timeout=10)
-                if done:
+                try:
+                    item = await asyncio.wait_for(queue.get(), timeout=10)
+                except asyncio.TimeoutError:
+                    yield ": ping\n\n"
+                    continue
+                if item is None:
                     break
-                yield ": ping\n\n"
-            report = await task
-        except (LookupError, ValueError, wf.VersionConflict) as exc:
-            yield _sse({"type": "error", "message": str(exc)})
-            return
-        except Exception:
-            yield _sse({"type": "error", "message": "生成失败，请重试"})
-            return
+                yield _sse(item)
+            report = holder.get("report")
+            if not report:
+                return
+            yield _sse({"type": "report", "report": report})
+            yield "data: [DONE]\n\n"
         finally:
             if not task.done():
                 task.cancel()
-        # 只流式输出文末「文本分析报告」，不流评估概况/风险数据
-        analysis = str((report.get("provenance") or {}).get("analysis_text") or "")
-        for i in range(0, len(analysis), 12):
-            yield _sse({"type": "text", "text": analysis[i:i + 12]})
-            await asyncio.sleep(0.01)
-        yield _sse({"type": "report", "report": report})
-        yield "data: [DONE]\n\n"
 
     return StreamingResponse(
         stream(),
