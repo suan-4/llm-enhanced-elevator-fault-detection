@@ -32,6 +32,8 @@ const error = ref('')
 const streamText = ref('')
 const recommendQueue: Row[] = []
 let recommendActive = 0
+const AUTO_RECOMMEND_LIMIT = 3
+let autoRecommendCount = 0
 
 const allChosen = computed(() => rows.value.length > 0 && rows.value.every((r) => !!r.choice))
 const doneCount = computed(() => rows.value.filter((r) => !!r.choice).length)
@@ -80,7 +82,8 @@ async function loadRow(row: Row): Promise<void> {
     row.result = res
     if (!res.candidates.length) {
       row.choice = 'none'
-    } else {
+    } else if (autoRecommendCount < AUTO_RECOMMEND_LIMIT) {
+      autoRecommendCount += 1
       enqueueRecommendation(row)
     }
   } catch (err) {
@@ -88,6 +91,11 @@ async function loadRow(row: Row): Promise<void> {
   } finally {
     row.loading = false
   }
+}
+
+function requestRecommendation(row: Row): void {
+  if (row.recommending || row.recommendation || row.loading) return
+  enqueueRecommendation(row)
 }
 
 function enqueueRecommendation(row: Row): void {
@@ -238,6 +246,7 @@ function back(): void {
         <h1>故障路径确认</h1>
         <p class="sub">
           为每个不符合项选择最接近的故障演化路径；没有合适路径可选「无合适候选」，按规则表处置。
+          前 3 项自动推荐，其余项可按需点「AI 推荐」。
         </p>
       </div>
       <div class="progress">
@@ -283,6 +292,12 @@ function back(): void {
           >采用</button>
         </template>
         </div>
+        <button
+          v-else-if="(row.result?.candidates || []).length"
+          class="btn tiny ai-trigger"
+          type="button"
+          @click="requestRecommendation(row)"
+        >AI 推荐</button>
 
         <div class="candidates">
         <label
@@ -379,6 +394,7 @@ h1 { margin: 0; font-size: 21px; }
   color: #2c6b42;
   font-size: 12.5px;
 }
+.ai-trigger { margin: 6px 0; }
 .ai-badge {
   display: inline-block;
   padding: 1px 7px;
