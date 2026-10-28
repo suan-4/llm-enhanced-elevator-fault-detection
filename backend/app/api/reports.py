@@ -8,7 +8,11 @@
   - 破坏性操作要求 confirm=true；
   - 业务规则失败返回 400 并给出可直接显示的中文原因。
 """
+import asyncio
+import json
+
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 
 from app.deps import get_current_user
 from app.models.schemas import (
@@ -99,6 +103,52 @@ async def generate_report(report_id: str, req: ReportGenerateRequest,
     except (LookupError, ValueError, wf.VersionConflict) as e:
         raise _translate(e)
     return {"success": True, "report": report}
+
+
+def _sse(payload: dict) -> str:
+    return "data: " + json.dumps(payload, ensure_ascii=False) + "\n\n"
+
+
+@router.post("/{report_id}/generate/stream")
+async def generate_report_stream(report_id: str, req: ReportGenerateRequest,
+                                 user: dict = Depends(get_current_user)):
+    """只流式输出最终正文；其余风险/得分等在 report 事件里一次返回。"""
+    rid = _report_id(report_id)
+
+    async def stream():
+        yield ": connected\n\n"
+        task = asyncio.create_task(
+            wf.generate(rid, use_llm=req.use_llm, actor=user,
+                        kg_selections=req.kg_selections)
+        )
+        try:
+            while True:
+                done, _ = await asyncio.wait({task}, timeout=10)
+                if done:
+                    break
+                yield ": ping\n\n"
+            report = await task
+        except (LookupError, ValueError, wf.VersionConflict) as exc:
+            yield _sse({"type": "error", "message": str(exc)})
+            return
+        except Exception:
+            yield _sse({"type": "error", "message": "生成失败，请重试"})
+            return
+        finally:
+            if not task.done():
+                task.cancel()
+        narrative = str(report.get("narrative") or "")
+        for i in range(0, len(narrative), 12):
+            yield _sse({"type": "text", "text": narrative[i:i + 12]})
+            await asyncio.sleep(0.01)
+        yield _sse({"type": "report", "report": report})
+        yield "data: [DONE]\n\n"
+
+    return StreamingResponse(
+        stream(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
 
 @router.post("/{report_id}/void")

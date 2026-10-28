@@ -5,6 +5,7 @@ import { beginInteraction } from '@/utils/performance'
 import InfoTable from '@/components/report/InfoTable.vue'
 import ItemTable from '@/components/report/ItemTable.vue'
 import AppDialog from '@/components/AppDialog.vue'
+import StreamingOverlay from '@/components/StreamingOverlay.vue'
 import ReportCenter from '@/components/report/ReportCenter.vue'
 import { defaultProfileName } from '@/domain/baseInfo'
 import { useReportStore } from '@/stores/report'
@@ -50,6 +51,7 @@ const selectedProfileName = computed(
     store.baseInfoProfiles.find((item) => item.id === selectedProfileId.value)?.name || '',
 )
 const generating = ref(false)
+const streamText = ref('')
 const confirmNew = ref(false)
 const newBusy = ref(false)
 const itemTable = ref<InstanceType<typeof ItemTable> | null>(null)
@@ -391,8 +393,11 @@ async function generate(): Promise<void> {
   }
   const timing = beginInteraction('report_generate')
   generating.value = true
+  streamText.value = ''
   try {
-    const report = await store.generate(timing)
+    const report = await store.generate(timing, [], (text) => {
+      streamText.value += text
+    })
     timing.finish('ok')
     // 生成完成直接进入报告查看（右侧区域就地切换，不跳路由）
     await enterReports(report.id)
@@ -624,6 +629,7 @@ async function jump(key: string, kind: 'field' | 'item'): Promise<void> {
         </p>
         <p class="dialog-p">确定新建一份空白评估吗？</p>
       </AppDialog>
+  <StreamingOverlay v-if="generating" :text="streamText" />
 </template>
 
 <style scoped>

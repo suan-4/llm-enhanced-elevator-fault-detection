@@ -518,6 +518,7 @@ export const useReportStore = defineStore('report', () => {
   async function generate(
     timing?: Interaction,
     kgSelections: import('@/api/reports').KgSelection[] = [],
+    onText?: (text: string) => void,
   ): Promise<ReportSummary> {
     if (!reportId.value) throw new Error('还没有正在编辑的报告')
     /* 评估日期不填时自动取系统当天日期 */
@@ -530,9 +531,11 @@ export const useReportStore = defineStore('report', () => {
     const requestedId = reportId.value
     const inputSnapshot = JSON.stringify({ form: form.value, items: serializeItems() })
     // use_llm=true：模型可用就用模型写概况；不可用后端会自动降级，不影响出报告
-    const res = timing
-      ? await timing.measure('generate_http', () => flowApi.generateReport(reportId.value!, true, kgSelections))
-      : await flowApi.generateReport(reportId.value, true, kgSelections)
+    const res = onText
+      ? await flowApi.generateReportStream(reportId.value, true, kgSelections, onText)
+      : timing
+        ? await timing.measure('generate_http', () => flowApi.generateReport(reportId.value!, true, kgSelections))
+        : await flowApi.generateReport(reportId.value, true, kgSelections)
     const report = res.report
     if (reportId.value !== requestedId) throw new Error('当前报告已切换，没有覆盖新报告')
     if (inputSnapshot !== JSON.stringify({ form: form.value, items: serializeItems() })) {

@@ -5,6 +5,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { fetchKgCandidates, selectKgPath, type KgCandidatesResponse } from '@/api/kg'
 import { useReportStore } from '@/stores/report'
+import StreamingOverlay from '@/components/StreamingOverlay.vue'
 import type { KgSelection } from '@/api/reports'
 
 interface Row {
@@ -24,6 +25,7 @@ const rows = ref<Row[]>([])
 const loading = ref(true)
 const generating = ref(false)
 const error = ref('')
+const streamText = ref('')
 
 const allChosen = computed(() => rows.value.length > 0 && rows.value.every((r) => !!r.choice))
 const doneCount = computed(() => rows.value.filter((r) => !!r.choice).length)
@@ -108,7 +110,10 @@ async function generate(): Promise<void> {
       rank: sel.rank,
       top3: [],
     }).catch(() => null)))
-    const report = await store.generate(undefined, selections)
+    streamText.value = ''
+    const report = await store.generate(undefined, selections, (text) => {
+      streamText.value += text
+    })
     await router.replace({ path: '/', query: { section: 'reports', report: report.id } })
   } catch (err) {
     error.value = err instanceof Error ? err.message : '生成失败'
@@ -189,6 +194,7 @@ function back(): void {
       <p class="tip">未全部确认时不能生成；选中路径仅作为报告候选证据，标注「操作员选定、未签核」。</p>
     </footer>
   </div>
+  <StreamingOverlay v-if="generating" :text="streamText" />
 </template>
 
 <style scoped>
