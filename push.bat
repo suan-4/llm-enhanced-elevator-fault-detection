@@ -76,6 +76,10 @@ REM Windows 检出的脚本/Python 可能是 CRLF；板端 bash/python 会因此
 adb shell "sed -i 's/\r$//' /tmp/install_kiosk.sh /tmp/elevator-kiosk.sh /tmp/elevator-launch.sh /tmp/elevator_app.py /tmp/elevator.desktop /tmp/elevator-kiosk.desktop /tmp/harden_kiosk.sh /tmp/elevator-osk@local/metadata.json /tmp/elevator-osk@local/extension.js 2>/dev/null; bash /tmp/install_kiosk.sh; sed -i 's/\r$//' /home/user/elevator_app.py /home/user/elevator-kiosk.sh /home/user/elevator-launch.sh 2>/dev/null; echo '  桌面快捷方式: /home/user/桌面/电梯安全评估系统.desktop'"
 
 echo.
+echo [5c/7] 重启原生应用（让最新 GTK/键盘代码生效）...
+adb shell "pkill -u user -f '/home/user/elevator_app.py' 2>/dev/null; sleep 1; su user -c 'export XDG_RUNTIME_DIR=/run/user/1002 DISPLAY=:0 XAUTHORITY=/run/user/1002/gdm/Xauthority; setsid nohup /home/user/elevator-launch.sh >/dev/null 2>&1 < /dev/null &'; sleep 3; ps -ef | grep elevator_app.py | grep -v grep | head -1"
+
+echo.
 echo [6/7] 清理字节码缓存并重启后端...
 adb shell "find %ROOT%/backend -name __pycache__ -type d -exec rm -rf {} + 2>/dev/null; echo   cleaned"
 REM 必须用 systemctl 重启：该服务配了 Restart=always，
