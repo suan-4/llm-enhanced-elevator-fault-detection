@@ -388,16 +388,20 @@ async def _run_kg_prompt_flow(*, kg_evidence: dict, unfit: list[dict], risks: di
     )
     try:
         raw = await model_text(prompt4)
-        candidate = kg_validation.normalize_t4(kg_validation.parse_json_output(raw))
-        result = kg_validation.validate_t4(
-            candidate, overview_facts=_overview_facts(unfit, risks, score, grade),
-            required_keys=list(required_keys), items=t4_items,
+        analysis = re.sub(r"^\s*#+\s*文本分析报告\s*\n+", "", str(raw or "").strip())
+        result = kg_validation.validate_analysis_text(
+            analysis,
+            item_nos=[str(item.get("item_no") or "") for item in t4_items],
+            evidence_paths=list(paths_by_id.values()),
+            rule_facts={
+                "categories": [r.get("category") for r in risks.values()],
+                "overview": _overview_facts(unfit, risks, score, grade),
+            },
         )
         if result["valid"]:
             return {
                 "used": True,
-                "narrative": str(candidate.get("overview") or "").strip(),
-                "key_findings": candidate.get("key_findings") or [],
+                "analysis": analysis,
                 "summaries": summaries,
                 "appendix": _t3_appendix(summaries, paths_by_id),
                 "validation": {"passed": True, "errors": []},
@@ -576,7 +580,7 @@ async def generate(report_id: int | str, *, use_llm: bool = False,
                                             "item_no": "", "detail": str(exc)[:120]}]}
     llm_used, llm_error, llm_error_code = False, "", ""
     if kg_prompt_result.get("used"):
-        analysis_text = str(kg_prompt_result.get("narrative") or "").strip()
+        analysis_text = str(kg_prompt_result.get("analysis") or "").strip()
         llm_used = True
     elif kg_prompt_result.get("partial") and kg_prompt_result.get("appendix"):
         # T3 已成功、T4 失败：正文用规则摘要，附页保留 T3；不再重复调用模型

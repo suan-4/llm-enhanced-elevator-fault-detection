@@ -179,6 +179,37 @@ def validate_t3(output: dict, *, item_no: str, allowed_path_ids: set[str],
     return {"valid": not unique, "errors": unique}
 
 
+def validate_analysis_text(text: str, *, item_nos: list[str],
+                           evidence_paths: list[dict],
+                           rule_facts: dict | None = None) -> dict:
+    """校验最终 Markdown 文本分析报告（纯文本，不要求 JSON）。"""
+    errors: list[dict] = []
+    body = str(text or "").strip()
+    if len(body) < 200:
+        errors.append({"code": "SCHEMA_INVALID", "item_no": "",
+                       "detail": f"分析正文过短（{len(body)} 字）"})
+    if len(body) > 600:
+        errors.append({"code": "SCHEMA_INVALID", "item_no": "",
+                       "detail": f"分析正文过长（{len(body)} 字）"})
+    # 项目编号缺失只作为提示，不直接判失败：模型可能用项目名称表述。
+    if PATH_RE.search(body):
+        errors.append({"code": "PATH_NOT_ALLOWED", "item_no": "",
+                       "detail": "正文出现 path_id"})
+    for phrase in ("综合安全状况得分", "综合安全状况等级", "本次评估共发现", "等级为"):
+        if phrase in body:
+            errors.append({"code": "CLAIM_UNSUPPORTED", "item_no": "",
+                           "detail": f"分析正文不应复述评估概况：{phrase}"})
+    values = evidence_paths + ([rule_facts] if rule_facts else [])
+    errors.extend(_check_common({"analysis": body}, "", _allowed_numbers(values),
+                                _allowed_clauses(values)))
+    seen = set(); unique = []
+    for err in errors:
+        key = (err["code"], err["detail"])
+        if key not in seen:
+            seen.add(key); unique.append(err)
+    return {"valid": not unique, "errors": unique}
+
+
 def normalize_t4(output: dict) -> dict:
     """模型常见超长；在不新增事实的前提下截断到模板上限。"""
     data = dict(output)

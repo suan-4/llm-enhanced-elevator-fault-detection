@@ -62,9 +62,10 @@ Content-Type: text/event-stream
 
 - 部署：push.bat 推送前端/后端 + KG 索引到板端，快照 20261028_210204，健康检查 200；
 - 板端 SSE（kg_prompt_enabled=true，真实 RKLLM，报告 107124008851345408）：
-  - 用时 143.7s，24 块、281 字；
+  - Markdown 版本用时 94.4s，31 块、372 字；
   - `llm_used=true`、`kg_prompt_used=true`、`kg_prompt_partial=false`，errors=[]；
-  - 分析正文提到 4.3 定转子碰擦、10.2 对重架、12.4 钢丝绳等；
+  - 输出为 Markdown（标题、段落、列表），前端用 marked 解析；
+  - 分析正文没有再复述不符合项总数、得分或等级；
   - `narrative` 仍为规则评估概况，不含分析正文；
 - 前端 StreamingOverlay 已随 push.bat 构建；报告查看页/Word 末尾新增「文本分析报告」页；
 - 板端查看页验证：文本含「文本分析报告」标题和模型分析正文（截图 board-analysis-page.png）；

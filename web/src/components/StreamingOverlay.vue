@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { renderMarkdown } from '@/utils/markdown'
+
 defineProps<{ text: string }>()
 </script>
 
@@ -10,7 +12,8 @@ defineProps<{ text: string }>()
         正在生成文末文本分析报告
         <span class="count">{{ text.length }} 字</span>
       </div>
-      <pre class="stream-text">{{ text || '正在生成最终正文…' }}</pre>
+      <div v-if="text" class="stream-text md" v-html="renderMarkdown(text)" />
+      <pre v-else class="stream-text">正在生成文本分析报告…</pre>
       <p class="stream-tip">分析报告生成完成后会自动进入报告查看；评估概况、风险与得分由程序单独生成。</p>
     </div>
   </div>
@@ -69,6 +72,18 @@ defineProps<{ text: string }>()
   line-height: 1.75;
   color: #223;
 }
+.stream-text.md { white-space: normal; }
+.stream-text.md :deep(h1),
+.stream-text.md :deep(h2),
+.stream-text.md :deep(h3) {
+  margin: 8px 0 6px;
+  color: #1b5e7a;
+}
+.stream-text.md :deep(p) { margin: 0 0 8px; }
+.stream-text.md :deep(ul),
+.stream-text.md :deep(ol) { margin: 4px 0 8px; padding-left: 22px; }
+.stream-text.md :deep(li) { margin: 2px 0; }
+.stream-text.md :deep(strong) { color: #123; }
 .stream-tip { margin: 0; padding: 10px 18px; border-top: 1px solid #eef2f4; font-size: 11.5px; color: #879; }
 @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: .25; } }
 </style>

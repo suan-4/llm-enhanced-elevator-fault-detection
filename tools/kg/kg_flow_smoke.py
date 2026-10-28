@@ -33,17 +33,14 @@ async def fake_model(prompt: str) -> str:
             "evidence_note": "候选证据，未签核",
         }, ensure_ascii=False)
     if task == "report_analysis":
-        facts = data["overview_facts"]
-        finding = str(facts.get("finding") or "本次评估发现不符合项。")
-        score = str(facts.get("score") or "得分由程序计算。")
         items = data.get("items") or []
         no = items[0]["item_no"] if items else "1.7"
-        return json.dumps({
-            "overview": f"{finding}{score}",
-            "key_findings": [f"{no}：该项不符合，详见附页候选证据。"],
-            "risk_statement": "风险类别、得分与等级由规则程序计算。",
-            "limitations": "图谱路径为工程候选，需人工复核。",
-        }, ensure_ascii=False)
+        return (
+            f"## 不符合项分析\n\n"
+            f"- {no}：该项不符合，候选证据提示应按规则表处置并复验。\n"
+            "- 以上为工程候选，需人工复核。\n"
+            + "现场处置应结合规则表措施和候选路径建议，确认根因消除后再复役。" * 5
+        )
     raise ValueError(f"unexpected task {task}")
 
 
@@ -68,7 +65,7 @@ async def main() -> int:
         model_text=fake_model,
     )
     print(json.dumps({"used": result.get("used"), "errors": result.get("errors"),
-                      "narrative": result.get("narrative", "")[:120],
+                      "analysis": (result.get("analysis") or "")[:120],
                       "appendix": (result.get("appendix") or "")[:180],
                       "validation": result.get("validation")}, ensure_ascii=False, indent=2))
     if not result.get("used"):

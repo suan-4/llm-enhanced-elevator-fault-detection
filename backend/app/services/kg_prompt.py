@@ -123,22 +123,22 @@ def build_t3_item_prompt(*, item_no: str, item_name: str, query: str,
 
 def build_t4_overview_prompt(*, overview_facts: dict, required_keys: list[str],
                              items: list[dict]) -> str:
-    """T4 正文生成：按评审要求，不传候选路径，只传规则事实与逐项结论。"""
+    """T4 正文生成：只输出 Markdown 文末分析，不输出 JSON。"""
     system = (
         SYSTEM_BASE
         + "本任务写报告文末的「文本分析报告」，不是评估概况；不得新增事实。"
-        + '输出 JSON：{"overview":"","key_findings":[],"risk_statement":"","limitations":""}。'
-        + "要求：overview 是文末分析正文，200–350 字，结合 items 的 fault_chain/risk/action，"
-        + "说明主要不符合项的故障原因、演化过程、风险与处置建议；"
-        + "key_findings 最多 5 条，每条不超过 80 字，必须引用 item_no；"
-        + "risk_statement 只复述规则给出的类别/得分，不得改分；"
-        + "limitations 写「图谱为工程候选、需人工复核」，不得写未提供的限制；"
-        + "文末分析不得出现 path_id；不写具体数值限值、条款号；不写「已确认」。"
+        + "只输出 Markdown 正文，不要输出 JSON、代码块、解释或字段名；"
+        + "不要写「文本分析报告」标题，标题由程序添加。"
+        + "要求：350–500 字；开头概括涉及的系统/部件，但不要写不符合项总数、"
+        + "综合得分、等级或「本次评估共发现 X 项」；"
+        + "按项目编号逐项说明风险类别、现场事实、候选故障演化、风险后果、"
+        + "规则表处置、整改/复验建议；可用 Markdown 小标题和列表；"
+        + "正文不得出现 path_id、PATH_V2_ 编号、条款号或具体限值；"
+        + "不写「已确认」「已签核」「违反」「必然」「证明」。"
     )
+    # 分析正文不传总数/得分/等级，避免模型复述或写错；评估概况由程序单独输出。
     data = {
         "task": "report_analysis",
-        "overview_facts": overview_facts,
-        "required_overview_keys": required_keys[:8],
         "items": [
             {
                 "item_no": item.get("item_no", ""),
