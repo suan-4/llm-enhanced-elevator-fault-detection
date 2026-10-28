@@ -350,45 +350,50 @@ async def _run_kg_prompt_flow(*, kg_evidence: dict, unfit: list[dict], risks: di
 
     summaries: list[dict] = []
     errors: list[dict] = []
+    # T3 改为程序确定性组装：路径已带 states/trigger/barrier/risk/action，
+    # 不再调用模型，节省约 50–60s 首字延迟。
     for no, item_paths in groups.items():
-        item = next((u for u in unfit if str(u.get("no")) == no), {})
+        primary = item_paths[0]
+        chain: list[str] = []
+        for p in item_paths:
+            for state in (p.get("states") or []):
+                if str(state) not in chain:
+                    chain.append(str(state))
+            if len(chain) >= 6:
+                break
+        def pick(key: str) -> str:
+            for p in item_paths:
+                value = str(p.get(key) or "").strip()
+                if value:
+                    return value
+            return ""
+        summary = {
+            "item_no": no,
+            "path_ids": [str(p.get("path_id")) for p in item_paths],
+            "fault_chain": chain[:6],
+            "trigger": pick("trigger_condition"),
+            "barrier": pick("barrier_condition"),
+            "risk": pick("risk"),
+            "inspection": pick("inspection"),
+            "action": pick("action"),
+            "verification": pick("verification"),
+            "evidence_note": ("含 %d 条候选路径，候选证据，未签核" % len(item_paths)
+                              if len(item_paths) > 1 else "候选证据，未签核"),
+        }
         risk = risks.get(no) or {}
         rule_facts = {
             "category": risk.get("category", ""),
             "measure": risk_rules.CATEGORY_MEASURE.get(risk.get("category", ""), ""),
             "issue": risk.get("issue", ""),
         }
-        query = queries.get(no) or " ".join(filter(None, [item.get("other_text"),
-                                                          *(item.get("reasons") or [])]))
-        prompt = kg_prompt.build_t3_item_prompt(
-            item_no=no, item_name=str(item.get("name") or ""), query=query,
-            rule_facts=rule_facts, paths=item_paths,
+        result = kg_validation.validate_t3(
+            summary, item_no=no,
+            allowed_path_ids={str(p.get("path_id")) for p in item_paths},
+            evidence_paths=item_paths, rule_facts=rule_facts,
         )
-        parsed = None
-        for attempt in range(2):
-            try:
-                raw = await model_text(prompt)
-                candidate = kg_validation.parse_json_output(raw)
-                result = kg_validation.validate_t3(
-                    candidate, item_no=no,
-                    allowed_path_ids={str(p.get("path_id")) for p in item_paths},
-                    evidence_paths=item_paths, rule_facts=rule_facts,
-                )
-                if not result["valid"]:
-                    errors.extend(result["errors"])
-                    if attempt == 0:
-                        continue
-                    return {"used": False, "errors": errors}
-                parsed = candidate
-                break
-            except Exception:
-                if attempt == 0:
-                    continue
-                return {"used": False, "errors": [{"code": "MODEL_OR_PARSE_FAILED",
-                                                  "item_no": no, "detail": "T3 调用/解析失败"}]}
-        if parsed is None:
-            return {"used": False, "errors": errors}
-        summaries.append(parsed)
+        if not result["valid"]:
+            return {"used": False, "errors": result["errors"]}
+        summaries.append(summary)
 
     # T4：正文只传规则事实与逐项结论，不传路径
     t4_items = []

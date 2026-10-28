@@ -66,7 +66,7 @@ Content-Type: text/event-stream
   - `analysis_status=rule_only`、`llm_used=false`，生成 1005 字规则 Markdown；
   - 不再等待模型；
 - 有候选路径、真实 RKLLM token 流（报告 107124008851345408）：
-  - 首块 **58.24s**、总 **95.97s**、**367 块 / 367 字**；
+  - T3 改为程序组装后，首块 **7.56s**、总 **44.7s**、**367 块 / 367 字**；
   - `llm_used=true`、`kg_prompt_used=true`、errors=[]；
   - 输出为 Markdown（标题、段落、列表），前端用 marked 解析；
 - 前端 StreamingOverlay 已随 push.bat 构建；报告查看页/Word 末尾有「文本分析报告」页；
@@ -75,7 +75,7 @@ Content-Type: text/event-stream
 
 ## 6. 限制
 
-1. T3 仍是非流式 JSON，所以首块要等 T3 完成（本次约 58s）；T4 之后是真实 token 流；
+1. T3 已改为程序组装，不再调用模型；T4 是真实 token 流，首块约 7–8s（取决于模型）；
 2. 全部无候选时直接规则分析，不调用模型，故 0.09s 完成；
 3. 生成失败时 SSE 返回 error 事件，前端提示后仍可用普通接口重试；
 4. 自动化 UI 测试受板端草稿状态影响，尚未截到“生成中”覆盖层；接口层已完整验证。
