@@ -51,20 +51,24 @@ Content-Type: text/event-stream
 
 ## 4. 本地测试
 
-- 用报告 107124294529585152，`use_llm=false`：
-  - SSE 返回 16 个 text 块，合计 192 字；
-  - 收到 report 事件，status=generated；
-  - 无 error；
-- 前端 `typecheck` / `build` 通过。
+- 用报告 107124294529585152，`use_llm=false`：SSE 正常返回 report 事件；
+- 板端真实模型（kg_prompt_enabled=true，报告 107124008851345408）：
+  - T3/T4 成功，SSE 返回 24 个 text 块、281 字；
+  - `provenance.analysis_text` 281 字，`llm_used=true`、`kg_prompt_used=true`；
+  - 评估概况 `narrative`（699 字）不包含分析正文，二者已分离；
+- 前端 `typecheck` / `build` 通过；Word 导出追加分析页已用模板样本验证。
 
 ## 5. 板端实测（2026-10-28）
 
 - 部署：push.bat 推送前端/后端 + KG 索引到板端，快照 20261028_210204，健康检查 200；
-- 板端 SSE（use_llm=false，报告 107124008851345408）：0.7s、59 块、699 字，report 事件正常；
-- 板端 SSE（use_llm=true，真实 RKLLM）：19.1s、59 块、699 字，
-  llm_used=true，无 error；正文逐块返回；
-- 前端 StreamingOverlay 已随 push.bat 构建（dist 中有 StreamingOverlay 资源）；
-- 板端 runtime_config.json 保持 kg_prompt_enabled=false。
+- 板端 SSE（kg_prompt_enabled=true，真实 RKLLM，报告 107124008851345408）：
+  - 用时 143.7s，24 块、281 字；
+  - `llm_used=true`、`kg_prompt_used=true`、`kg_prompt_partial=false`，errors=[]；
+  - 分析正文提到 4.3 定转子碰擦、10.2 对重架、12.4 钢丝绳等；
+  - `narrative` 仍为规则评估概况，不含分析正文；
+- 前端 StreamingOverlay 已随 push.bat 构建；报告查看页/Word 末尾新增「文本分析报告」页；
+- 板端查看页验证：文本含「文本分析报告」标题和模型分析正文（截图 board-analysis-page.png）；
+- 测试后恢复板端 runtime_config.json 为 kg_prompt_enabled=false。
 
 ## 6. 限制
 

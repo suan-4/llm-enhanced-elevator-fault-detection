@@ -128,7 +128,7 @@ def build_t4_overview_prompt(*, overview_facts: dict, required_keys: list[str],
         SYSTEM_BASE
         + "本任务写报告文末的「文本分析报告」，不是评估概况；不得新增事实。"
         + '输出 JSON：{"overview":"","key_findings":[],"risk_statement":"","limitations":""}。'
-        + "要求：overview 是文末分析正文，400–800 字，结合 items 的 fault_chain/risk/action，"
+        + "要求：overview 是文末分析正文，200–350 字，结合 items 的 fault_chain/risk/action，"
         + "说明主要不符合项的故障原因、演化过程、风险与处置建议；"
         + "key_findings 最多 5 条，每条不超过 80 字，必须引用 item_no；"
         + "risk_statement 只复述规则给出的类别/得分，不得改分；"

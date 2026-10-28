@@ -183,7 +183,7 @@ def normalize_t4(output: dict) -> dict:
     """模型常见超长；在不新增事实的前提下截断到模板上限。"""
     data = dict(output)
     if isinstance(data.get("overview"), str):
-        data["overview"] = data["overview"].strip()[:800]
+        data["overview"] = data["overview"].strip()[:400]
     findings = data.get("key_findings")
     if isinstance(findings, list):
         data["key_findings"] = [str(x).strip()[:80] for x in findings if isinstance(x, str)][:5]
@@ -205,8 +205,8 @@ def validate_t4(output: dict, *, overview_facts: dict, required_keys: list[str],
                            "detail": f"缺少字段：{key}"})
     overview = str(data.get("overview") or "")
     findings = data.get("key_findings")
-    if len(overview) > 800:
-        errors.append({"code": "SCHEMA_INVALID", "item_no": "", "detail": "overview 超过 800 字"})
+    if len(overview) > 400:
+        errors.append({"code": "SCHEMA_INVALID", "item_no": "", "detail": "overview 超过 400 字"})
     if not isinstance(findings, list) or len(findings) > 5:
         errors.append({"code": "SCHEMA_INVALID", "item_no": "",
                        "detail": "key_findings 必须是最多 5 条的数组"})

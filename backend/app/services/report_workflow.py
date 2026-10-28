@@ -404,8 +404,9 @@ async def _run_kg_prompt_flow(*, kg_evidence: dict, unfit: list[dict], risks: di
                 "prompt_version": kg_prompt.PROMPT_VERSION,
             }
         errors.extend(result["errors"])
-    except Exception:
-        errors.append({"code": "T4_CALL_FAILED", "item_no": "", "detail": "T4 调用/解析失败"})
+    except Exception as exc:
+        errors.append({"code": "T4_CALL_FAILED", "item_no": "",
+                       "detail": f"T4 调用/解析失败：{type(exc).__name__}: {str(exc)[:120]}"})
     # T3 已成功时保留其附页，正文回退规则摘要，不再重复调用模型
     return {"used": False,
             "partial": bool(summaries),
@@ -499,13 +500,15 @@ async def generate(report_id: int | str, *, use_llm: bool = False,
         if any(i.get("result") not in ("fit", "unfit", "na") for i in items):
             raise ValueError("还有评价项目未填写，无法生成报告")
 
-    deadline = started + min(float(settings.rkllm_timeout), 120)
+    model_budget = 240.0 if (use_llm and settings.kg_prompt_enabled and kg_selections) else 120.0
+    deadline = started + min(float(settings.rkllm_timeout), model_budget)
 
     async def model_text(prompt: str) -> str:
         remaining = deadline - monotonic()
         if remaining <= 0:
             raise TimeoutError("模型解析已超时")
-        return await asyncio.wait_for(llm_service.generate(prompt), timeout=min(90, remaining))
+        # T3/T4 在小模型上可能超过 90s；按剩余预算放宽到 180s
+        return await asyncio.wait_for(llm_service.generate(prompt), timeout=min(180, remaining))
 
     unfit = [i for i in items if i["result"] == "unfit"]
     risks, other_matches = {}, []
@@ -557,6 +560,7 @@ async def generate(report_id: int | str, *, use_llm: bool = False,
         narrative = _narrative(unfit, risks, score, grade)
     kg_evidence = _build_kg_evidence(kg_selections)
     analysis_text = ""
+    kg_appendix_text = ""
     kg_prompt_result: dict = {"used": False, "errors": []}
     if settings.kg_prompt_enabled and kg_evidence and kg_evidence.get("paths") and use_llm:
         try:
@@ -601,9 +605,9 @@ async def generate(report_id: int | str, *, use_llm: bool = False,
                          else '模型概况未通过校验或未完成，已采用规则摘要')
     if kg_prompt_result.get("appendix") and (
             kg_prompt_result.get("used") or kg_prompt_result.get("partial")):
-        analysis_text = (analysis_text.rstrip() + "\n" + kg_prompt_result["appendix"]).strip()
+        kg_appendix_text = kg_prompt_result["appendix"]
     elif kg_evidence and kg_evidence.get("paths"):
-        analysis_text = (analysis_text.rstrip() + "\n" + _kg_appendix(kg_evidence)).strip()
+        kg_appendix_text = _kg_appendix(kg_evidence)
     provenance = {
         "generation_id": uuid4().hex,
         "llm_used": llm_used, "llm_model": "Qwen3.5-4B" if llm_used or other_matches else "",
@@ -622,8 +626,8 @@ async def generate(report_id: int | str, *, use_llm: bool = False,
         "kg_prompt_validation": kg_prompt_result.get("validation") or {},
         # 大模型负责报告文末的文本分析；评估概况 narrative 保持规则事实，不混入模型文字
         "analysis_text": analysis_text,
-        "analysis_status": ("success" if analysis_text and llm_used else
-                            ("partial" if analysis_text else "not_available")),
+        "analysis_status": ("success" if analysis_text and llm_used else "not_available"),
+        "kg_appendix_text": kg_appendix_text,
         "risk_rule": "expert_material", "risk_catalog_version": material["version"],
         "catalog_version": report["catalog_version"], "unfit_count": len(unfit),
         "other_matches": other_matches, "score_basis": basis,
