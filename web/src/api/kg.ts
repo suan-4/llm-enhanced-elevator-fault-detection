@@ -66,6 +66,8 @@ export interface KgRecommendation {
   rank: number | null
   reason: string
   none: boolean
+  source?: 'rule' | 'model'
+  cached?: boolean
 }
 
 export interface KgRecommendationResponse {
@@ -87,7 +89,7 @@ export interface KgSelectRequest {
   decision: 'selected' | 'no_candidate'
   rank?: number | null
   top3: { rank: number; path_id: string; path_summary: string; component: string; system: string; score: number }[]
-  selection_source?: 'human' | 'model' | 'human_override'
+  selection_source?: 'human' | 'model' | 'rule' | 'human_override'
   model_path_id?: string | null
   model_reason?: string
 }

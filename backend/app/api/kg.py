@@ -1,6 +1,8 @@
 """知识图谱 v2 检索/选择接口（MVP：只读检索 + 选择日志，不改报告生成）。"""
 from __future__ import annotations
 
+import time
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
@@ -38,7 +40,7 @@ class SelectRequest(BaseModel):
     decision: str = Field("selected", pattern="^(selected|no_candidate)$")
     rank: int | None = None
     top3: list[Top3Item] = Field(default_factory=list)
-    selection_source: str = Field("human", pattern="^(human|model|human_override)$")
+    selection_source: str = Field("human", pattern="^(human|model|rule|human_override)$")
     model_path_id: str | None = None
     model_reason: str = ""
 
@@ -69,6 +71,63 @@ def candidates(req: CandidateRequest, user: dict = Depends(get_current_user)) ->
     return {"success": True, **result}
 
 
+_REC_CACHE: dict[str, tuple[float, dict]] = {}
+_REC_TTL = 3600
+_GENERIC_MATCHES = {"工作", "系统", "装置", "检查", "安全", "电梯", "运行", "正常",
+                    "状态", "保护", "开关", "部件", "要求", "功能", "设备"}
+
+
+def _lcs(a: str, b: str) -> str:
+    """最长公共子串；用于部件名与现场描述的确定性匹配。"""
+    a = "".join(str(a or "").split()).lower()
+    b = "".join(str(b or "").split()).lower()
+    if not a or not b:
+        return ""
+    dp = [0] * (len(b) + 1)
+    best = 0
+    end = 0
+    for i in range(1, len(a) + 1):
+        prev = 0
+        for j in range(1, len(b) + 1):
+            old = dp[j]
+            if a[i - 1] == b[j - 1]:
+                dp[j] = prev + 1
+                if dp[j] > best:
+                    best = dp[j]
+                    end = j
+            else:
+                dp[j] = 0
+            prev = old
+    return b[end - best:end]
+
+
+def _rule_recommend(candidates: list[dict], query: str) -> dict | None:
+    """部件名直接命中时秒选；不命中或候选打平则返回 None 交给模型。"""
+    if not candidates:
+        return {"path_id": None, "rank": None, "reason": "无候选路径",
+                "none": True, "source": "rule"}
+    if len(candidates) == 1:
+        c = candidates[0]
+        return {"path_id": c.get("path_id"), "rank": c.get("rank"),
+                "reason": "仅一个候选路径", "none": False, "source": "rule"}
+    scored = []
+    for c in candidates:
+        matched = _lcs(c.get("component") or "", query)
+        matched = matched.strip()
+        if len(matched) >= 2 and matched not in _GENERIC_MATCHES:
+            scored.append((len(matched), matched, c))
+    if not scored:
+        return None
+    scored.sort(key=lambda x: x[0], reverse=True)
+    best_len, best_match, best = scored[0]
+    if best_len < 2:
+        return None
+    if sum(1 for item in scored if item[0] == best_len) != 1:
+        return None
+    return {"path_id": best.get("path_id"), "rank": best.get("rank"),
+            "reason": f"部件名称直接匹配：{best_match}", "none": False, "source": "rule"}
+
+
 @router.post("/recommend")
 async def recommend(req: CandidateRequest, user: dict = Depends(get_current_user)) -> dict:
     """AI 推荐：只从本次 TopK 候选中选一条；最终仍由操作员确认。"""
@@ -82,32 +141,41 @@ async def recommend(req: CandidateRequest, user: dict = Depends(get_current_user
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     candidates = result.get("candidates") or []
-    if not candidates:
-        return {"success": True, "recommendation": {"path_id": None, "rank": None,
-                                                    "reason": "无候选路径", "none": True}}
+    query = result.get("query") or ""
+    key = "|".join([req.item_no, req.item_name, " ".join(req.reasons),
+                    req.other_text, ",".join(str(c.get("path_id")) for c in candidates)])
+    now = time.time()
+    cached = _REC_CACHE.get(key)
+    if cached and now - cached[0] < _REC_TTL:
+        return {"success": True, "recommendation": {**cached[1], "cached": True}}
+    rule = _rule_recommend(candidates, query)
+    if rule is not None:
+        _REC_CACHE[key] = (now, rule)
+        return {"success": True, "recommendation": rule}
     try:
-        prompt = kg_prompt.build_t2_rerank_prompt(
+        prompt = kg_prompt.build_t2_recommend_prompt(
             item_no=req.item_no, item_name=req.item_name,
-            query=result.get("query") or "", candidates=candidates,
+            query=query, candidates=candidates,
         )
-        raw = await llm_service.generate(prompt)
+        raw = await llm_service.generate(prompt, max_tokens=96)
         parsed = kg_validation.parse_json_output(raw)
         allowed = {str(c.get("path_id")): c for c in candidates}
-        selected = parsed.get("selected") if isinstance(parsed, dict) else None
-        if not isinstance(selected, list) or not selected:
-            return {"success": True, "recommendation": {"path_id": None, "rank": None,
-                                                        "reason": "模型未选出合适候选", "none": True}}
-        chosen = selected[0] if isinstance(selected[0], dict) else {}
-        path_id = str(chosen.get("path_id") or "")
-        if path_id not in allowed:
-            return {"success": True, "recommendation": {"path_id": None, "rank": None,
-                                                        "reason": "模型推荐不在候选范围", "none": True}}
-        return {"success": True, "recommendation": {
-            "path_id": path_id,
-            "rank": allowed[path_id].get("rank"),
-            "reason": str(chosen.get("reason") or "")[:80],
-            "none": False,
-        }}
+        path_id = str((parsed or {}).get("path_id") or "")
+        if (parsed or {}).get("none") or not path_id:
+            rec = {"path_id": None, "rank": None, "reason": "模型未选出合适候选",
+                   "none": True, "source": "model"}
+        elif path_id not in allowed:
+            rec = {"path_id": None, "rank": None, "reason": "模型推荐不在候选范围",
+                   "none": True, "source": "model"}
+        else:
+            rec = {"path_id": path_id, "rank": allowed[path_id].get("rank"),
+                   "reason": str((parsed or {}).get("reason") or "")[:40],
+                   "none": False, "source": "model"}
+        # 控制缓存条目数量，避免长跑进程无限增长
+        if len(_REC_CACHE) > 500:
+            _REC_CACHE.clear()
+        _REC_CACHE[key] = (now, rec)
+        return {"success": True, "recommendation": rec}
     except Exception:
         return {"success": False, "recommendation": None,
                 "error": "AI 推荐暂不可用，请人工选择"}

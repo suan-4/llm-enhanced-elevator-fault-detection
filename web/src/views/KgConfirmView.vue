@@ -20,7 +20,7 @@ interface Row {
   choice: string // path_id 或 'none'
   recommendation: KgRecommendation | null
   recommending: boolean
-  choiceSource: 'human' | 'model' | 'human_override'
+  choiceSource: 'human' | 'model' | 'rule' | 'human_override'
 }
 
 const router = useRouter()
@@ -126,7 +126,7 @@ async function recommendRow(row: Row): Promise<void> {
     // 只做预选：用户已经点过就不覆盖，最终仍需人工确认
     if (res.recommendation && !row.choice) {
       row.choice = res.recommendation.none ? 'none' : (res.recommendation.path_id || '')
-      row.choiceSource = 'model'
+      row.choiceSource = res.recommendation.source === 'rule' ? 'rule' : 'model'
     }
   } catch {
     row.recommendation = null
@@ -146,19 +146,22 @@ function markChoice(row: Row): void {
     row.choiceSource = 'human'
     return
   }
-  row.choiceSource = row.choice === recommendedChoice(row) ? 'model' : 'human_override'
+  row.choiceSource = row.choice === recommendedChoice(row)
+    ? (row.recommendation.source === 'rule' ? 'rule' : 'model')
+    : 'human_override'
 }
 
 function applyRecommendation(row: Row): void {
   const choice = recommendedChoice(row)
   if (!choice) return
   row.choice = choice
-  row.choiceSource = 'model'
+  row.choiceSource = row.recommendation?.source === 'rule' ? 'rule' : 'model'
 }
 
-function auditSource(row: Row): 'human' | 'model' | 'human_override' {
+function auditSource(row: Row): 'human' | 'model' | 'rule' | 'human_override' {
   if (!row.recommendation) return 'human'
-  return row.choice === recommendedChoice(row) ? 'model' : 'human_override'
+  if (row.choice !== recommendedChoice(row)) return 'human_override'
+  return row.recommendation.source === 'rule' ? 'rule' : 'model'
 }
 
 function top3Of(row: Row) {
@@ -263,7 +266,9 @@ function back(): void {
         <div v-if="row.recommending || row.recommendation" class="ai-line">
         <span v-if="row.recommending" class="muted">AI 正在推荐…</span>
         <template v-else-if="row.recommendation">
-          <span class="ai-badge">AI 推荐</span>
+          <span class="ai-badge">
+            {{ row.recommendation.source === 'rule' ? '规则推荐' : 'AI 推荐' }}
+          </span>
           <span v-if="row.recommendation.none">
             建议「无合适候选」：{{ row.recommendation.reason || '未匹配到候选路径' }}
           </span>
@@ -290,7 +295,10 @@ function back(): void {
           <span class="body">
             <span class="path">
               #{{ c.rank }}　{{ chainOf(c) }}
-              <span v-if="row.recommendation?.path_id === c.path_id" class="ai-badge">AI 推荐</span>
+              <span v-if="row.recommendation?.path_id === c.path_id" class="ai-badge">
+                {{ row.recommendation.source === 'rule' ? '规则推荐' : 'AI 推荐' }}
+                <template v-if="row.recommendation.cached">·缓存</template>
+              </span>
             </span>
             <span class="meta">系统：{{ c.system || '—' }}　部位：{{ c.component || '—' }}　匹配度 {{ (c.score * 100).toFixed(1) }}</span>
             <span class="line"><b>风险：</b>{{ c.risk || '—' }}　<b>整改：</b>{{ c.action || '—' }}</span>

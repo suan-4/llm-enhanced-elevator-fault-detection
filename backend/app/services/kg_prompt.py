@@ -94,6 +94,32 @@ def build_t2_rerank_prompt(*, item_no: str, query: str, candidates: list[dict],
     return _envelope(system, data)
 
 
+def build_t2_recommend_prompt(*, item_no: str, item_name: str, query: str,
+                              candidates: list[dict]) -> str:
+    """T2 推荐专用短提示：只选一条，限制输出，降低板端首字延迟。"""
+    system = (
+        SYSTEM_BASE
+        + "本任务只从 candidates 中选一条最接近的路径，不能选 candidates 之外。"
+        + "没有合适候选时 none=true、path_id 为空。"
+        + '只输出 JSON：{"path_id":"","reason":"","none":false}。'
+        + "reason 不超过 20 字，只写部件/机理匹配点。"
+    )
+    data = {
+        "task": "kg_recommend",
+        "item_no": item_no,
+        "item_name": _compact(item_name, 80),
+        "query": _compact(query, 300),
+        "candidates": [
+            {"path_id": c.get("path_id", ""),
+             "component": _compact(c.get("component"), 60),
+             "system": _compact(c.get("system"), 40),
+             "summary": _compact(c.get("path_summary"), 90)}
+            for c in candidates[:3]
+        ],
+    }
+    return _envelope(system, data)
+
+
 def build_t3_item_prompt(*, item_no: str, item_name: str, query: str,
                          rule_facts: dict | None, paths: list[dict]) -> str:
     system = (
