@@ -379,7 +379,10 @@ export const useReportStore = defineStore('report', () => {
       const saved = draft.items.find((i) => i.no === item.no)
       const state = createItemState()
       if (saved) {
-        state.result = CODE_TO_RESULT[saved.result] ?? ''
+        /* 旧草稿里 result 可能是空串（历史版本没有默认「符合」）。
+           现在统一补成「符合」：现场默认全项符合，只改例外项；
+           否则退出重进后会出现一部分条目未选、计数为「未填」。 */
+        state.result = CODE_TO_RESULT[saved.result] ?? '符合'
         state.reasons = saved.reasons ?? []
         state.other = !!saved.other_text
         state.otherText = saved.other_text ?? ''
