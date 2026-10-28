@@ -8,7 +8,7 @@ import InfoTable from '@/components/report/InfoTable.vue'
 import { itemGroupName } from '@/domain/itemGroups'
 import { reasonList } from '@/domain/validation'
 import { overviewText, countByCategory } from '@/domain/riskScore'
-import { buildAppendixRows, overviewNarrative } from '@/domain/reportResult'
+import { buildAppendixRows } from '@/domain/reportResult'
 import { modelStatus } from '@/domain/modelStatus'
 import { useReportStore } from '@/stores/report'
 import { useExport } from '@/utils/export'
@@ -69,8 +69,7 @@ const overview = computed(() => {
   const base = g.value === null
     ? `1、存在Ⅰ类风险 ${count['Ⅰ类']} 项，Ⅱ类风险 ${count['Ⅱ类']} 项。\n2、综合评定暂不可用，详见评定提示。`
     : overviewText(categories.value, g.value)
-  const narrative = overviewNarrative(store.generated)
-  return narrative ? `${base}\n${narrative}` : base
+  return base
 })
 const conclusion = computed(() => `综合安全状况等级：${grade.value ?? '待确认'}`)
 const appendixRows = computed(() => buildAppendixRows(store.items, store.stateOf, riskByNo.value))

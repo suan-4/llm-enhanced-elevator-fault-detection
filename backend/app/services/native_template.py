@@ -152,7 +152,7 @@ def build_docx(report):
         risks = report["risks"]
         counts = {c: sum(r.get("category") == c for r in risks.values()) for c in ("Ⅰ类", "Ⅱ类")}
         overview = (f"1、存在Ⅰ类风险 {counts['Ⅰ类']} 项，Ⅱ类风险 {counts['Ⅱ类']} 项。\n"
-                    f"2、综合安全状况得分 {report['score']}。\n{report['narrative']}")
+                    f"2、综合安全状况得分 {report['score']}。")
         replace_text(children(header[13], "w:tc")[1], overview)
         replace_text(children(header[14], "w:tc")[1], f"综合安全状况等级：{report['grade']}")
 
