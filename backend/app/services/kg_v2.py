@@ -405,7 +405,8 @@ class KgV2Service:
     def log_selection(self, *, report_id: str | None, item_no: str, item_name: str,
                       query: str, path_id: str | None, decision: str,
                       rank: int | None, top3: list[dict] | None,
-                      operator: str = "") -> int:
+                      operator: str = "", selection_source: str = "human",
+                      model_path_id: str | None = None, model_reason: str = "") -> int:
         self._load()
         conn = sqlite3.connect(self.business_db_path, timeout=10)
         try:
@@ -417,12 +418,21 @@ class KgV2Service:
                     top3_json TEXT, operator TEXT, created_at TEXT,
                     kg_version TEXT)
             """)
+            for col, ddl in (("selection_source", "TEXT"),
+                             ("model_path_id", "TEXT"),
+                             ("model_reason", "TEXT")):
+                try:
+                    conn.execute(f"ALTER TABLE kg_selection ADD COLUMN {col} {ddl}")
+                except sqlite3.OperationalError:
+                    pass
             cur = conn.execute(
                 "INSERT INTO kg_selection(report_id,item_no,item_name,query_text,path_id,decision,"
-                "rank_selected,top3_json,operator,created_at,kg_version) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+                "rank_selected,top3_json,operator,created_at,kg_version,selection_source,"
+                "model_path_id,model_reason) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 (report_id, item_no, item_name, query, path_id, decision, rank,
                  json.dumps(top3 or [], ensure_ascii=False), operator,
-                 time.strftime("%Y-%m-%dT%H:%M:%S"), self._meta.get("kg_version", "")),
+                 time.strftime("%Y-%m-%dT%H:%M:%S"), self._meta.get("kg_version", ""),
+                 selection_source, model_path_id, model_reason),
             )
             conn.commit()
             return int(cur.lastrowid)

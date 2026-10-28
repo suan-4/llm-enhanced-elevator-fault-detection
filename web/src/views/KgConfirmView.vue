@@ -3,7 +3,8 @@
    每个不符合项 / 其他填写 → Top3 候选 → 人工勾选 / 无合适候选 → 生成报告。 */
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { fetchKgCandidates, selectKgPath, type KgCandidatesResponse } from '@/api/kg'
+import { fetchKgCandidates, fetchKgRecommendation, selectKgPath,
+  type KgCandidatesResponse, type KgRecommendation } from '@/api/kg'
 import { useReportStore } from '@/stores/report'
 import StreamingOverlay from '@/components/StreamingOverlay.vue'
 import type { KgSelection } from '@/api/reports'
@@ -17,6 +18,9 @@ interface Row {
   loading: boolean
   error: string
   choice: string // path_id 或 'none'
+  recommendation: KgRecommendation | null
+  recommending: boolean
+  choiceSource: 'human' | 'model' | 'human_override'
 }
 
 const router = useRouter()
@@ -26,6 +30,8 @@ const loading = ref(true)
 const generating = ref(false)
 const error = ref('')
 const streamText = ref('')
+const recommendQueue: Row[] = []
+let recommendActive = 0
 
 const allChosen = computed(() => rows.value.length > 0 && rows.value.every((r) => !!r.choice))
 const doneCount = computed(() => rows.value.filter((r) => !!r.choice).length)
@@ -47,6 +53,9 @@ onMounted(async () => {
       loading: true,
       error: '',
       choice: '',
+      recommendation: null,
+      recommending: false,
+      choiceSource: 'human',
     })
   }
   if (!rows.value.length) {
@@ -69,12 +78,98 @@ async function loadRow(row: Row): Promise<void> {
       top_k: 3,
     })
     row.result = res
-    if (!res.candidates.length) row.choice = 'none'
+    if (!res.candidates.length) {
+      row.choice = 'none'
+    } else {
+      enqueueRecommendation(row)
+    }
   } catch (err) {
     row.error = err instanceof Error ? err.message : '检索失败'
   } finally {
     row.loading = false
   }
+}
+
+function enqueueRecommendation(row: Row): void {
+  row.recommending = true
+  recommendQueue.push(row)
+  void drainRecommendations()
+}
+
+async function drainRecommendations(): Promise<void> {
+  // RKLLM 板端一次只能稳定处理少量请求，限制并发，避免 12 个不符合项同时打模型
+  while (recommendActive < 2 && recommendQueue.length) {
+    const row = recommendQueue.shift() as Row
+    if (row.choice) {
+      row.recommending = false
+      continue
+    }
+    recommendActive++
+    await recommendRow(row).finally(() => {
+      recommendActive--
+      void drainRecommendations()
+    })
+  }
+}
+
+async function recommendRow(row: Row): Promise<void> {
+  row.recommending = true
+  try {
+    const res = await fetchKgRecommendation({
+      item_no: row.no,
+      item_name: row.name,
+      reasons: row.reasons,
+      other_text: row.otherText,
+      top_k: 3,
+    })
+    row.recommendation = res.recommendation
+    // 只做预选：用户已经点过就不覆盖，最终仍需人工确认
+    if (res.recommendation && !row.choice) {
+      row.choice = res.recommendation.none ? 'none' : (res.recommendation.path_id || '')
+      row.choiceSource = 'model'
+    }
+  } catch {
+    row.recommendation = null
+  } finally {
+    row.recommending = false
+  }
+}
+
+function recommendedChoice(row: Row): string {
+  const rec = row.recommendation
+  if (!rec) return ''
+  return rec.none ? 'none' : (rec.path_id || '')
+}
+
+function markChoice(row: Row): void {
+  if (!row.recommendation) {
+    row.choiceSource = 'human'
+    return
+  }
+  row.choiceSource = row.choice === recommendedChoice(row) ? 'model' : 'human_override'
+}
+
+function applyRecommendation(row: Row): void {
+  const choice = recommendedChoice(row)
+  if (!choice) return
+  row.choice = choice
+  row.choiceSource = 'model'
+}
+
+function auditSource(row: Row): 'human' | 'model' | 'human_override' {
+  if (!row.recommendation) return 'human'
+  return row.choice === recommendedChoice(row) ? 'model' : 'human_override'
+}
+
+function top3Of(row: Row) {
+  return (row.result?.candidates || []).map((c) => ({
+    rank: c.rank,
+    path_id: c.path_id,
+    path_summary: c.path_summary,
+    component: c.component,
+    system: c.system,
+    score: c.score,
+  }))
 }
 
 function chainOf(c: { states: string[]; path_summary: string }): string {
@@ -108,7 +203,13 @@ async function generate(): Promise<void> {
       path_id: sel.path_id,
       decision: sel.decision,
       rank: sel.rank,
-      top3: [],
+      top3: top3Of(rows.value.find((r) => r.no === sel.item_no) || rows.value[0]),
+      selection_source: (() => {
+        const row = rows.value.find((r) => r.no === sel.item_no)
+        return row ? auditSource(row) : 'human'
+      })(),
+      model_path_id: rows.value.find((r) => r.no === sel.item_no)?.recommendation?.path_id ?? null,
+      model_reason: rows.value.find((r) => r.no === sel.item_no)?.recommendation?.reason || '',
     }).catch(() => null)))
     streamText.value = ''
     const report = await store.generate(undefined, selections, (text) => {
@@ -158,28 +259,52 @@ function back(): void {
         {{ row.error }}
         <button class="btn tiny" type="button" @click="loadRow(row)">重试</button>
       </div>
-      <div v-else class="candidates">
+      <div v-else>
+        <div v-if="row.recommending || row.recommendation" class="ai-line">
+        <span v-if="row.recommending" class="muted">AI 正在推荐…</span>
+        <template v-else-if="row.recommendation">
+          <span class="ai-badge">AI 推荐</span>
+          <span v-if="row.recommendation.none">
+            建议「无合适候选」：{{ row.recommendation.reason || '未匹配到候选路径' }}
+          </span>
+          <span v-else>
+            #{{ row.recommendation.rank }}　{{ row.recommendation.reason || '候选路径' }}
+          </span>
+          <button
+            v-if="row.choice !== recommendedChoice(row)"
+            class="btn tiny"
+            type="button"
+            @click="applyRecommendation(row)"
+          >采用</button>
+        </template>
+        </div>
+
+        <div class="candidates">
         <label
           v-for="c in row.result?.candidates || []"
           :key="c.path_id"
           class="candidate"
-          :class="{ on: row.choice === c.path_id }"
+          :class="{ on: row.choice === c.path_id, recommended: row.recommendation?.path_id === c.path_id }"
         >
-          <input v-model="row.choice" type="radio" :value="c.path_id" />
+          <input v-model="row.choice" type="radio" :value="c.path_id" @change="markChoice(row)" />
           <span class="body">
-            <span class="path">#{{ c.rank }}　{{ chainOf(c) }}</span>
+            <span class="path">
+              #{{ c.rank }}　{{ chainOf(c) }}
+              <span v-if="row.recommendation?.path_id === c.path_id" class="ai-badge">AI 推荐</span>
+            </span>
             <span class="meta">系统：{{ c.system || '—' }}　部位：{{ c.component || '—' }}　匹配度 {{ (c.score * 100).toFixed(1) }}</span>
             <span class="line"><b>风险：</b>{{ c.risk || '—' }}　<b>整改：</b>{{ c.action || '—' }}</span>
             <span class="terms">命中：{{ c.matched_terms.join('、') || '—' }}</span>
           </span>
         </label>
-        <label class="candidate none" :class="{ on: row.choice === 'none' }">
-          <input v-model="row.choice" type="radio" value="none" />
+        <label class="candidate none" :class="{ on: row.choice === 'none', recommended: row.recommendation?.none }">
+          <input v-model="row.choice" type="radio" value="none" @change="markChoice(row)" />
           <span class="body">
             <span class="path">无合适候选</span>
             <span class="meta">不引用图谱路径，只按规则表的风险类别与处置生成</span>
           </span>
         </label>
+        </div>
       </div>
     </section>
 
@@ -191,7 +316,7 @@ function back(): void {
           {{ generating ? '生成中…' : '生成报告' }}
         </button>
       </div>
-      <p class="tip">未全部确认时不能生成；选中路径仅作为报告候选证据，标注「操作员选定、未签核」。</p>
+      <p class="tip">AI 只做预选，最终由操作员确认；选中路径仅作为报告候选证据，标注「操作员选定、未签核」。</p>
     </footer>
   </div>
   <StreamingOverlay v-if="generating" :text="streamText" />
@@ -232,6 +357,30 @@ h1 { margin: 0; font-size: 21px; }
   cursor: pointer;
 }
 .candidate.on { border-color: #1b5e7a; background: #f5fbfc; }
+.candidate.recommended { border-color: #2c8a5a; }
+.candidate.recommended.on { border-color: #1b5e7a; }
+.ai-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 8px 0 6px;
+  padding: 7px 10px;
+  border-radius: 7px;
+  background: #f2faf5;
+  color: #2c6b42;
+  font-size: 12.5px;
+}
+.ai-badge {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: #2c8a5a;
+  color: #fff;
+  font-size: 10.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
 .candidate input { margin-top: 3px; }
 .body { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .path { font-size: 13px; font-weight: 600; line-height: 1.5; color: #223; }

@@ -61,6 +61,23 @@ export function fetchKgCandidates(payload: KgCandidatesRequest): Promise<KgCandi
   return request('/kg/candidates', { method: 'POST', body: payload })
 }
 
+export interface KgRecommendation {
+  path_id: string | null
+  rank: number | null
+  reason: string
+  none: boolean
+}
+
+export interface KgRecommendationResponse {
+  success: boolean
+  recommendation: KgRecommendation | null
+  error?: string
+}
+
+export function fetchKgRecommendation(payload: KgCandidatesRequest): Promise<KgRecommendationResponse> {
+  return request('/kg/recommend', { method: 'POST', body: payload })
+}
+
 export interface KgSelectRequest {
   report_id?: string | null
   item_no: string
@@ -70,6 +87,9 @@ export interface KgSelectRequest {
   decision: 'selected' | 'no_candidate'
   rank?: number | null
   top3: { rank: number; path_id: string; path_summary: string; component: string; system: string; score: number }[]
+  selection_source?: 'human' | 'model' | 'human_override'
+  model_path_id?: string | null
+  model_reason?: string
 }
 
 export function selectKgPath(payload: KgSelectRequest): Promise<{ success: boolean; id: number }> {

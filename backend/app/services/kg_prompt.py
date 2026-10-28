@@ -70,17 +70,19 @@ def build_t1_query_prompt(*, item_no: str, item_name: str, original_text: str,
     return _envelope(system, data)
 
 
-def build_t2_rerank_prompt(*, item_no: str, query: str, candidates: list[dict]) -> str:
+def build_t2_rerank_prompt(*, item_no: str, query: str, candidates: list[dict],
+                           item_name: str = "") -> str:
     system = (
         SYSTEM_BASE
-        + "本任务只从 candidates 中选择与查询最接近的候选路径，最多 2 条。"
+        + "本任务只从 candidates 中选择与项目名称/查询最接近的候选路径，最多 2 条。"
         + "不得输出 candidates 之外的 path_id；没有合适候选时 selected 为空、none=true。"
         + '输出 JSON：{"selected":[{"path_id":"","reason":""}],"none":false}。'
-        + "reason 不超过 40 字，只说明部件/机理匹配点。"
+        + "reason 不超过 40 字，只说明部件/机理匹配点，不能只写模糊词。"
     )
     data = {
         "task": "kg_rerank",
         "item_no": item_no,
+        "item_name": item_name,
         "query": _compact(query, 500),
         "candidates": [
             {"path_id": c.get("path_id", ""), "summary": _compact(c.get("path_summary"), 160),
