@@ -515,7 +515,10 @@ export const useReportStore = defineStore('report', () => {
   }
 
   /** 生成报告：编号、风险评定值、得分等级都由服务端给 */
-  async function generate(timing?: Interaction): Promise<ReportSummary> {
+  async function generate(
+    timing?: Interaction,
+    kgSelections: import('@/api/reports').KgSelection[] = [],
+  ): Promise<ReportSummary> {
     if (!reportId.value) throw new Error('还没有正在编辑的报告')
     /* 评估日期不填时自动取系统当天日期 */
     if (!form.value.assessDate.trim() || form.value.assessDate === '/') {
@@ -528,8 +531,8 @@ export const useReportStore = defineStore('report', () => {
     const inputSnapshot = JSON.stringify({ form: form.value, items: serializeItems() })
     // use_llm=true：模型可用就用模型写概况；不可用后端会自动降级，不影响出报告
     const res = timing
-      ? await timing.measure('generate_http', () => flowApi.generateReport(reportId.value!, true))
-      : await flowApi.generateReport(reportId.value, true)
+      ? await timing.measure('generate_http', () => flowApi.generateReport(reportId.value!, true, kgSelections))
+      : await flowApi.generateReport(reportId.value, true, kgSelections)
     const report = res.report
     if (reportId.value !== requestedId) throw new Error('当前报告已切换，没有覆盖新报告')
     if (inputSnapshot !== JSON.stringify({ form: form.value, items: serializeItems() })) {

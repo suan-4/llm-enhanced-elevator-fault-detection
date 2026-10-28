@@ -94,11 +94,24 @@ export function saveReport(
   return request(`/reports/${id}`, { method: 'PUT', body })
 }
 
+export interface KgSelection {
+  item_no: string
+  path_id: string | null
+  decision: 'selected' | 'no_candidate'
+  rank?: number | null
+  query?: string
+}
+
 export function generateReport(
   id: string,
   useLlm = false,
+  kgSelections: KgSelection[] = [],
 ): Promise<{ success: boolean; report: ReportSummary }> {
-  return request(`/reports/${id}/generate`, { method: 'POST', body: { use_llm: useLlm }, timeout: 180_000 })
+  return request(`/reports/${id}/generate`, {
+    method: 'POST',
+    body: { use_llm: useLlm, kg_selections: kgSelections },
+    timeout: 180_000,
+  })
 }
 
 export function listReports(

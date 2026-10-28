@@ -94,7 +94,8 @@ def save_report(report_id: str, req: ReportSaveRequest,
 async def generate_report(report_id: str, req: ReportGenerateRequest,
                           user: dict = Depends(get_current_user)) -> dict:
     try:
-        report = await wf.generate(_report_id(report_id), use_llm=req.use_llm, actor=user)
+        report = await wf.generate(_report_id(report_id), use_llm=req.use_llm, actor=user,
+                                  kg_selections=req.kg_selections)
     except (LookupError, ValueError, wf.VersionConflict) as e:
         raise _translate(e)
     return {"success": True, "report": report}

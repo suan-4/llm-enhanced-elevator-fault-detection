@@ -52,6 +52,13 @@ echo.
 echo [4/7] 推送后端 (backend/app/) ...
 adb push backend\app %ROOT%/backend/
 
+REM 知识图谱 v2 只读索引（8MB，不进 Git）：有就一并部署，没有则跳过。
+if exist backend\data\kg_v2.sqlite (
+  echo   推送知识图谱索引 kg_v2.sqlite ...
+  adb shell "mkdir -p %ROOT%/backend/data"
+  adb push backend\data\kg_v2.sqlite %ROOT%/backend/data/kg_v2.sqlite
+)
+
 echo.
 echo [5/7] 推送原生应用与一体机组件到 /tmp ...
 adb push native\elevator_app.py /tmp/elevator_app.py

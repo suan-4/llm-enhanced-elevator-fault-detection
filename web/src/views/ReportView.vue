@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { beginInteraction } from '@/utils/performance'
 import InfoTable from '@/components/report/InfoTable.vue'
 import ItemTable from '@/components/report/ItemTable.vue'
@@ -13,6 +13,7 @@ import { useToast } from '@/utils/toast'
 
 const store = useReportStore()
 const route = useRoute()
+const router = useRouter()
 const shell = useShell()
 const { show } = useToast()
 
@@ -182,8 +183,10 @@ onMounted(async () => {
     await enterReports(store.reportId)
     return
   }
+  // 勾选完成生成后带 ?report=id 回到报告区域
+  if (route.query.report) await enterReports(String(route.query.report))
   // 旧地址 /#/reports 会带到 ?section=reports
-  if (route.query.section === 'reports') await enterReports()
+  else if (route.query.section === 'reports') await enterReports()
   await nextTick()
   updateActiveByScroll()
 })
@@ -375,6 +378,17 @@ async function generate(): Promise<void> {
     return
   }
   if (generating.value) return
+  /* 有不符合项：先保存草稿，跳到「故障路径确认」页；勾选完成后再生成 */
+  const unfitItems = store.items.filter((it) => store.states[it.no]?.result === '不符合')
+  if (unfitItems.length) {
+    try {
+      await store.save()
+      await router.push({ name: 'kg-confirm' })
+    } catch (err) {
+      show(err instanceof Error ? err.message : '保存草稿失败')
+    }
+    return
+  }
   const timing = beginInteraction('report_generate')
   generating.value = true
   try {

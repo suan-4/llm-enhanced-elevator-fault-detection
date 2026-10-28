@@ -26,6 +26,10 @@ class Settings(BaseSettings):
     # ── 业务数据库（用户账号 / 报告历史 / 填写记录）──
     # 相对路径按 backend/ 目录解析；知识图谱仍在 Neo4j
     sqlite_path: str = "data/elevator.db"
+    # v2 知识图谱只读检索库（tools/kg/build_index.py 生成）；相对路径按 backend/ 解析
+    kg_v2_db: str = "data/kg_v2.sqlite"
+    # T3/T4 提示词链路开关：默认关闭；只有勾选候选路径且模型可用时才会启用
+    kg_prompt_enabled: bool = False
     session_ttl_hours: int = 168          # 登录令牌绝对有效期，默认 7 天
     session_idle_hours: int = 8           # 空闲多久算掉线（板端是共用终端）
     history_limit: int = 50               # 每个用户保留的历史报告条数

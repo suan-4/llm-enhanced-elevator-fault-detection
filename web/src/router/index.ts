@@ -43,6 +43,20 @@ const router = createRouter({
       component: () => import('@/views/SettingsView.vue'),
       meta: { requiresAuth: true },
     },
+    {
+      /* MVP 调试页：知识图谱 Top3 检索 + 人工勾选；效果验证后再并入生成流程 */
+      path: '/kg-demo',
+      name: 'kg-demo',
+      component: () => import('@/views/KgDemoView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      /* 生成前确认：不符合项 / 其他填写 → Top3 勾选 → 生成报告 */
+      path: '/kg-confirm',
+      name: 'kg-confirm',
+      component: () => import('@/views/KgConfirmView.vue'),
+      meta: { requiresAuth: true },
+    },
     { path: '/:pathMatch(.*)*', redirect: '/' },
   ],
 })

@@ -137,6 +137,8 @@ class ReportSaveRequest(BaseModel):
 class ReportGenerateRequest(BaseModel):
     use_llm: bool = Field(default=False, description="是否调用大模型生成叙述文字")
     client_token: Optional[str] = Field(default=None, max_length=64)
+    # 生成前的图谱人工勾选：item_no / path_id / decision(selected|no_candidate) / rank / query
+    kg_selections: list[dict] = Field(default_factory=list, description="知识图谱候选路径勾选结果")
 
 
 class ReportVoidRequest(BaseModel):
