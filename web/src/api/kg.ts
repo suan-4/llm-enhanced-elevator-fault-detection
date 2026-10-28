@@ -51,6 +51,7 @@ export interface KgCandidatesRequest {
   reasons?: string[]
   other_text?: string
   top_k?: number
+  fast_only?: boolean
 }
 
 export function fetchKgStatus(): Promise<{ success: boolean; available: boolean; paths: number; items: number }> {
@@ -74,6 +75,7 @@ export interface KgRecommendationResponse {
   success: boolean
   recommendation: KgRecommendation | null
   error?: string
+  needs_model?: boolean
 }
 
 export function fetchKgRecommendation(payload: KgCandidatesRequest): Promise<KgRecommendationResponse> {

@@ -16,6 +16,7 @@ router = APIRouter(prefix="/api/kg", tags=["知识图谱检索"])
 
 class CandidateRequest(BaseModel):
     item_no: str = Field(..., description="JTE 项目编号，如 5.1")
+    fast_only: bool = Field(False, description="只跑规则快路径；不命中时不调用模型")
     item_name: str = ""
     reasons: list[str] = Field(default_factory=list, description="勾选的不符合情形原文")
     other_text: str = Field(default="", description="「其他」自行填写原文")
@@ -152,6 +153,8 @@ async def recommend(req: CandidateRequest, user: dict = Depends(get_current_user
     if rule is not None:
         _REC_CACHE[key] = (now, rule)
         return {"success": True, "recommendation": rule}
+    if req.fast_only:
+        return {"success": True, "recommendation": None, "needs_model": True}
     try:
         prompt = kg_prompt.build_t2_recommend_prompt(
             item_no=req.item_no, item_name=req.item_name,

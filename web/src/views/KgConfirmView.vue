@@ -32,8 +32,6 @@ const error = ref('')
 const streamText = ref('')
 const recommendQueue: Row[] = []
 let recommendActive = 0
-const AUTO_RECOMMEND_LIMIT = 3
-let autoRecommendCount = 0
 
 const allChosen = computed(() => rows.value.length > 0 && rows.value.every((r) => !!r.choice))
 const doneCount = computed(() => rows.value.filter((r) => !!r.choice).length)
@@ -82,9 +80,9 @@ async function loadRow(row: Row): Promise<void> {
     row.result = res
     if (!res.candidates.length) {
       row.choice = 'none'
-    } else if (autoRecommendCount < AUTO_RECOMMEND_LIMIT) {
-      autoRecommendCount += 1
-      enqueueRecommendation(row)
+    } else {
+      // 页面打开时只跑规则快路径；模糊项等用户点「AI 推荐」再调模型
+      void recommendRow(row, true)
     }
   } catch (err) {
     row.error = err instanceof Error ? err.message : '检索失败'
@@ -120,7 +118,7 @@ async function drainRecommendations(): Promise<void> {
   }
 }
 
-async function recommendRow(row: Row): Promise<void> {
+async function recommendRow(row: Row, fastOnly = false): Promise<void> {
   row.recommending = true
   try {
     const res = await fetchKgRecommendation({
@@ -129,6 +127,7 @@ async function recommendRow(row: Row): Promise<void> {
       reasons: row.reasons,
       other_text: row.otherText,
       top_k: 3,
+      fast_only: fastOnly,
     })
     row.recommendation = res.recommendation
     // 只做预选：用户已经点过就不覆盖，最终仍需人工确认
@@ -246,7 +245,7 @@ function back(): void {
         <h1>故障路径确认</h1>
         <p class="sub">
           为每个不符合项选择最接近的故障演化路径；没有合适路径可选「无合适候选」，按规则表处置。
-          前 3 项自动推荐，其余项可按需点「AI 推荐」。
+          页面打开先做规则匹配；规则无法判断的项，点「AI 推荐」再调用大模型。
         </p>
       </div>
       <div class="progress">
