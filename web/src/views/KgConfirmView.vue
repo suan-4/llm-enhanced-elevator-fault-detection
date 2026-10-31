@@ -3,7 +3,7 @@
    每个不符合项 / 其他填写 → Top3 候选 → 人工勾选 / 无合适候选 → 生成报告。 */
 import { computed, onActivated, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { fetchKgCandidates, fetchKgRecommendation, fetchKgRecommendationBatch,
+import { fetchKgCandidates, fetchKgRecommendation,
   selectKgPath, type KgCandidatesResponse, type KgRecommendation } from '@/api/kg'
 import { systemConfig } from '@/api/system'
 import { useReportStore } from '@/stores/report'
@@ -36,7 +36,6 @@ const rows = ref<Row[]>([])
 const loading = ref(true)
 const generating = ref(false)
 const error = ref('')
-const batchLoading = ref(false)
 const currentIndex = ref(0)
 const aiPromptCount = ref(3)
 const recommendQueue: Row[] = []
@@ -47,9 +46,6 @@ const lastVersion = ref(-1)
 const canGenerate = computed(() => rows.value.length > 0
   && rows.value.every((r) => !!r.choice))
 const doneCount = computed(() => rows.value.filter((r) => !!r.choice).length)
-const remainingRows = computed(() => rows.value.filter(
-  (r) => !r.choice && !r.recommending && (r.result?.candidates || []).length > 0,
-))
 const BATCH_SIZE = 3
 const currentRow = computed(() => rows.value[currentIndex.value] || null)
 const visibleRows = computed(() => (currentRow.value ? [currentRow.value] : []))
@@ -171,35 +167,6 @@ async function loadRow(row: Row): Promise<void> {
     row.error = err instanceof Error ? err.message : '检索失败'
   } finally {
     row.loading = false
-  }
-}
-
-async function recommendRemaining(): Promise<void> {
-  const targets = remainingRows.value.slice(0, 3)
-  if (!targets.length || batchLoading.value) return
-  batchLoading.value = true
-  targets.forEach((row) => { row.recommending = true })
-  try {
-    const res = await fetchKgRecommendationBatch(targets.map((row) => ({
-      item_no: row.no,
-      item_name: row.name,
-      reasons: row.reasons,
-      other_text: row.otherText,
-      top_k: 3,
-    })))
-    if (!res.success) throw new Error(res.error || '批量推荐失败')
-    for (const item of res.recommendations) {
-      const row = rows.value.find((r) => r.no === item.item_no)
-      if (!row || !item.recommendation) continue
-      row.recommendation = item.recommendation
-      row.aiOpen = true
-      if (item.recommendation.path_id) ensureBatchForPath(row, item.recommendation.path_id)
-    }
-  } catch (err) {
-    error.value = err instanceof Error ? err.message : '批量推荐失败'
-  } finally {
-    targets.forEach((row) => { row.recommending = false })
-    batchLoading.value = false
   }
 }
 
@@ -403,13 +370,28 @@ function back(): void {
       <div class="progress">
         <b>{{ doneCount }}/{{ rows.length }}</b> 已确认
         <span class="page-count">{{ currentIndex + 1 }}/{{ rows.length }}</span>
-        <button
-          v-if="remainingRows.length || batchLoading"
-          class="btn tiny batch-btn"
-          type="button"
-          :disabled="batchLoading || !remainingRows.length"
-          @click="recommendRemaining"
-        >{{ batchLoading ? 'AI 批量推荐中…' : 'AI 推荐剩余 ' + Math.min(3, remainingRows.length) + ' 项' }}</button>
+        <div
+          v-if="currentRow && !currentRow.recommendation && currentRow.choice !== 'direct_ai'"
+          class="header-ai"
+        >
+          <button
+            class="btn tiny ai-trigger"
+            type="button"
+            :disabled="currentRow.recommending || currentRow.loading"
+            @click="openAiMenu(currentRow)"
+          >{{ currentRow.recommending ? 'AI 推荐中…' : 'AI 推荐' }}</button>
+          <div v-if="currentRow.aiOpen" class="ai-popover header-popover" @click.stop>
+            <button class="popover-close" type="button" title="关闭" @click="currentRow.aiOpen = false">×</button>
+            <button class="popover-option" type="button" @click="chooseAiRecommend(currentRow)">
+              <b>单轮 AI 推荐</b>
+              <span>先看 AI 推荐项，再决定是否采用；会多等几秒</span>
+            </button>
+            <button class="popover-option" type="button" @click="chooseDirectAi(currentRow)">
+              <b>将前 {{ aiPromptCount }} 个候选拼接进提示词</b>
+              <span>不等待推荐，直接全权交给生成模型；更省时间</span>
+            </button>
+          </div>
+        </div>
       </div>
     </header>
 
@@ -431,7 +413,7 @@ function back(): void {
         <button class="btn tiny" type="button" @click="loadRow(row)">重试</button>
       </div>
       <div v-else>
-        <div class="row-actions">
+        <div v-if="row.choice === 'direct_ai' || row.recommendation" class="row-actions">
           <template v-if="row.choice === 'direct_ai'">
             <span class="direct-hint">已选择：前 {{ aiPromptCount }} 个候选直接拼入提示词</span>
             <button class="btn tiny" type="button" @click="clearDirectAi(row)">取消选择</button>
@@ -454,26 +436,6 @@ function back(): void {
             <button class="ai-close" type="button" title="清除推荐" @click="clearRecommendation(row)">×</button>
           </template>
 
-          <template v-else>
-            <button
-              class="btn tiny ai-trigger"
-              type="button"
-              :disabled="batchLoading || row.recommending"
-              @click="openAiMenu(row)"
-            >{{ row.recommending ? 'AI 推荐中…' : 'AI 推荐' }}</button>
-          </template>
-
-          <div v-if="row.aiOpen" class="ai-popover" @click.stop>
-            <button class="popover-close" type="button" title="关闭" @click="row.aiOpen = false">×</button>
-            <button class="popover-option" type="button" @click="chooseAiRecommend(row)">
-              <b>单轮 AI 推荐</b>
-              <span>先看 AI 推荐项，再决定是否采用；会多等几秒</span>
-            </button>
-            <button class="popover-option" type="button" @click="chooseDirectAi(row)">
-              <b>将前 {{ aiPromptCount }} 个候选拼接进提示词</b>
-              <span>不等待推荐，直接全权交给生成模型；更省时间</span>
-            </button>
-          </div>
         </div>
 
         <div class="candidates">
@@ -616,6 +578,8 @@ h1 { margin: 0; font-size: 21px; }
 .candidate.on { border-color: #1b5e7a; background: #f5fbfc; }
 .candidate.recommended { border-color: #2c8a5a; }
 .candidate.recommended.on { border-color: #1b5e7a; }
+.header-ai { position: relative; display: inline-flex; }
+.header-popover { left: auto; right: 0; }
 .row-actions {
   position: relative;
   display: flex;
