@@ -264,6 +264,13 @@ onMounted(async () => {
   fitPapers()
   computePanelShift()
   fitted.value = true
+  if (!props.generating && generationStore.keepView) {
+    generationStore.keepView = false
+    panelOpen.value = true
+    await nextTick()
+    fitPapers()
+    computePanelShift()
+  }
   if (generationStore.consumeReplay(props.reportId)) {
     panelOpen.value = true
     await nextTick()

@@ -6,11 +6,13 @@ import { ref } from 'vue'
 import ReportListView from '@/views/ReportListView.vue'
 import ReportInlineViewer from '@/components/report/ReportInlineViewer.vue'
 import { useReportStore } from '@/stores/report'
+import { useGenerationStore } from '@/stores/generation'
 import { useToast } from '@/utils/toast'
 import type * as api from '@/api/reports'
 
 const emit = defineEmits<{ continueEdit: [id: string] }>()
 const store = useReportStore()
+const generationStore = useGenerationStore()
 const { show } = useToast()
 
 const mode = ref<'list' | 'view'>('list')
@@ -43,7 +45,8 @@ async function showReport(reportOrId: api.ReportSummary | string): Promise<void>
   }
   reportId.value = id
   mode.value = 'view'
-  await scrollMainTop()
+  // 生成完成后的自动进入保留分析页位置；普通查看才回到顶部。
+  if (!generationStore.keepView) await scrollMainTop()
 }
 
 function onContinueEdit(report: api.ReportSummary): void {

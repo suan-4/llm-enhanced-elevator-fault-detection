@@ -46,6 +46,46 @@ class VersionConflict(Exception):
     """乐观锁：客户端拿的是旧版本，先刷新再改。"""
 
 
+_CANDIDATE_STOPWORDS = {
+    '安全', '运行', '影响', '损坏', '严重', '部件', '设备', '异常', '风险',
+    '存在', '导致', '可能', '检查', '进行', '系统', '组件', '部位', '要求',
+    '情况', '问题', '处理', '措施', '建议', '现场', '发现', '产生', '引发',
+    '造成', '应当', '需要', '或者', '以及', '一个', '进行',
+}
+
+
+def _candidate_terms(text: str) -> set[str]:
+    terms: set[str] = set()
+    for segment in re.findall(r'[\u4e00-\u9fff]{2,}', text):
+        for size in (2, 3, 4):
+            for index in range(0, len(segment) - size + 1):
+                term = segment[index:index + size]
+                if term not in _CANDIDATE_STOPWORDS:
+                    terms.add(term)
+    return terms
+
+
+def _matching_candidates(item: dict, candidates: list[dict]) -> list[dict]:
+    """候选只在与不符合项文本有明确共同词时才进入 T4。
+
+    检索分数低/候选完全不相关时，不能把“减速箱油位”之类候选硬塞给
+    “影响安全运行的损坏”这类不符合项；否则模型会按候选编出另一套故障。
+    """
+    text = ' '.join([*[str(x) for x in (item.get('reasons') or [])],
+                     str(item.get('other_text') or '')])
+    terms = _candidate_terms(text)
+    if not terms:
+        return []
+    matched = []
+    for candidate in candidates:
+        blob = ' '.join(str(candidate.get(key) or '') for key in
+                        ('system', 'component', 'risk', 'action'))
+        blob += ' '.join(str(x) for x in (candidate.get('fault_chain') or []))
+        if any(term in blob for term in terms):
+            matched.append(candidate)
+    return matched
+
+
 def _catalog_version() -> str:
     """条目库版本 = 模板号 + 条目文件哈希前 8 位（启动时现算，不建表）。"""
     try:
@@ -412,7 +452,7 @@ async def _run_kg_prompt_flow(*, kg_evidence: dict, unfit: list[dict], risks: di
             "category": risk.get("category", ""),
             "measure": risk_rules.CATEGORY_MEASURE.get(risk.get("category", ""), ""),
             # 候选只给模型做参考；最终以 reasons/other_text 和规则为准。
-            "candidates": summary.get("candidates") or [],
+            "candidates": _matching_candidates(item, summary.get("candidates") or []),
             "reasons": (item.get("reasons") or [])[:3],
             "other_text": item.get("other_text") or "",
         })

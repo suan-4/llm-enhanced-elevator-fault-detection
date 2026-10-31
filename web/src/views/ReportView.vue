@@ -113,7 +113,7 @@ async function enterReports(reportId?: string): Promise<void> {
   shell.active = 'reports'
   shell.reportsView = true
   await nextTick()
-  mainEl()?.scrollTo({ top: 0 })
+  if (!generationStore.keepView) mainEl()?.scrollTo({ top: 0 })
 }
 
 /** 从报告区域回到录入页：恢复离开前的现场 */
@@ -519,6 +519,8 @@ async function runSelections(selections: KgSelection[]): Promise<void> {
     generating.value = false
     generationStore.generating = false
     if (!hadStreamTokens) generationStore.requestReplay(report.id)
+    // 生成完成切到查看页时，保留侧栏和当前分析页位置，不要跳回录入页顶部。
+    generationStore.markKeepView()
     await nextTick()
     await enterReports(report.id)
   } catch (err) {
