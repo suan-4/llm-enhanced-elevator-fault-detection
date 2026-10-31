@@ -55,6 +55,7 @@ const progress = computed(() => ({
 
 function onNavigate(key: string): void {
   if (key === 'confirm') {
+    shell.active = 'confirm'
     if (route.path !== '/kg-confirm') void router.push('/kg-confirm')
     return
   }
@@ -78,6 +79,9 @@ async function loadManualSelection(): Promise<void> {
 
 onMounted(loadManualSelection)
 watch(() => route.fullPath, loadManualSelection)
+watch(() => route.name, (name) => {
+  if (name === 'kg-confirm') shell.active = 'confirm'
+})
 
 /** 与旧版一致：点右侧内容区自动收起侧栏，把宽度让给正文 */
 function onMainClick(e: MouseEvent): void {
