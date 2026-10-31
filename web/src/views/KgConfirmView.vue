@@ -574,8 +574,8 @@ h1 { font-size: 18px; }
 .candidates {
   flex: 1 1 auto;
   min-height: 0;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 6px;
+  grid-template-columns: 1fr;
+  gap: 5px;
 }
 .candidate { padding: 7px 9px; gap: 7px; min-width: 0; overflow: hidden; }
 .path { font-size: 11.5px; line-height: 1.35; }

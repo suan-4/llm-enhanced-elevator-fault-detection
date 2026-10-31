@@ -12,6 +12,7 @@ import { useGenerationStore } from '@/stores/generation'
 import { useShell } from '@/stores/shell'
 import { useToast } from '@/utils/toast'
 import { systemConfig } from '@/api/system'
+import { renderMarkdown } from '@/utils/markdown'
 import { fetchKgCandidates, fetchKgRecommendation, fetchKgRecommendationBatch, selectKgPath,
   type KgCandidatesResponse, type KgRecommendation } from '@/api/kg'
 import type { KgSelection } from '@/api/reports'
@@ -58,6 +59,7 @@ const selectedProfileName = computed(
 const generating = ref(false)
 const streamText = ref('')
 const manualKgSelection = ref(true)
+const streamPanel = ref<HTMLElement | null>(null)
 const confirmNew = ref(false)
 const newBusy = ref(false)
 const itemTable = ref<InstanceType<typeof ItemTable> | null>(null)
@@ -483,22 +485,38 @@ async function autoSelectKg(unfitItems: { no: string; name: string }[]): Promise
   return selections
 }
 
+function scrollToStreamBottom(): void {
+  const panel = streamPanel.value
+  if (panel) panel.scrollTop = panel.scrollHeight
+}
+
+watch(streamText, () => {
+  if (generating.value) void nextTick(scrollToStreamBottom)
+})
+
 async function runSelections(selections: KgSelection[]): Promise<void> {
   const timing = beginInteraction('report_generate')
   generating.value = true
   streamText.value = ''
+  view.value = 'reports'
+  shell.active = 'reports'
+  shell.reportsView = true
+  await nextTick()
   try {
     const report = await store.generate(timing, selections, (text) => {
       streamText.value += text
     })
     timing.finish('ok')
-    generationStore.requestReplay(report.id)
+    generating.value = false
+    await nextTick()
     await enterReports(report.id)
   } catch (err) {
     timing.finish('error')
-    show(err instanceof Error ? err.message : '生成失败')
-  } finally {
     generating.value = false
+    view.value = 'input'
+    shell.active = 'items'
+    shell.reportsView = false
+    show(err instanceof Error ? err.message : '生成失败')
   }
 }
 
@@ -524,44 +542,23 @@ async function generate(): Promise<void> {
       }
       return
     }
-    const timing = beginInteraction('report_generate')
     generating.value = true
     streamText.value = 'AI 正在从 Top3 候选中判断故障路径…'
+    view.value = 'reports'
+    shell.active = 'reports'
+    shell.reportsView = true
     try {
       await store.save()
       const selections = await autoSelectKg(unfitItems)
-      streamText.value = ''
-      const report = await store.generate(timing, selections, (text) => {
-        streamText.value += text
-      })
-      timing.finish('ok')
-      generationStore.requestReplay(report.id)
-    await enterReports(report.id)
+      await runSelections(selections)
     } catch (err) {
-      timing.finish('error')
-      show(err instanceof Error ? err.message : '生成失败')
-    } finally {
       generating.value = false
+      view.value = 'input'
+      show(err instanceof Error ? err.message : '生成失败')
     }
     return
   }
-  const timing = beginInteraction('report_generate')
-  generating.value = true
-  streamText.value = ''
-  try {
-    const report = await store.generate(timing, [], (text) => {
-      streamText.value += text
-    })
-    timing.finish('ok')
-    // 生成完成直接进入报告查看（右侧区域就地切换，不跳路由）
-    generationStore.requestReplay(report.id)
-    await enterReports(report.id)
-  } catch (err) {
-    timing.finish('error')
-    show(err instanceof Error ? err.message : '生成失败')
-  } finally {
-    generating.value = false
-  }
+  await runSelections([])
 }
 
 async function jump(key: string, kind: 'field' | 'item'): Promise<void> {
@@ -693,7 +690,29 @@ async function jump(key: string, kind: 'field' | 'item'): Promise<void> {
 
       <!-- 报告管理 + 查看：在右侧区域内就地切换，不跳路由 -->
       <section v-show="view === 'reports'">
-        <ReportCenter ref="reportCenter" @continue-edit="editDraft" />
+        <div v-if="generating" class="gen-view">
+          <div class="gen-top">
+            <b>报告生成中</b>
+            <span>正在生成文本分析报告，右侧为评估填写内容</span>
+          </div>
+          <div class="gen-main">
+            <div class="gen-paper">
+              <div class="gen-placeholder">正在生成报告…</div>
+            </div>
+            <aside class="gen-drawer" aria-label="评估填写内容">
+              <div class="gen-drawer-head">评估填写内容 <span>只读</span></div>
+              <div ref="streamPanel" class="gen-drawer-body">
+                <h3>基础信息</h3>
+                <InfoTable readonly />
+                <div class="gen-analysis">
+                  <h3>文本分析报告</h3>
+                  <div class="md" v-html="renderMarkdown(streamText || '正在生成…')" />
+                </div>
+              </div>
+            </aside>
+          </div>
+        </div>
+        <ReportCenter v-else ref="reportCenter" @continue-edit="editDraft" />
       </section>
 
       <div class="actionbar">
@@ -787,6 +806,95 @@ async function jump(key: string, kind: 'field' | 'item'): Promise<void> {
 </template>
 
 <style scoped>
+.gen-view {
+  height: calc(100vh - 52px);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  padding: 10px 14px 12px;
+  overflow: hidden;
+}
+.gen-top {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 8px 12px;
+  margin-bottom: 10px;
+  background: var(--c-panel);
+  border: 1px solid var(--c-line);
+  border-radius: var(--radius);
+  color: var(--c-primary);
+}
+.gen-top b { font-size: 16px; }
+.gen-top span { font-size: 12px; color: var(--c-muted); }
+.gen-main {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  gap: 12px;
+}
+.gen-paper {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  border: 1px solid var(--c-line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+.gen-placeholder { color: var(--c-muted); font-size: 14px; }
+.gen-drawer {
+  flex: 0 0 380px;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--c-panel);
+  border: 1px solid var(--c-line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.gen-drawer-head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--c-line);
+  color: var(--c-secondary);
+  font-size: 13px;
+}
+.gen-drawer-head span { font-size: 11px; color: var(--c-muted); }
+.gen-drawer-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 10px 14px 20px;
+  scroll-behavior: smooth;
+}
+.gen-drawer-body h3 {
+  margin: 12px 0 6px;
+  color: var(--c-secondary);
+  font-size: 12.5px;
+}
+.gen-analysis {
+  margin-top: 16px;
+  padding-top: 10px;
+  border-top: 1px solid var(--c-line);
+}
+.gen-analysis .md { font-size: 13px; line-height: 1.75; color: #223; }
+.gen-analysis .md :deep(p) { margin: 0 0 8px; }
+.gen-analysis .md :deep(h1),
+.gen-analysis .md :deep(h2),
+.gen-analysis .md :deep(h3) { margin: 8px 0 6px; color: #1b5e7a; }
+.gen-analysis .md :deep(ul),
+.gen-analysis .md :deep(ol) { margin: 4px 0 8px; padding-left: 20px; }
+@media (max-width: 760px) {
+  .gen-drawer { flex-basis: 46%; }
+}
 .inline-stream {
   margin: 18px 0 110px;
   padding: 14px 16px;

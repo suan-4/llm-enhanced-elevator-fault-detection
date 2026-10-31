@@ -263,7 +263,9 @@ def _rule_analysis_text(unfit: list[dict], risks: dict) -> str:
     """没有候选路径时的快速规则分析；不调用模型，不等待 90 秒。"""
     if not unfit:
         return ""
-    lines = ["### 主要不符合项", ""]
+    lines = ["### 一、总体判断", "",
+             "本次评估发现若干不符合项，按规则表进行风险分析。", "",
+             "### 二、主要不符合项", ""]
     for item in unfit:
         no = str(item.get("no") or "")
         risk = risks.get(no) or {}
@@ -276,7 +278,10 @@ def _rule_analysis_text(unfit: list[dict], risks: dict) -> str:
         if measure:
             text += f"规则表处置：{measure}"
         lines.append(text)
-    lines += ["", "以上为规则表分析；本次未匹配到候选故障路径，未调用图谱证据。"]
+    lines += ["", "### 三、处置与复验建议", "",
+              "按规则表措施处置，完成后复查相关保护功能并复验。", "",
+              "### 四、证据边界", "",
+              "以上为规则表分析；本次未匹配到候选故障路径，未调用图谱证据。"]
     return "\n".join(lines)
 
 
