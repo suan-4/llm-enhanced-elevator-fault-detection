@@ -206,7 +206,14 @@ def validate_analysis_text(text: str, *, item_nos: list[str],
             errors.append({"code": "SCHEMA_INVALID", "item_no": "",
                            "detail": f"缺少固定段落：{heading}"})
     values = evidence_paths + ([rule_facts] if rule_facts else [])
-    errors.extend(_check_common({"analysis": body}, "", _allowed_numbers(values),
+    allowed_numbers = _allowed_numbers(values)
+    # 正文会按项目编号陈述，例如“项目 5.1 …”，也会出现编号整数形式“项目 5”。
+    # item_nos 原先没有参与白名单，导致合法项目编号被误判为“新数值”。
+    for no in item_nos:
+        text_no = str(no)
+        allowed_numbers.add(text_no)
+        allowed_numbers.add(text_no.split('.')[0])
+    errors.extend(_check_common({"analysis": body}, "", allowed_numbers,
                                 _allowed_clauses(values)))
     seen = set(); unique = []
     for err in errors:
