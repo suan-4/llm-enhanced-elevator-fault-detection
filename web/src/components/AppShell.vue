@@ -55,6 +55,15 @@ const progress = computed(() => ({
 
 function onNavigate(key: string): void {
   if (key === 'confirm') {
+    // 与「校验并生成报告」共用同一套前置提示：漏填/没有不符合项时不要静默跳转
+    if (report.ready && report.missing.length) {
+      show(`还有 ${report.missing.length} 项未填写`, 3000, 'danger')
+      return
+    }
+    if (report.ready && report.counters.unfit === 0) {
+      show('当前没有不符合项，无需人工确认', 3000)
+      return
+    }
     shell.active = 'confirm'
     if (route.path !== '/kg-confirm') void router.push('/kg-confirm')
     return
