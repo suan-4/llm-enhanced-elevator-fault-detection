@@ -390,7 +390,7 @@ function back(): void {
       <div>
         <h1>故障路径确认</h1>
         <p class="sub">
-          为每个不符合项选择最接近的故障演化路径；没有合适路径可选「无合适候选」，按规则表处置。
+          为每个不符合项选择最接近的故障演化路径；没有合适路径可选「无合适候选」，由模型结合不符合项和通用安全知识分析。
           点「AI 推荐」可自选：单轮推荐并查看推荐项，或直接把前 N 个候选拼入提示词。
         </p>
       </div>
@@ -488,7 +488,7 @@ function back(): void {
           <input v-model="row.choice" type="radio" value="none" @change="markChoice(row)" />
           <span class="body">
             <span class="path">无合适候选</span>
-            <span class="meta">不引用图谱路径，只按规则表的风险类别与处置生成</span>
+            <span class="meta">不引用图谱路径，依据不符合项和通用安全知识生成</span>
           </span>
         </label>
         </div>

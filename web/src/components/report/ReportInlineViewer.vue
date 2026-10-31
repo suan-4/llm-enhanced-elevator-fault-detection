@@ -49,9 +49,16 @@ function computePanelShift(): void {
   const paper = document.querySelector('.report-wrap .paper') as HTMLElement | null
   if (!paper) return
   const drawerLeft = window.innerWidth - Math.min(430, window.innerWidth)
-  // 纸张当前可能已经左移；只补足仍被抽屉压住的宽度，避免来回累积。
-  const needed = Math.max(0, paper.getBoundingClientRect().right - drawerLeft + 16)
-  if (needed > 1) panelShift.value = Math.min(panelShift.value + needed, 560)
+  const rect = paper.getBoundingClientRect()
+  // 当前 panelShift 已作用在纸张上，先还原到未左移的位置再统一计算。
+  const baseLeft = rect.left + panelShift.value
+  const baseRight = rect.right + panelShift.value
+  const sidebar = document.querySelector('.sidebar') as HTMLElement | null
+  const sidebarRight = sidebar ? sidebar.getBoundingClientRect().right : 0
+  // 右边避开抽屉，左边避开导航栏；两边不能同时满足时优先不压左侧导航。
+  const maxByDrawer = baseRight - drawerLeft + 16
+  const maxBySidebar = baseLeft - sidebarRight - 16
+  panelShift.value = Math.max(0, Math.min(maxByDrawer, maxBySidebar))
 }
 
 watch(panelOpen, async () => {
