@@ -119,19 +119,33 @@ const followStream = ref(true)
 let autoScrolling = false
 let followTimer: number | undefined
 
-/** 用户主动上滚后暂停自动跟随；滚回底部再恢复。 */
+function analysisPageTop(): number | null {
+  const main = document.querySelector('.main') as HTMLElement | null
+  const holder = document.querySelector('.report-wrap .analysis-paper')?.closest('.paper-holder') as HTMLElement | null
+  if (!main || !holder) return null
+  const mainRect = main.getBoundingClientRect()
+  const holderRect = holder.getBoundingClientRect()
+  const bar = document.querySelector('.report-viewer .viewer-bar') as HTMLElement | null
+  // 顶栏/查看工具条是 sticky 的，页面顶端必须让开它们，否则标题会被遮住。
+  const inset = bar ? Math.max(60, bar.getBoundingClientRect().bottom - mainRect.top + 12) : 60
+  return Math.max(0, main.scrollTop + holderRect.top - mainRect.top - inset)
+}
+
+/** 用户主动移动后暂停自动跟随；回到分析页顶部再恢复。 */
 function onMainScroll(): void {
   if (autoScrolling) return
   const main = document.querySelector('.main') as HTMLElement | null
-  if (!main) return
-  followStream.value = main.scrollTop + main.clientHeight >= main.scrollHeight - 48
+  const target = analysisPageTop()
+  if (!main || target === null) return
+  followStream.value = Math.abs(main.scrollTop - target) < 96
 }
 
-function scrollReportBottom(): void {
+function scrollToAnalysisPageTop(): void {
   const main = document.querySelector('.main') as HTMLElement | null
-  if (!main) return
+  const target = analysisPageTop()
+  if (!main || target === null) return
   autoScrolling = true
-  main.scrollTop = main.scrollHeight
+  main.scrollTo({ top: target, behavior: 'auto' })
   window.clearTimeout(followTimer)
   followTimer = window.setTimeout(() => { autoScrolling = false }, 80)
 }
@@ -140,7 +154,7 @@ watch([() => props.streamText, () => props.generating], () => {
   if (!props.generating || !followStream.value) return
   void nextTick(() => {
     fitPapers()
-    scrollReportBottom()
+    scrollToAnalysisPageTop()
   })
 })
 
@@ -207,6 +221,10 @@ onMounted(async () => {
   window.addEventListener('resize', fitPapers)
   document.querySelector('.main')?.addEventListener('scroll', onMainScroll, { passive: true })
   void document.fonts?.ready.then(fitPapers)
+  if (props.generating) {
+    await nextTick()
+    scrollToAnalysisPageTop()
+  }
 })
 
 onBeforeUnmount(() => {
@@ -634,14 +652,14 @@ onBeforeUnmount(() => {
   font-size: 14px;
   color: #222;
 }
-/* 抽屉展开时只把报告纸张往左让，不做左右分栏 */
+/* 抽屉展开时只把报告纸张整体往左移，不改变纸张尺寸。 */
 .report-wrap {
-  transition: padding-right 0.28s ease;
+  transition: transform 0.28s ease;
   box-sizing: border-box;
 }
 @media (min-width: 701px) {
   .report-viewer.panel-open .report-wrap {
-    padding-right: 430px;
+    transform: translateX(-180px);
   }
 }
 </style>
