@@ -199,6 +199,10 @@ def validate_analysis_text(text: str, *, item_nos: list[str],
         if phrase in body:
             errors.append({"code": "CLAIM_UNSUPPORTED", "item_no": "",
                            "detail": f"分析正文不应复述评估概况：{phrase}"})
+    for phrase in ("候选路径", "候选证据", "图谱"):
+        if phrase in body:
+            errors.append({"code": "CLAIM_UNSUPPORTED", "item_no": "",
+                           "detail": f"分析正文不应提及候选来源：{phrase}"})
     for heading in ("### 一、总体判断", "### 二、主要不符合项",
                     "### 三、处置与复验建议", "### 四、综合结论"):
         if heading not in body:
