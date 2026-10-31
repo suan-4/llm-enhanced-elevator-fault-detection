@@ -309,7 +309,7 @@ onBeforeUnmount(() => {
 
     <ReportEvaluationDrawer
       :open="panelOpen && !loading && !loadError"
-      :analysis-text="analysisText"
+      :analysis-text="props.generating ? '' : analysisText"
       :typing="typing"
       :typing-text="typingText"
       :auto-scroll="false"
