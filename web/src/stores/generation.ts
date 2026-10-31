@@ -11,6 +11,8 @@ export const useGenerationStore = defineStore('generation', () => {
   const generating = ref(false)
   /* 生成完成切到报告查看时，保持侧栏打开和当前滚动位置 */
   const keepView = ref(false)
+  /* 生成页已算好的纸张左移量，查看页沿用，避免完成瞬间再移动 */
+  const panelShift = ref(0)
 
   function setPending(selections: KgSelection[]): void {
     pendingSelections.value = selections
@@ -36,6 +38,6 @@ export const useGenerationStore = defineStore('generation', () => {
     keepView.value = true
   }
 
-  return { pendingSelections, replayReportId, generating, keepView,
+  return { pendingSelections, replayReportId, generating, keepView, panelShift,
     setPending, consume, requestReplay, consumeReplay, markKeepView }
 })
