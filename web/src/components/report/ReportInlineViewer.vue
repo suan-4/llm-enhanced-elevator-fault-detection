@@ -46,6 +46,12 @@ function computePanelShift(): void {
     panelShift.value = 0
     return
   }
+  // 生成刚开始时纸张还在首次布局，测量结果会让白页先左移一次；
+  // 第一个 token 到达前不施加侧栏位移，等正文真正开始流式输出再算。
+  if (props.generating && !(props.streamText || '').trim()) {
+    panelShift.value = 0
+    return
+  }
   const paper = document.querySelector('.report-wrap .paper') as HTMLElement | null
   if (!paper) return
   const drawerLeft = window.innerWidth - Math.min(430, window.innerWidth)
@@ -190,10 +196,12 @@ function scrollToAnalysisPageTop(): void {
 }
 
 watch([() => props.streamText, () => props.generating], () => {
-  if (!props.generating || !followStream.value) return
+  if (!props.generating) return
   void nextTick(() => {
     fitPapers()
-    scrollToAnalysisPageTop()
+    // 第一个 token 到达后才允许计算侧栏位移；此时纸张已按正确比例布局。
+    computePanelShift()
+    if (followStream.value) scrollToAnalysisPageTop()
   })
 })
 
