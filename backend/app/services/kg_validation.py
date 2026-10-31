@@ -166,7 +166,11 @@ def validate_t3(output: dict, *, item_no: str, allowed_path_ids: set[str],
     evidence_values = evidence_paths + ([rule_facts] if rule_facts else [])
     allowed_numbers = _allowed_numbers(evidence_values, item_no)
     allowed_clauses = _allowed_clauses(evidence_values)
-    errors.extend(_check_common(data, item_no, allowed_numbers, allowed_clauses))
+    # evidence_note/path_ids 是程序生成的说明，不是模型事实；其中
+    # “含 4 条候选路径”的 4 不应被 NUMBER_NOT_ALLOWED 误判。
+    check_data = {key: value for key, value in data.items()
+                  if key not in ('item_no', 'path_ids', 'evidence_note')}
+    errors.extend(_check_common(check_data, item_no, allowed_numbers, allowed_clauses))
 
     # 去重，保持顺序
     seen = set()
