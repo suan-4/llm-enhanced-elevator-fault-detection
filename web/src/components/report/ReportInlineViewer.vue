@@ -132,6 +132,7 @@ function startTyping(text: string): void {
 /* A4 宽度（210mm @96dpi），报告页按视口等比缩放 */
 const PAPER_WIDTH = 793.7
 let paperObserver: ResizeObserver | undefined
+let layoutObserver: MutationObserver | undefined
 
 const followStream = ref(true)
 let autoScrolling = false
@@ -228,6 +229,14 @@ function observePapers(): void {
   paperObserver = new ResizeObserver(fitPapers)
   paperObserver.observe(host)
   host.querySelectorAll('.paper').forEach((paper) => paperObserver?.observe(paper))
+  // 生成中分析页/新纸张是动态插入的；插入后立即缩放并对齐，
+  // 不能等第一个 token 到达才做，否则会先看到未缩放的大白页。
+  layoutObserver?.disconnect()
+  layoutObserver = new MutationObserver(() => {
+    fitPapers()
+    if (props.generating && followStream.value) scrollToAnalysisPageTop()
+  })
+  layoutObserver.observe(host, { childList: true, subtree: true })
 }
 
 onMounted(async () => {
@@ -270,6 +279,7 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   paperObserver?.disconnect()
+  layoutObserver?.disconnect()
   stopTyping()
   window.removeEventListener('resize', onResize)
   document.querySelector('.main')?.removeEventListener('scroll', onMainScroll)
