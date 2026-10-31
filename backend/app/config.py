@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     # 不能拿 600 秒的读取超时去等连接，否则报告生成会被卡住
     rkllm_connect_timeout: float = 5.0
     rkllm_temperature: float = 0.7
-    rkllm_max_new_tokens: int = 512
+    rkllm_max_new_tokens: int = 1024
     rkllm_context_tokens: int = 4096
     rkllm_template_reserve_tokens: int = 128
     rkllm_model_id: str = "Qwen3.5-4B_W8A8_RK3588"

@@ -103,7 +103,7 @@ function switchMode(next: typeof mode.value) {
 }
 
 function beginHold(event: Event): void {
-  if (password.value || !capabilities.value.voice) return
+  if (password.value || voiceBusy.value || !capabilities.value.voice) return
   // 按住麦克风开始，松开由 endHold 触发停止和识别。
   if (event.currentTarget instanceof HTMLElement && 'pointerId' in event) {
     try { event.currentTarget.setPointerCapture((event as PointerEvent).pointerId) } catch { /* ignore */ }
@@ -278,7 +278,7 @@ onBeforeUnmount(() => {
           <div class="voice-actions"><button type="button" @click="voiceText = ''">重新录入</button><button type="button" class="primary" @click="insertVoice">填入文字</button></div>
         </template>
         <template v-else>
-          <button type="button" class="voice-record" :class="{ recording: recordingId }" :disabled="voiceBusy || !capabilities.voice"
+          <button type="button" class="voice-record" :class="{ recording: recordingId }" :disabled="!capabilities.voice"
             :aria-label="recordingId ? '松开结束录音并识别' : '按住开始语音输入'"
             @pointerdown.prevent="beginHold"
             @pointerup.prevent="endHold"
