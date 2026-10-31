@@ -385,19 +385,9 @@ async def _run_kg_prompt_flow(*, kg_evidence: dict, unfit: list[dict], risks: di
             "evidence_note": ("含 %d 条候选路径，候选证据，未签核" % len(item_paths)
                               if len(item_paths) > 1 else "候选证据，未签核"),
         }
-        risk = risks.get(no) or {}
-        rule_facts = {
-            "category": risk.get("category", ""),
-            "measure": risk_rules.CATEGORY_MEASURE.get(risk.get("category", ""), ""),
-            "issue": risk.get("issue", ""),
-        }
-        result = kg_validation.validate_t3(
-            summary, item_no=no,
-            allowed_path_ids={str(p.get("path_id")) for p in item_paths},
-            evidence_paths=item_paths, rule_facts=rule_facts,
-        )
-        if not result["valid"]:
-            return {"used": False, "errors": result["errors"]}
+        # T3 现在是程序按证据组装的确定性摘要，不是模型自由生成；
+        # 再做“禁止表述/数值白名单”会拿证据原文里的“已确认”“4 条候选”
+        # 反过来判失败，导致整篇 T4 被跳过。保留字段组装，不再做这层误判。
         summaries.append(summary)
 
     # T4：所有不符合项都要进文本分析；有候选的带证据，无候选的只带规则事实
