@@ -75,10 +75,12 @@ function onNavigate(key: string): void {
     return
   }
   const anchor = key as 'info' | 'items' | 'reports'
-  // 先同步高亮，避免跳转后先闪一下旧项再切到目标项
+  // 先同步高亮并把目标锚点挂起，再由 ReportView 挂载时消费；
+  // 不要等 router.push().then 才设置，否则会先按滚动位置闪到别的项。
   shell.active = anchor
+  shell.requestView(anchor)
   if (route.path !== '/') {
-    void router.push('/').then(() => shell.requestView(anchor))
+    void router.push('/')
     return
   }
   shell.requestView(anchor)

@@ -81,11 +81,17 @@ function mainEl(): HTMLElement | null {
 }
 
 /** 滚到某个锚点（让开 52px 吸顶栏） */
+let navScrolling = false
+let navScrollTimer: number | undefined
+
 function scrollToSection(id: string): void {
   const main = mainEl()
   const el = document.getElementById(id)
   if (!main || !el) return
   const top = main.scrollTop + el.getBoundingClientRect().top - main.getBoundingClientRect().top - 64
+  navScrolling = true
+  if (navScrollTimer !== undefined) window.clearTimeout(navScrollTimer)
+  navScrollTimer = window.setTimeout(() => { navScrolling = false }, 700)
   main.scrollTo({ top: Math.max(0, top), behavior: 'smooth' })
 }
 
@@ -168,6 +174,7 @@ watch(() => shell.requested, consumeShellRequest)
 
 /* 录入视图内按滚动位置高亮侧栏锚点；报告区域固定高亮第三项 */
 function updateActiveByScroll(): void {
+  if (navScrolling) return
   if (view.value === 'reports') {
     shell.active = 'reports'
     return
