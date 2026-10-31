@@ -22,6 +22,7 @@ interface Row {
   recommendation: KgRecommendation | null
   recommending: boolean
   choiceSource: 'human' | 'model' | 'rule' | 'human_override'
+  batch: number
 }
 
 const router = useRouter()
@@ -45,10 +46,32 @@ const doneCount = computed(() => rows.value.filter((r) => !!r.choice).length)
 const remainingRows = computed(() => rows.value.filter(
   (r) => !r.recommendation && !r.recommending && (r.result?.candidates || []).length > 0,
 ))
+const BATCH_SIZE = 3
 const currentRow = computed(() => rows.value[currentIndex.value] || null)
 const visibleRows = computed(() => (currentRow.value ? [currentRow.value] : []))
 const hasPrev = computed(() => currentIndex.value > 0)
 const hasNext = computed(() => currentIndex.value < rows.value.length - 1)
+
+function visibleCandidates(row: Row) {
+  const all = row.result?.candidates || []
+  return all.slice(row.batch * BATCH_SIZE, row.batch * BATCH_SIZE + BATCH_SIZE)
+}
+
+function batchCount(row: Row): number {
+  return Math.max(1, Math.ceil((row.result?.candidates || []).length / BATCH_SIZE))
+}
+
+function setBatch(row: Row, batch: number): void {
+  row.batch = Math.max(0, Math.min(batch, batchCount(row) - 1))
+  row.recommendation = null
+  const main = document.querySelector('.main') as HTMLElement | null
+  main?.scrollTo({ top: 0 })
+}
+
+function ensureBatchForPath(row: Row, pathId: string): void {
+  const index = (row.result?.candidates || []).findIndex((c) => c.path_id === pathId)
+  if (index >= 0) row.batch = Math.floor(index / BATCH_SIZE)
+}
 
 function goPage(delta: number): void {
   const next = currentIndex.value + delta
@@ -82,6 +105,7 @@ async function loadRows(): Promise<void> {
       recommendation: null,
       recommending: false,
       choiceSource: 'human',
+      batch: 0,
     })
   }
   if (!rows.value.length) {
@@ -120,7 +144,7 @@ async function loadRow(row: Row): Promise<void> {
       item_name: row.name,
       reasons: row.reasons,
       other_text: row.otherText,
-      top_k: 3,
+      top_k: 9,
     })
     row.result = res
     if (!res.candidates.length) {
@@ -154,9 +178,11 @@ async function recommendRemaining(): Promise<void> {
       const row = rows.value.find((r) => r.no === item.item_no)
       if (!row || !item.recommendation) continue
       row.recommendation = item.recommendation
-      if (!row.choice) {
+      // 批量推荐同理：规则匹配不预选，AI 推荐可预选
+      if (item.recommendation.source === 'model' && !row.choice) {
         row.choice = item.recommendation.none ? 'none' : (item.recommendation.path_id || '')
-        row.choiceSource = item.recommendation.source === 'rule' ? 'rule' : 'model'
+        row.choiceSource = 'model'
+        if (item.recommendation.path_id) ensureBatchForPath(row, item.recommendation.path_id)
       }
     }
   } catch (err) {
@@ -206,10 +232,11 @@ async function recommendRow(row: Row, fastOnly = false): Promise<void> {
       fast_only: fastOnly,
     })
     row.recommendation = res.recommendation
-    // 只做预选：用户已经点过就不覆盖，最终仍需人工确认
-    if (res.recommendation && !row.choice) {
+    // 规则匹配只提示，不默认选中；只有模型推荐才预选，最终仍需人工确认。
+    if (res.recommendation?.source === 'model' && !row.choice) {
       row.choice = res.recommendation.none ? 'none' : (res.recommendation.path_id || '')
-      row.choiceSource = res.recommendation.source === 'rule' ? 'rule' : 'model'
+      row.choiceSource = 'model'
+      if (res.recommendation.path_id) ensureBatchForPath(row, res.recommendation.path_id)
     }
   } catch {
     row.recommendation = null
@@ -237,6 +264,7 @@ function markChoice(row: Row): void {
 function applyRecommendation(row: Row): void {
   const choice = recommendedChoice(row)
   if (!choice) return
+  if (row.recommendation?.path_id) ensureBatchForPath(row, row.recommendation.path_id)
   row.choice = choice
   row.choiceSource = row.recommendation?.source === 'rule' ? 'rule' : 'model'
 }
@@ -248,7 +276,7 @@ function auditSource(row: Row): 'human' | 'model' | 'rule' | 'human_override' {
 }
 
 function top3Of(row: Row) {
-  return (row.result?.candidates || []).map((c) => ({
+  return visibleCandidates(row).map((c) => ({
     rank: c.rank,
     path_id: c.path_id,
     path_summary: c.path_summary,
@@ -383,7 +411,7 @@ function back(): void {
 
         <div class="candidates">
         <label
-          v-for="c in row.result?.candidates || []"
+          v-for="c in visibleCandidates(row)"
           :key="c.path_id"
           class="candidate"
           :class="{ on: row.choice === c.path_id, recommended: row.recommendation?.path_id === c.path_id }"
@@ -409,6 +437,21 @@ function back(): void {
             <span class="meta">不引用图谱路径，只按规则表的风险类别与处置生成</span>
           </span>
         </label>
+        </div>
+        <div v-if="(row.result?.candidates || []).length > 3" class="batch-nav">
+          <button
+            class="btn tiny"
+            type="button"
+            :disabled="row.batch <= 0"
+            @click="setBatch(row, row.batch - 1)"
+          >上一批</button>
+          <span>第 {{ row.batch + 1 }}/{{ batchCount(row) }} 批</span>
+          <button
+            class="btn tiny"
+            type="button"
+            :disabled="row.batch >= batchCount(row) - 1"
+            @click="setBatch(row, row.batch + 1)"
+          >下一批</button>
         </div>
       </div>
     </section>
@@ -535,6 +578,8 @@ h1 { margin: 0; font-size: 21px; }
 .meta { font-size: 11.5px; color: #667; }
 .line { font-size: 12px; color: #445; line-height: 1.5; }
 .terms { font-size: 11px; color: #2c6b42; }
+.batch-nav { display: flex; align-items: center; gap: 8px; margin-top: 6px; color: #667; font-size: 11.5px; }
+.batch-nav .btn.tiny { margin-left: 0; }
 .candidate.none { background: #fafafa; }
 .candidate.none .path { color: #556; }
 .muted { color: #879; font-size: 12.5px; }

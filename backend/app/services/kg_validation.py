@@ -200,7 +200,7 @@ def validate_analysis_text(text: str, *, item_nos: list[str],
             errors.append({"code": "CLAIM_UNSUPPORTED", "item_no": "",
                            "detail": f"分析正文不应复述评估概况：{phrase}"})
     for heading in ("### 一、总体判断", "### 二、主要不符合项",
-                    "### 三、处置与复验建议", "### 四、证据边界"):
+                    "### 三、处置与复验建议", "### 四、综合结论"):
         if heading not in body:
             errors.append({"code": "SCHEMA_INVALID", "item_no": "",
                            "detail": f"缺少固定段落：{heading}"})

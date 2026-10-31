@@ -280,8 +280,8 @@ def _rule_analysis_text(unfit: list[dict], risks: dict) -> str:
         lines.append(text)
     lines += ["", "### 三、处置与复验建议", "",
               "按规则表措施处置，完成后复查相关保护功能并复验。", "",
-              "### 四、证据边界", "",
-              "以上为规则表分析；本次未匹配到候选故障路径，未调用图谱证据。"]
+              "### 四、综合结论", "",
+              "以上分析依据规则表和现有评估资料，现场处置后应复核并确认风险消除。"]
     return "\n".join(lines)
 
 
@@ -411,7 +411,6 @@ async def _run_kg_prompt_flow(*, kg_evidence: dict, unfit: list[dict], risks: di
             "item_no": no,
             "category": risk.get("category", ""),
             "measure": risk_rules.CATEGORY_MEASURE.get(risk.get("category", ""), ""),
-            "has_candidate_evidence": bool(summary),
             "fault_chain": summary.get("fault_chain") or [],
             "risk": summary.get("risk") or "",
             "action": summary.get("action") or "",

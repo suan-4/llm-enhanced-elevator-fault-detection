@@ -189,14 +189,14 @@ def build_t4_overview_prompt(*, overview_facts: dict, required_keys: list[str],
         + "只输出 Markdown 正文，不要输出 JSON、代码块、解释或字段名；"
         + "不要写「文本分析报告」标题，标题由程序添加。"
         + "正文固定使用以下四段，标题必须原样保留，不得增删或改名："
-        + "### 一、总体判断；### 二、主要不符合项；### 三、处置与复验建议；### 四、证据边界。"
+        + "### 一、总体判断；### 二、主要不符合项；### 三、处置与复验建议；### 四、综合结论。"
         + "要求：350–500 字；第一段概括涉及的系统/部件，但不要写不符合项总数、"
         + "综合得分、等级或「本次评估共发现 X 项」；"
-        + "第二段按项目编号逐项说明风险类别、现场事实、候选故障演化、风险后果；"
-        + "第三段写规则表处置、整改与复验建议；第四段写候选证据边界；"
-        + "has_candidate_evidence=false 的项目只写现场事实、风险类别和规则表处置，"
-        + "注明「未匹配到候选路径，按规则表处置」，不得编造故障演化链；"
-        + "正文不得出现 path_id、PATH_V2_ 编号、条款号或具体限值；"
+        + "第二段按项目编号逐项说明风险类别、现场事实、故障演化、风险后果；"
+        + "第三段写规则表处置、整改与复验建议；第四段写综合结论；"
+        + "没有故障演化资料的项目只写现场事实、风险类别和规则表处置，不得编造故障演化链；"
+        + "正文不要提及候选路径、图谱、path_id、附页或证据边界；"
+        + "不得出现具体限值；"
         + "不写「已确认」「已签核」「违反」「必然」「证明」。"
     )
     # 分析正文不传总数/得分/等级，避免模型复述或写错；评估概况由程序单独输出。
@@ -207,7 +207,6 @@ def build_t4_overview_prompt(*, overview_facts: dict, required_keys: list[str],
                 "item_no": item.get("item_no", ""),
                 "category": item.get("category", ""),
                 "measure": _compact(item.get("measure", ""), 260),
-                "has_candidate_evidence": bool(item.get("has_candidate_evidence")),
                 "fault_chain": item.get("fault_chain", [])[:6],
                 "risk": _compact(item.get("risk", ""), 100),
                 "action": _compact(item.get("action", ""), 220),
