@@ -579,7 +579,13 @@ h1 { margin: 0; font-size: 21px; }
 .candidate.recommended { border-color: #2c8a5a; }
 .candidate.recommended.on { border-color: #1b5e7a; }
 .header-ai { position: relative; display: inline-flex; }
-.header-popover { left: auto; right: 0; }
+.header-popover {
+  position: fixed;
+  top: 58px;
+  right: 16px;
+  left: auto;
+  z-index: 600;
+}
 .row-actions {
   position: relative;
   display: flex;
