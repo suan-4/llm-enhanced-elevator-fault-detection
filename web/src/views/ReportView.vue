@@ -60,6 +60,7 @@ const selectedProfileName = computed(
 const generating = ref(false)
 const streamText = ref('')
 const manualKgSelection = ref(true)
+const aiPromptCandidateCount = ref(3)
 const confirmNew = ref(false)
 const newBusy = ref(false)
 const regenerateOpen = ref(false)
@@ -197,6 +198,9 @@ async function loadSelectionMode(): Promise<void> {
     const cfg = await systemConfig()
     const item = cfg.items.find((row) => row.key === 'manual_kg_selection')
     manualKgSelection.value = item ? item.value !== false : true
+    const countItem = cfg.items.find((row) => row.key === 'ai_prompt_candidate_count')
+    const count = countItem && typeof countItem.value === 'number' ? countItem.value : 3
+    aiPromptCandidateCount.value = Math.max(1, Math.min(9, count))
   } catch {
     manualKgSelection.value = true
   }
@@ -415,7 +419,7 @@ function top3Audit(candidates: KgCandidatesResponse['candidates']) {
 }
 
 async function autoSelectKg(unfitItems: { no: string; name: string }[]): Promise<KgSelection[]> {
-  /* 关闭「人工选择」后：每项先取 Top3，再由 AI 从 Top3 中自动判断。
+  /* 关闭「人工选择」后：每项按配置的候选数取候选，再由 AI 自动判断。
      前端不再进入 /kg-confirm；仍写 kg_selection 审计。 */
   const prepared = await Promise.all(unfitItems.map(async (item) => {
     const state = store.states[item.no]
@@ -425,7 +429,7 @@ async function autoSelectKg(unfitItems: { no: string; name: string }[]): Promise
         item_name: item.name,
         reasons: state?.reasons || [],
         other_text: state ? otherTextList(state).join('\n') : '',
-        top_k: 3,
+        top_k: aiPromptCandidateCount.value,
       })
       return { item, res }
     } catch {
@@ -443,7 +447,7 @@ async function autoSelectKg(unfitItems: { no: string; name: string }[]): Promise
         item_name: item.name,
         reasons: store.states[item.no]?.reasons || [],
         other_text: otherTextList(store.states[item.no]).join('\n'),
-        top_k: 3,
+        top_k: aiPromptCandidateCount.value,
       })))
       if (!batch.success) throw new Error(batch.error || '批量推荐失败')
       for (const row of batch.recommendations) recByNo.set(row.item_no, row.recommendation)
@@ -455,7 +459,7 @@ async function autoSelectKg(unfitItems: { no: string; name: string }[]): Promise
             item_name: item.name,
             reasons: store.states[item.no]?.reasons || [],
             other_text: otherTextList(store.states[item.no]).join('\n'),
-            top_k: 3,
+            top_k: aiPromptCandidateCount.value,
           })
           if (one.recommendation) recByNo.set(item.no, one.recommendation)
         } catch { /* 这一项降级为无候选 */ }
