@@ -2,21 +2,17 @@
 /* 内嵌报告查看：在主页面右侧区域就地显示，不跳路由。
    顶部工具条含返回（回报告管理）/ 报告信息 / 导出；右边缘抽屉只读展示当时的填写内容。
    打开前由主页面暂存录入现场，切回录入锚点时由主页面恢复。 */
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import ReportDocument from '@/components/report/ReportDocument.vue'
-import InfoTable from '@/components/report/InfoTable.vue'
-import { itemGroupName } from '@/domain/itemGroups'
-import { reasonList } from '@/domain/validation'
+import ReportEvaluationDrawer from '@/components/report/ReportEvaluationDrawer.vue'
 import { overviewText, countByCategory } from '@/domain/riskScore'
 import { buildAppendixRows } from '@/domain/reportResult'
 import { modelStatus } from '@/domain/modelStatus'
 import { useReportStore } from '@/stores/report'
 import { useGenerationStore } from '@/stores/generation'
-import { renderMarkdown } from '@/utils/markdown'
 import { useExport } from '@/utils/export'
 import { useToast } from '@/utils/toast'
 import { ApiError } from '@/utils/http'
-import type { JteItem } from '@/types/api'
 
 const props = defineProps<{ reportId: string }>()
 const emit = defineEmits<{ back: [] }>()
@@ -36,11 +32,10 @@ const loadError = ref('')
 const fitted = ref(false)
 const reportWrap = ref<HTMLElement | null>(null)
 const panelOpen = ref(false)
-const refBody = ref<HTMLElement | null>(null)
 const typingText = ref('')
 const typing = ref(false)
 let typingTimer: number | undefined
-const collapsed = reactive<Record<string, boolean>>({})
+
 
 const STATUS_TEXT: Record<string, string> = {
   draft: '草稿',
@@ -82,11 +77,6 @@ const conclusion = computed(() => `综合安全状况等级：${grade.value ?? '
 const appendixRows = computed(() => buildAppendixRows(store.items, store.stateOf, riskByNo.value))
 const analysisText = computed(() => store.generated?.analysis_text ?? '')
 
-function scrollRefBottom(): void {
-  const body = refBody.value
-  if (body) body.scrollTop = body.scrollHeight
-}
-
 function stopTyping(): void {
   if (typingTimer !== undefined) {
     window.clearInterval(typingTimer)
@@ -104,58 +94,11 @@ function startTyping(text: string): void {
   typingTimer = window.setInterval(() => {
     cursor = Math.min(text.length, cursor + 2)
     typingText.value = text.slice(0, cursor)
-    void nextTick(scrollRefBottom)
     if (cursor >= text.length) {
       stopTyping()
       typingText.value = text
     }
   }, 18)
-}
-
-/* ── 只读填写内容（右边缘抽屉）───────────────────────── */
-interface RefGroup {
-  key: string
-  name: string
-  range: string
-  items: JteItem[]
-  total: number
-  unfit: number
-}
-const refGroups = computed<RefGroup[]>(() => {
-  const map = new Map<string, RefGroup>()
-  for (const item of store.items) {
-    const key = item.no.split('.')[0] || item.no
-    let group = map.get(key)
-    if (!group) {
-      group = { key, name: itemGroupName(key), range: item.no, items: [], total: 0, unfit: 0 }
-      map.set(key, group)
-    }
-    group.items.push(item)
-    group.range = group.items.length === 1 ? item.no : group.items[0].no + '–' + item.no
-    group.total += 1
-    if (store.stateOf(item.no).result === '不符合') group.unfit += 1
-  }
-  return [...map.values()]
-})
-
-function toggleGroup(key: string): void {
-  collapsed[key] = !collapsed[key]
-}
-
-function resultOf(no: string): string {
-  return store.stateOf(no).result || '未填'
-}
-
-/** 不符合项明细：与录入页「不符合情形」同源（含「其他」自行填写内容） */
-function detailsOf(no: string): string[] {
-  const state = store.stateOf(no)
-  if (state.result !== '不符合') return []
-  return reasonList(state)
-}
-
-/** 风险评定值来自服务端的专家查表结果，与报告里的「风险评定值」列一致 */
-function riskOf(no: string) {
-  return store.generated?.risks?.[no]
 }
 
 /* A4 宽度（210mm @96dpi），报告页按视口等比缩放 */
@@ -343,94 +286,13 @@ onBeforeUnmount(() => {
       </svg>
     </button>
 
-    <!-- 右侧折叠侧栏：当时的填写页面（只读，不可编辑） -->
-    <aside v-if="panelOpen && !loading && !loadError" class="ref-panel" aria-label="评估填写内容（只读）">
-      <div class="ref-head">
-        <button class="ref-close" type="button" title="收起" aria-label="收起" @click="panelOpen = false">
-          ×
-        </button>
-        <b>评估填写内容</b>
-        <span class="ref-tag">只读</span>
-      </div>
-      <div ref="refBody" class="ref-body">
-        <h3>基础信息</h3>
-        <InfoTable readonly :show-computed="true" class="ref-info" />
-
-        <h3>检测项目（{{ store.items.length }} 项 · 不符合 {{ riskRows.length }} 项）</h3>
-        <table class="ref-items">
-          <thead>
-            <tr>
-              <th rowspan="2" style="width: 56px">编号</th>
-              <th rowspan="2">项目</th>
-              <th rowspan="2" style="width: 62px">结果</th>
-              <th colspan="3" class="ref-risk-head">风险评定值</th>
-            </tr>
-            <tr>
-              <th style="width: 50px">严重程度</th>
-              <th style="width: 50px">概率等级</th>
-              <th style="width: 50px">风险类别</th>
-            </tr>
-          </thead>
-          <tbody v-for="group in refGroups" :key="group.key">
-            <tr class="ref-group">
-              <td colspan="6">
-                <button
-                  class="ref-group-toggle"
-                  type="button"
-                  :aria-expanded="!collapsed[group.key]"
-                  @click="toggleGroup(group.key)"
-                >
-                  <span class="caret" :class="{ open: !collapsed[group.key] }">▸</span>
-                  <span class="ref-group-name">{{ group.key }} {{ group.name }}</span>
-                  <span class="ref-group-range">{{ group.range }}</span>
-                  <span class="ref-group-meta">{{ group.total }} 项 · 不符合 {{ group.unfit }}</span>
-                </button>
-              </td>
-            </tr>
-            <template v-if="!collapsed[group.key]">
-              <template v-for="item in group.items" :key="item.no">
-                <tr :class="{ 'ref-unfit': resultOf(item.no) === '不符合' }">
-                  <td class="ref-no">{{ item.no }}</td>
-                  <td>
-                    {{ item.name }}<span v-if="item.sub" class="ref-sub">（{{ item.sub }}）</span>
-                  </td>
-                  <td class="ref-result" :class="{ unfit: resultOf(item.no) === '不符合' }">
-                    {{ resultOf(item.no) }}
-                  </td>
-                  <template v-if="riskOf(item.no)">
-                    <td class="ref-risk">{{ riskOf(item.no)?.severity ?? '待确认' }}</td>
-                    <td class="ref-risk">{{ riskOf(item.no)?.probability ?? '待确认' }}</td>
-                    <td class="ref-risk">{{ riskOf(item.no)?.category }}</td>
-                  </template>
-                  <template v-else>
-                    <td class="ref-risk">—</td>
-                    <td class="ref-risk">—</td>
-                    <td class="ref-risk">—</td>
-                  </template>
-                </tr>
-                <tr v-if="detailsOf(item.no).length" class="ref-reasons">
-                  <td></td>
-                  <td colspan="5">
-                    <div class="ref-reasons-box">
-                      <div class="ref-reasons-head">不符合项</div>
-                      <ul class="ref-reasons-list">
-                        <li v-for="(reason, i) in detailsOf(item.no)" :key="i">{{ reason }}</li>
-                      </ul>
-                    </div>
-                  </td>
-                </tr>
-              </template>
-            </template>
-          </tbody>
-        </table>
-
-        <div v-if="analysisText" class="ref-analysis">
-          <h3>文本分析报告</h3>
-          <div v-if="typing" class="ref-typing">生成中…</div>
-          <div class="md" v-html="renderMarkdown(typing ? typingText : analysisText)" />
-        </div>
-      </div>
-    </aside>
+    <ReportEvaluationDrawer
+      :open="panelOpen && !loading && !loadError"
+      :analysis-text="analysisText"
+      :typing="typing"
+      :typing-text="typingText"
+      @close="panelOpen = false"
+    />
   </section>
 </template>
 

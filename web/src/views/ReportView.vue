@@ -12,7 +12,7 @@ import { useGenerationStore } from '@/stores/generation'
 import { useShell } from '@/stores/shell'
 import { useToast } from '@/utils/toast'
 import { systemConfig } from '@/api/system'
-import { renderMarkdown } from '@/utils/markdown'
+import ReportEvaluationDrawer from '@/components/report/ReportEvaluationDrawer.vue'
 import { fetchKgCandidates, fetchKgRecommendation, fetchKgRecommendationBatch, selectKgPath,
   type KgCandidatesResponse, type KgRecommendation } from '@/api/kg'
 import type { KgSelection } from '@/api/reports'
@@ -59,7 +59,6 @@ const selectedProfileName = computed(
 const generating = ref(false)
 const streamText = ref('')
 const manualKgSelection = ref(true)
-const streamPanel = ref<HTMLElement | null>(null)
 const confirmNew = ref(false)
 const newBusy = ref(false)
 const itemTable = ref<InstanceType<typeof ItemTable> | null>(null)
@@ -485,15 +484,6 @@ async function autoSelectKg(unfitItems: { no: string; name: string }[]): Promise
   return selections
 }
 
-function scrollToStreamBottom(): void {
-  const panel = streamPanel.value
-  if (panel) panel.scrollTop = panel.scrollHeight
-}
-
-watch(streamText, () => {
-  if (generating.value) void nextTick(scrollToStreamBottom)
-})
-
 async function runSelections(selections: KgSelection[]): Promise<void> {
   const timing = beginInteraction('report_generate')
   generating.value = true
@@ -699,17 +689,16 @@ async function jump(key: string, kind: 'field' | 'item'): Promise<void> {
             <div class="gen-paper">
               <div class="gen-placeholder">正在生成报告…</div>
             </div>
-            <aside class="gen-drawer" aria-label="评估填写内容">
-              <div class="gen-drawer-head">评估填写内容 <span>只读</span></div>
-              <div ref="streamPanel" class="gen-drawer-body">
-                <h3>基础信息</h3>
-                <InfoTable readonly />
-                <div class="gen-analysis">
-                  <h3>文本分析报告</h3>
-                  <div class="md" v-html="renderMarkdown(streamText || '正在生成…')" />
-                </div>
-              </div>
-            </aside>
+            <div class="gen-drawer">
+              <ReportEvaluationDrawer
+                :open="true"
+                :analysis-text="streamText"
+                :typing="true"
+                :typing-text="streamText"
+                inline
+                :closable="false"
+              />
+            </div>
           </div>
         </div>
         <ReportCenter v-else ref="reportCenter" @continue-edit="editDraft" />
