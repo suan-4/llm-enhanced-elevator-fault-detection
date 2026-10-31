@@ -18,6 +18,7 @@ const hasNext = ref(false)
 const busy = ref(false)
 const recordingId = ref('')
 const voiceBusy = ref(false)
+const holdReleased = ref(false)
 const voiceText = ref('')
 const seconds = ref(0)
 const panel = ref<HTMLElement>()
@@ -88,7 +89,7 @@ function enter() {
 function changeLayout(next: 'letters' | 'numbers' | 'symbols') { resetComposition(); layout.value = next }
 function language() { resetComposition(); input.chinese.value = !input.chinese.value }
 async function cancelVoice() {
-  voiceSerial++; voiceBusy.value = false
+  voiceSerial++; voiceBusy.value = false; holdReleased.value = false
   clearInterval(clock)
   const id = recordingId.value
   recordingId.value = ''; voiceText.value = ''; seconds.value = 0
@@ -100,6 +101,29 @@ function switchMode(next: typeof mode.value) {
   if (next !== 'keyboard' && (password.value || numeric.value)) return
   resetComposition(); void cancelVoice(); mode.value = next; error.value = ''
 }
+
+function beginHold(event: Event): void {
+  if (password.value || !capabilities.value.voice) return
+  // 按住麦克风开始，松开由 endHold 触发停止和识别。
+  if (event.currentTarget instanceof HTMLElement && 'pointerId' in event) {
+    try { event.currentTarget.setPointerCapture((event as PointerEvent).pointerId) } catch { /* ignore */ }
+  }
+  holdReleased.value = false
+  if (recordingId.value) return
+  void startVoice()
+}
+
+function endHold(event?: Event): void {
+  if (event && event.currentTarget instanceof HTMLElement && 'pointerId' in event) {
+    try { event.currentTarget.releasePointerCapture((event as PointerEvent).pointerId) } catch { /* ignore */ }
+  }
+  if (recordingId.value) {
+    void stopVoice()
+    return
+  }
+  if (voiceBusy.value) holdReleased.value = true
+}
+
 async function startVoice() {
   if (voiceBusy.value || recordingId.value || password.value) return
   const generation = input.generation.value, request = ++voiceSerial
@@ -109,10 +133,21 @@ async function startVoice() {
     if (request !== voiceSerial || generation !== input.generation.value || !input.opened.value || mode.value !== 'voice') {
       await inputRequest('/voice/cancel', { id: result.id }); return
     }
+    // /voice/start 已返回，允许 pointerup 立即结束录音；此时不再算“启动中”。
+    voiceBusy.value = false
     recordingId.value = result.id; seconds.value = 0
     clock = setInterval(() => { seconds.value++; if (seconds.value >= 30) void stopVoice() }, 1000)
   } catch (err) { if (request === voiceSerial) error.value = err instanceof Error ? err.message : '麦克风未就绪' }
-  finally { if (request === voiceSerial) voiceBusy.value = false }
+  finally {
+    if (request === voiceSerial) {
+      voiceBusy.value = false
+      // 用户可能在 /voice/start 返回前就松手了。
+      if (holdReleased.value) {
+        holdReleased.value = false
+        void stopVoice()
+      }
+    }
+  }
 }
 async function stopVoice() {
   const id = recordingId.value, generation = input.generation.value, request = voiceSerial
@@ -244,11 +279,19 @@ onBeforeUnmount(() => {
         </template>
         <template v-else>
           <button type="button" class="voice-record" :class="{ recording: recordingId }" :disabled="voiceBusy || !capabilities.voice"
-            :aria-label="recordingId ? '停止录音并识别' : '开始语音输入'" @click="recordingId ? stopVoice() : startVoice()">
+            :aria-label="recordingId ? '松开结束录音并识别' : '按住开始语音输入'"
+            @pointerdown.prevent="beginHold"
+            @pointerup.prevent="endHold"
+            @pointercancel="endHold"
+            @contextmenu.prevent
+            @keydown.space.prevent="beginHold"
+            @keyup.space.prevent="endHold"
+            @keydown.enter.prevent="beginHold"
+            @keyup.enter.prevent="endHold">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15a3 3 0 003-3V5a3 3 0 00-6 0v7a3 3 0 003 3zm-7-4v1a7 7 0 0014 0v-1M12 19v3m-4 0h8" /></svg>
           </button>
-          <p class="voice-state">{{ voiceBusy ? '正在处理，请稍候…' : recordingId ? `正在录音 ${seconds} / 30 秒，点击结束` : capabilities.voice ? '点击麦克风，说出要输入的内容' : '离线语音模型尚未就绪' }}</p>
-          <p class="voice-hint">离线识别 · 适合短句描述</p>
+          <p class="voice-state">{{ voiceBusy && !recordingId ? '正在处理，请稍候…' : recordingId ? `正在录音 ${seconds} / 30 秒，松开结束` : capabilities.voice ? '按住麦克风说话，松开自动识别' : '离线语音模型尚未就绪' }}</p>
+          <p class="voice-hint">离线识别 · 按住说话，松开自动识别</p>
           <button v-if="recordingId" type="button" class="voice-cancel" @click="cancelVoice">取消录音</button>
         </template>
       </div>
