@@ -43,8 +43,17 @@ let recommendActive = 0
 const lastReportId = ref('')
 const lastVersion = ref(-1)
 
-const allChosen = computed(() => rows.value.length > 0 && rows.value.every((r) => !!r.choice))
-const doneCount = computed(() => rows.value.filter((r) => !!r.choice).length)
+function effectiveChoice(row: Row): string {
+  if (row.choice) return row.choice
+  if (directTop3.value && row.recommendation) {
+    return row.recommendation.none ? 'none' : (row.recommendation.path_id || '')
+  }
+  return ''
+}
+
+const canGenerate = computed(() => rows.value.length > 0
+  && rows.value.every((r) => !!effectiveChoice(r)))
+const doneCount = computed(() => rows.value.filter((r) => !!effectiveChoice(r)).length)
 const remainingRows = computed(() => rows.value.filter(
   (r) => !r.choice && !r.recommending && (r.result?.candidates || []).length > 0,
 ))
@@ -162,7 +171,7 @@ async function loadRow(row: Row): Promise<void> {
     row.result = res
     if (!res.candidates.length) {
       row.choice = 'none'
-    } else if (!directTop3.value) {
+    } else {
       // 页面打开时只跑规则快路径；模糊项等用户点「AI 推荐」再调模型
       void recommendRow(row, true)
     }
@@ -174,7 +183,6 @@ async function loadRow(row: Row): Promise<void> {
 }
 
 async function recommendRemaining(): Promise<void> {
-  if (directTop3.value) return
   const targets = remainingRows.value.slice(0, 3)
   if (!targets.length || batchLoading.value) return
   batchLoading.value = true
@@ -208,8 +216,7 @@ async function recommendRemaining(): Promise<void> {
 }
 
 function requestRecommendation(row: Row): void {
-  if (directTop3.value || row.recommending
-      || row.recommendation?.source === 'model' || row.loading) return
+  if (row.recommending || row.recommendation?.source === 'model' || row.loading) return
   enqueueRecommendation(row)
 }
 
@@ -312,14 +319,24 @@ function rankOf(row: Row): number | null {
 }
 
 async function generate(): Promise<void> {
-  if (!allChosen.value || generating.value) return
+  if (!canGenerate.value || generating.value) return
   generating.value = true
   error.value = ''
   try {
+    // 开启人工确认直入模式时：操作员没手动选的项，直接采用已有 AI/规则推荐，
+    // 不再额外调用推荐接口等待十几秒。
+    if (directTop3.value) {
+      for (const row of rows.value) {
+        if (row.choice || !row.recommendation) continue
+        row.choice = row.recommendation.none ? 'none' : (row.recommendation.path_id || '')
+        row.choiceSource = row.recommendation.source === 'rule' ? 'rule' : 'model'
+        if (row.recommendation.path_id) ensureBatchForPath(row, row.recommendation.path_id)
+      }
+    }
     const selections: KgSelection[] = rows.value.map((row) => ({
       item_no: row.no,
-      path_id: row.choice === 'none' ? null : row.choice,
-      decision: row.choice === 'none' ? 'no_candidate' : 'selected',
+      path_id: row.choice === 'none' || !row.choice ? null : row.choice,
+      decision: row.choice === 'none' || !row.choice ? 'no_candidate' : 'selected',
       rank: rankOf(row),
       query: row.result?.query || '',
     }))
@@ -369,7 +386,7 @@ function back(): void {
         <b>{{ doneCount }}/{{ rows.length }}</b> 已确认
         <span class="page-count">{{ currentIndex + 1 }}/{{ rows.length }}</span>
         <button
-          v-if="!directTop3 && (remainingRows.length || batchLoading)"
+          v-if="remainingRows.length || batchLoading"
           class="btn tiny batch-btn"
           type="button"
           :disabled="batchLoading || !remainingRows.length"
@@ -432,7 +449,7 @@ function back(): void {
         </div>
 
         <button
-          v-if="!directTop3 && !row.recommending && row.recommendation?.source !== 'model' && visibleCandidates(row).length"
+          v-if="!row.recommending && row.recommendation?.source !== 'model' && visibleCandidates(row).length"
           class="btn tiny ai-trigger"
           type="button"
           :disabled="batchLoading"
@@ -507,7 +524,7 @@ function back(): void {
       <p v-if="error" class="error-line">{{ error }}</p>
       <div class="foot-actions">
         <button class="btn" type="button" :disabled="generating" @click="back">返回修改</button>
-        <button class="btn primary" type="button" :disabled="!allChosen || generating" @click="generate">
+        <button class="btn primary" type="button" :disabled="!canGenerate || generating" @click="generate">
           {{ generating ? '生成中…' : '生成报告' }}
         </button>
       </div>
