@@ -239,11 +239,12 @@ def _grounded_overview(raw: str, facts: dict, required_keys: list[str] | tuple =
 
 
 def _narrative_prompt(report: dict, unfit: list[dict], risks: dict,
-                      score: float | None, grade: str | None) -> str:
+                      score: float | None, grade: str | None,
+                      kg_evidence: dict | None = None) -> str:
     """把报告里的事实整理成提示词。
 
-    刻意**不带知识图谱链路**：模板条目与图谱条目还没建立映射（PRD Q5），
-    现在硬接只会给出对不上的证据。模型只根据"用户自己填的内容+规则算出的风险值"来写。
+    规则事实必带；如果操作员在生成前勾选了图谱候选路径，则附带受控证据包
+    （kg_evidence），模型只能引用其中内容，不能新增路径/条款/措施。
     """
     # Canonical facts already include categories, score and full source measures.
     # Do not send the same risks again as selected_risks + reasons + facts.
@@ -253,12 +254,274 @@ def _narrative_prompt(report: dict, unfit: list[dict], risks: dict,
         "other_evidence": [{"item_no":item["no"], "original_text":item["other_text"]}
                            for item in unfit if item.get("other_text")],
     }
+    if kg_evidence:
+        data["kg_evidence"] = kg_evidence
     return json.dumps({"system": NARRATIVE_SYSTEM, "data": data}, ensure_ascii=False, separators=(',', ':'))
+
+
+def _rule_analysis_text(unfit: list[dict], risks: dict) -> str:
+    """没有候选路径时的快速规则分析；不调用模型，不等待 90 秒。"""
+    if not unfit:
+        return ""
+    lines = ["### 一、总体判断", "",
+             "本次评估发现若干不符合项，按规则表进行风险分析。", "",
+             "### 二、主要不符合项", ""]
+    for item in unfit:
+        no = str(item.get("no") or "")
+        risk = risks.get(no) or {}
+        category = risk.get("category") or ""
+        measure = risk_rules.CATEGORY_MEASURE.get(category, "")
+        reason = "；".join((item.get("reasons") or [])[:1])
+        text = f"- 项目 {no}：{category}风险。"
+        if reason:
+            text += f"现场描述：{reason[:120]}。"
+        if measure:
+            text += f"规则表处置：{measure}"
+        lines.append(text)
+    lines += ["", "### 三、处置与复验建议", "",
+              "按规则表措施处置，完成后复查相关保护功能并复验。", "",
+              "### 四、综合结论", "",
+              "以上分析依据规则表和现有评估资料，现场处置后应复核并确认风险消除。"]
+    return "\n".join(lines)
+
+
+def _kg_appendix(kg_evidence: dict) -> str:
+    """把操作员勾选的候选路径附在叙述末尾；明确标注未签核。"""
+    lines = ["", "附：故障演化候选证据（操作员勾选，未签核）"]
+    for p in kg_evidence.get("paths", []):
+        clause = p.get("clause") or {}
+        states = p.get("states") or []
+        chain = " → ".join(states) if states else (p.get("path_summary") or "")
+        lines.append(f"- {p.get('system') or ''} / {p.get('component') or ''}")
+        lines.append(f"  演化：{chain}")
+        if p.get("risk"):
+            lines.append(f"  风险：{p['risk']}")
+        if p.get("action"):
+            lines.append(f"  整改：{p['action']}")
+        if p.get("verification"):
+            lines.append(f"  复验：{p['verification']}")
+        basis = " ".join(filter(None, [clause.get("standard_code"), clause.get("clause_no")]))
+        if basis:
+            lines.append(f"  相关要求（待核验）：{basis}")
+    no_candidate = [s for s in kg_evidence.get("selections", []) if s.get("decision") == "no_candidate"]
+    if no_candidate:
+        lines.append("- 其余不符合项未匹配到候选路径，已按规则表处置。")
+    lines.append("以上为工程候选，confidence=0.4，verified=false，需人工审核。")
+    return "\n".join(lines)
+
+
+def _t3_appendix(summaries: list[dict], paths_by_id: dict[str, dict]) -> str:
+    """用 T3 的逐项归纳结果渲染附页；只用已校验的字段。"""
+    lines = ["", "附：故障演化候选证据（操作员勾选，未签核）"]
+    for item in summaries:
+        path = paths_by_id.get((item.get("path_ids") or [""])[0], {})
+        head = " / ".join(filter(None, [path.get("system"), path.get("component")]))
+        lines.append(f"- {item.get('item_no')}　{head}".rstrip())
+        chain = " → ".join(item.get("fault_chain") or [])
+        if chain:
+            lines.append(f"  演化：{chain}")
+        if item.get("risk"):
+            lines.append(f"  风险：{item['risk']}")
+        if item.get("action"):
+            lines.append(f"  整改：{item['action']}")
+        if item.get("verification"):
+            lines.append(f"  复验：{item['verification']}")
+        clause = path.get("clause") or {}
+        basis = " ".join(filter(None, [clause.get("standard_code"), clause.get("clause_no")]))
+        if basis:
+            lines.append(f"  相关要求（待核验）：{basis}")
+    lines.append("以上为工程候选，confidence=0.4，verified=false，需人工审核。")
+    return "\n".join(lines)
+
+
+async def _run_kg_prompt_flow(*, kg_evidence: dict, unfit: list[dict], risks: dict,
+                              score: float | None, grade: str | None,
+                              required_keys: list[str], model_text,
+                              on_analysis_delta=None) -> dict:
+    """执行 T3 逐项归纳 + T4 正文；任一步失败返回 used=False，由调用方回退。"""
+    from app.services import kg_prompt, kg_validation
+
+    paths = kg_evidence.get("paths") or []
+    paths_by_id = {str(p.get("path_id")): p for p in paths}
+    groups: dict[str, list[dict]] = {}
+    queries: dict[str, str] = {}
+    for p in paths:
+        no = str(p.get("item_no") or "")
+        if no:
+            groups.setdefault(no, []).append(p)
+    for sel in kg_evidence.get("selections") or []:
+        if sel.get("item_no") and sel.get("query"):
+            queries[str(sel["item_no"])] = str(sel["query"])
+
+    summaries: list[dict] = []
+    errors: list[dict] = []
+    # T3 改为程序确定性组装：路径已带 states/trigger/barrier/risk/action，
+    # 不再调用模型，节省约 50–60s 首字延迟。
+    for no, item_paths in groups.items():
+        primary = item_paths[0]
+        chain: list[str] = []
+        for p in item_paths:
+            for state in (p.get("states") or []):
+                if str(state) not in chain:
+                    chain.append(str(state))
+            if len(chain) >= 6:
+                break
+        def pick(key: str) -> str:
+            for p in item_paths:
+                value = str(p.get(key) or "").strip()
+                if value:
+                    return value
+            return ""
+        summary = {
+            "item_no": no,
+            "path_ids": [str(p.get("path_id")) for p in item_paths],
+            "fault_chain": chain[:6],
+            "trigger": pick("trigger_condition"),
+            "barrier": pick("barrier_condition"),
+            "risk": pick("risk"),
+            "inspection": pick("inspection"),
+            "action": pick("action"),
+            "verification": pick("verification"),
+            "evidence_note": ("含 %d 条候选路径，候选证据，未签核" % len(item_paths)
+                              if len(item_paths) > 1 else "候选证据，未签核"),
+        }
+        risk = risks.get(no) or {}
+        rule_facts = {
+            "category": risk.get("category", ""),
+            "measure": risk_rules.CATEGORY_MEASURE.get(risk.get("category", ""), ""),
+            "issue": risk.get("issue", ""),
+        }
+        result = kg_validation.validate_t3(
+            summary, item_no=no,
+            allowed_path_ids={str(p.get("path_id")) for p in item_paths},
+            evidence_paths=item_paths, rule_facts=rule_facts,
+        )
+        if not result["valid"]:
+            return {"used": False, "errors": result["errors"]}
+        summaries.append(summary)
+
+    # T4：所有不符合项都要进文本分析；有候选的带证据，无候选的只带规则事实
+    summary_by_no = {str(s.get("item_no") or ""): s for s in summaries}
+    t4_items = []
+    for item in unfit:
+        no = str(item.get("no") or "")
+        risk = risks.get(no) or {}
+        summary = summary_by_no.get(no) or {}
+        t4_items.append({
+            "item_no": no,
+            "category": risk.get("category", ""),
+            "measure": risk_rules.CATEGORY_MEASURE.get(risk.get("category", ""), ""),
+            "fault_chain": summary.get("fault_chain") or [],
+            "risk": summary.get("risk") or "",
+            "action": summary.get("action") or "",
+            "reasons": (item.get("reasons") or [])[:2],
+            "other_text": item.get("other_text") or "",
+        })
+    prompt4 = kg_prompt.build_t4_overview_prompt(
+        overview_facts=_overview_facts(unfit, risks, score, grade),
+        required_keys=list(required_keys), items=t4_items,
+    )
+    try:
+        if on_analysis_delta:
+            chunks: list[str] = []
+            async for chunk in llm_service.generate_stream(prompt4):
+                if not chunk:
+                    continue
+                chunks.append(chunk)
+                on_analysis_delta(chunk)
+            raw = "".join(chunks)
+        else:
+            raw = await model_text(prompt4)
+        analysis = re.sub(r"^\s*#+\s*文本分析报告\s*\n+", "", str(raw or "").strip())
+        result = kg_validation.validate_analysis_text(
+            analysis,
+            item_nos=[str(item.get("item_no") or "") for item in t4_items],
+            evidence_paths=list(paths_by_id.values()),
+            rule_facts={
+                "categories": [r.get("category") for r in risks.values()],
+                "overview": _overview_facts(unfit, risks, score, grade),
+            },
+        )
+        if result["valid"]:
+            return {
+                "used": True,
+                "analysis": analysis,
+                "summaries": summaries,
+                "appendix": _t3_appendix(summaries, paths_by_id),
+                "validation": {"passed": True, "errors": []},
+                "prompt_version": kg_prompt.PROMPT_VERSION,
+            }
+        errors.extend(result["errors"])
+    except Exception as exc:
+        errors.append({"code": "T4_CALL_FAILED", "item_no": "",
+                       "detail": f"T4 调用/解析失败：{type(exc).__name__}: {str(exc)[:120]}"})
+    # T3 已成功时保留其附页，正文回退规则摘要，不再重复调用模型
+    return {"used": False,
+            "partial": bool(summaries),
+            "summaries": summaries,
+            "appendix": _t3_appendix(summaries, paths_by_id) if summaries else "",
+            "prompt_version": kg_prompt.PROMPT_VERSION,
+            "errors": errors or [{"code": "T4_FAILED", "item_no": "", "detail": "T4 校验失败"}]}
+
+
+def _compact(value: str, limit: int = 240) -> str:
+    text = str(value or "").strip()
+    return text if len(text) <= limit else text[:limit] + "…"
+
+
+def _build_kg_evidence(selections: list[dict] | None) -> dict | None:
+    """把生成前人工勾选的路径组装成受控证据包；图谱不可用则静默降级。"""
+    if not selections:
+        return None
+    try:
+        from app.services.kg_v2 import kg_v2
+        selected = [s for s in selections if isinstance(s, dict)
+                    and s.get("decision") == "selected" and s.get("path_id")]
+        path_ids = list(dict.fromkeys(str(s["path_id"]) for s in selected))
+        raw = kg_v2.evidence(path_ids) if path_ids else {"paths": []}
+        paths = []
+        for p in raw.get("paths", []):
+            paths.append({
+                "path_id": p.get("path_id"),
+                "path_summary": _compact(p.get("path_summary"), 300),
+                "system": p.get("system"), "component": p.get("component"),
+                "states": p.get("states", [])[:8],
+                "mechanism_steps": p.get("mechanism_steps", [])[:4],
+                "trigger_condition": _compact(p.get("trigger_condition"), 180),
+                "barrier_condition": _compact(p.get("barrier_condition"), 180),
+                "risk": _compact(p.get("risk"), 100),
+                "inspection": _compact(p.get("inspection"), 180),
+                "acceptance_basis": _compact(p.get("acceptance_basis"), 160),
+                "action": _compact(p.get("action"), 220),
+                "verification": _compact(p.get("verification"), 160),
+                "clause": p.get("clause", {}),
+                "confidence": p.get("confidence", 0.4),
+                "verified": p.get("verified", "false"),
+                "evidence_class": p.get("evidence_class", ""),
+            })
+        selection_by_path = {str(s.get("path_id")): s for s in selected}
+        for path in paths:
+            sel = selection_by_path.get(str(path.get("path_id")))
+            if sel:
+                path["item_no"] = sel.get("item_no")
+        return {
+            "note": "以下为操作员在生成前勾选的候选路径；只能引用这些内容，不得新增路径、条款或措施。",
+            "selections": [
+                {"item_no": s.get("item_no"), "decision": s.get("decision"),
+                 "path_id": s.get("path_id"), "query": _compact(s.get("query"), 200)}
+                for s in selections
+            ],
+            "paths": paths,
+        }
+    except Exception:
+        return None
 
 
 @traced_generation
 async def generate(report_id: int | str, *, use_llm: bool = False,
-                   actor: dict | None = None) -> dict:
+                   actor: dict | None = None,
+                   kg_selections: list[dict] | None = None,
+                   on_analysis_delta=None) -> dict:
     """Lookup selected expert risks, match free text, aggregate, then write a snapshot.
 
     Unconfirmed reference/score rules yield a draft preview, never invented formal values.
@@ -286,13 +549,15 @@ async def generate(report_id: int | str, *, use_llm: bool = False,
         if any(i.get("result") not in ("fit", "unfit", "na") for i in items):
             raise ValueError("还有评价项目未填写，无法生成报告")
 
-    deadline = started + min(float(settings.rkllm_timeout), 120)
+    model_budget = 240.0 if (use_llm and settings.kg_prompt_enabled and kg_selections) else 120.0
+    deadline = started + min(float(settings.rkllm_timeout), model_budget)
 
     async def model_text(prompt: str) -> str:
         remaining = deadline - monotonic()
         if remaining <= 0:
             raise TimeoutError("模型解析已超时")
-        return await asyncio.wait_for(llm_service.generate(prompt), timeout=min(90, remaining))
+        # T3/T4 在小模型上可能超过 90s；按剩余预算放宽到 180s
+        return await asyncio.wait_for(llm_service.generate(prompt), timeout=min(180, remaining))
 
     unfit = [i for i in items if i["result"] == "unfit"]
     risks, other_matches = {}, []
@@ -342,17 +607,46 @@ async def generate(report_id: int | str, *, use_llm: bool = False,
         grade = risk_rules.grade_of(score) if score is not None else None
         required_keys = _priority_fact_keys(unfit, risks)
         narrative = _narrative(unfit, risks, score, grade)
+    kg_evidence = _build_kg_evidence(kg_selections)
+    has_kg_paths = bool(kg_evidence and kg_evidence.get("paths"))
+    analysis_text = ""
+    kg_appendix_text = ""
+    kg_prompt_result: dict = {"used": False, "errors": []}
+    # 全部「无合适候选」/没有勾选路径：不调用模型，直接规则分析，避免白等几十秒
+    rule_only = bool(use_llm and not has_kg_paths)
+    if rule_only:
+        analysis_text = _rule_analysis_text(unfit, risks)
+    if settings.kg_prompt_enabled and has_kg_paths and use_llm:
+        try:
+            with stage('kg_prompt_flow'):
+                kg_prompt_result = await _run_kg_prompt_flow(
+                    kg_evidence=kg_evidence, unfit=unfit, risks=risks,
+                    score=score, grade=grade, required_keys=required_keys,
+                    model_text=model_text,
+                    on_analysis_delta=on_analysis_delta,
+                )
+        except Exception as exc:
+            kg_prompt_result = {"used": False,
+                                "errors": [{"code": "KG_PROMPT_FLOW_FAILED",
+                                            "item_no": "", "detail": str(exc)[:120]}]}
     llm_used, llm_error, llm_error_code = False, "", ""
-    if use_llm:
+    if kg_prompt_result.get("used"):
+        analysis_text = str(kg_prompt_result.get("analysis") or "").strip()
+        llm_used = True
+    elif kg_prompt_result.get("partial") and kg_prompt_result.get("appendix"):
+        # T3 已成功、T4 失败：正文用规则摘要，附页保留 T3；不再重复调用模型
+        llm_error = "T4 正文校验失败，已采用规则概况 + T3 附页"
+        llm_error_code = "kg_t4_failed"
+    elif use_llm and not rule_only:
         try:
             with stage('prompt_build', purpose='overview'):
-                prompt = _narrative_prompt(report, unfit, risks, score, grade)
+                prompt = _narrative_prompt(report, unfit, risks, score, grade, kg_evidence)
             with stage('overview'):
                 text = (await model_text(prompt) or "").strip()
             if text:
-                with stage('model_result_validate', purpose='overview'):
-                    narrative = _grounded_overview(text, _overview_facts(unfit, risks, score, grade), required_keys)
-                record_model_validation('overview')
+                with stage('model_result_validate', purpose='analysis'):
+                    analysis_text = _grounded_overview(text, _overview_facts(unfit, risks, score, grade), required_keys)
+                record_model_validation('analysis')
                 llm_used = True
             else:
                 llm_error = "模型返回空内容，已采用原始数据摘要"
@@ -364,14 +658,40 @@ async def generate(report_id: int | str, *, use_llm: bool = False,
             # Preserve controlled model errors, never print arbitrary response text/URLs.
             llm_error = (str(e) if getattr(e, 'code', '') else '模型概况调用超时，已采用规则摘要' if is_timeout
                          else '模型概况未通过校验或未完成，已采用规则摘要')
+    # 模型 T4/旧链路失败时，不能让报告只显示“模型生成失败”而没有正文：
+    # 用固定四段规则分析兜底，报告仍可完整阅读。
+    if not analysis_text and unfit:
+        analysis_text = _rule_analysis_text(unfit, risks)
+        if not llm_error_code:
+            llm_error_code = "kg_t4_failed"
+        if not llm_error:
+            llm_error = "模型未成功生成，已采用规则表固定结构分析"
+    if kg_prompt_result.get("appendix") and (
+            kg_prompt_result.get("used") or kg_prompt_result.get("partial")):
+        kg_appendix_text = kg_prompt_result["appendix"]
+    elif kg_evidence and kg_evidence.get("paths"):
+        kg_appendix_text = _kg_appendix(kg_evidence)
     provenance = {
         "generation_id": uuid4().hex,
         "llm_used": llm_used, "llm_model": "Qwen3.5-4B" if llm_used or other_matches else "",
         "llm_status": 'success' if llm_used else ('degraded' if use_llm else 'not_requested'),
         "llm_error_code": llm_error_code,
-        "llm_error": llm_error, "kg_available": False,
+        "llm_error": llm_error, "kg_available": bool(kg_evidence and kg_evidence.get("paths")),
         "overview_policy": OVERVIEW_POLICY, "overview_required_keys": required_keys,
-        "kg_note": "模板条目与图谱条目的映射未定，暂不引用图谱链路",
+        "kg_note": ("已引用操作员勾选的候选路径" if kg_evidence else "本次生成未勾选图谱候选路径"),
+        "kg_paths": [p["path_id"] for p in (kg_evidence or {}).get("paths", [])],
+        "kg_selection_count": len(kg_selections or []),
+        "kg_prompt_enabled": bool(settings.kg_prompt_enabled),
+        "kg_prompt_used": bool(kg_prompt_result.get("used")),
+        "kg_prompt_partial": bool(kg_prompt_result.get("partial")),
+        "kg_prompt_version": (kg_prompt_result.get("prompt_version") or ""),
+        "kg_prompt_errors": (kg_prompt_result.get("errors") or [])[:5],
+        "kg_prompt_validation": kg_prompt_result.get("validation") or {},
+        # 大模型负责报告文末的文本分析；评估概况 narrative 保持规则事实，不混入模型文字
+        "analysis_text": analysis_text,
+        "analysis_status": ("success" if analysis_text and llm_used else
+                            ("rule_only" if analysis_text else "not_available")),
+        "kg_appendix_text": kg_appendix_text,
         "risk_rule": "expert_material", "risk_catalog_version": material["version"],
         "catalog_version": report["catalog_version"], "unfit_count": len(unfit),
         "other_matches": other_matches, "score_basis": basis,

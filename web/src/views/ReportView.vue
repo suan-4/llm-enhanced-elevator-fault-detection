@@ -1,18 +1,27 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { beginInteraction } from '@/utils/performance'
 import InfoTable from '@/components/report/InfoTable.vue'
 import ItemTable from '@/components/report/ItemTable.vue'
 import AppDialog from '@/components/AppDialog.vue'
 import ReportCenter from '@/components/report/ReportCenter.vue'
 import { defaultProfileName } from '@/domain/baseInfo'
+import { otherTextList } from '@/domain/validation'
 import { useReportStore } from '@/stores/report'
+import { useGenerationStore } from '@/stores/generation'
 import { useShell } from '@/stores/shell'
 import { useToast } from '@/utils/toast'
+import { systemConfig } from '@/api/system'
+import ReportInlineViewer from '@/components/report/ReportInlineViewer.vue'
+import { fetchKgCandidates, fetchKgRecommendation, fetchKgRecommendationBatch, selectKgPath,
+  type KgCandidatesResponse, type KgRecommendation } from '@/api/kg'
+import type { KgSelection } from '@/api/reports'
 
 const store = useReportStore()
+const generationStore = useGenerationStore()
 const route = useRoute()
+const router = useRouter()
 const shell = useShell()
 const { show } = useToast()
 
@@ -49,12 +58,18 @@ const selectedProfileName = computed(
     store.baseInfoProfiles.find((item) => item.id === selectedProfileId.value)?.name || '',
 )
 const generating = ref(false)
+const streamText = ref('')
+const manualKgSelection = ref(true)
 const confirmNew = ref(false)
 const newBusy = ref(false)
+const regenerateOpen = ref(false)
 const itemTable = ref<InstanceType<typeof ItemTable> | null>(null)
 /* 已归档 / 已作废的报告统一在报告查看页阅读，不再复用录入页置灰；
    录入页只剩「导出状态待确认」这一种临时只读。 */
 const locked = computed(() => store.exportUncertain)
+const regenerateNeeded = computed(
+  () => store.hasGeneratedReport || store.status === 'generated',
+)
 
 /* 侧栏是「项目进度 + 三个区域」：基础信息 / 检测项目填写 / 报告管理。
    前两个是滚动锚点，第三个就地切换到报告管理/查看区域。
@@ -67,11 +82,17 @@ function mainEl(): HTMLElement | null {
 }
 
 /** 滚到某个锚点（让开 52px 吸顶栏） */
+let navScrolling = false
+let navScrollTimer: number | undefined
+
 function scrollToSection(id: string): void {
   const main = mainEl()
   const el = document.getElementById(id)
   if (!main || !el) return
   const top = main.scrollTop + el.getBoundingClientRect().top - main.getBoundingClientRect().top - 64
+  navScrolling = true
+  if (navScrollTimer !== undefined) window.clearTimeout(navScrollTimer)
+  navScrollTimer = window.setTimeout(() => { navScrolling = false }, 700)
   main.scrollTo({ top: Math.max(0, top), behavior: 'smooth' })
 }
 
@@ -146,6 +167,7 @@ function consumeShellRequest(): void {
   if (!want) return
   shell.requested = ''
   if (want === 'reports') void showReportsSection()
+  else if (want === 'confirm') void router.push('/kg-confirm')
   else void showAnchor(want)
 }
 
@@ -153,6 +175,7 @@ watch(() => shell.requested, consumeShellRequest)
 
 /* 录入视图内按滚动位置高亮侧栏锚点；报告区域固定高亮第三项 */
 function updateActiveByScroll(): void {
+  if (navScrolling) return
   if (view.value === 'reports') {
     shell.active = 'reports'
     return
@@ -169,23 +192,42 @@ watch(view, (v) => {
   else void nextTick(updateActiveByScroll)
 })
 
+async function loadSelectionMode(): Promise<void> {
+  try {
+    const cfg = await systemConfig()
+    const item = cfg.items.find((row) => row.key === 'manual_kg_selection')
+    manualKgSelection.value = item ? item.value !== false : true
+  } catch {
+    manualKgSelection.value = true
+  }
+}
+
 onMounted(async () => {
+  await loadSelectionMode()
   await store.loadItems()
   store.ensureBaseInfoLoaded()
   refreshSelectedProfile()
   await withAutosavePaused(() => startDraft())
+  const pendingSelections = generationStore.consume()
+  if (pendingSelections) {
+    await nextTick()
+    await runSelections(pendingSelections)
+  }
   mainEl()?.addEventListener('scroll', updateActiveByScroll, { passive: true })
   document.addEventListener('click', onDocumentClick)
+  const requestedAnchor = shell.requested
   consumeShellRequest()
   // 兜底：恢复的现场若仍指向已归档/已作废报告，直接进报告区域查看
   if (['filed', 'void'].includes(store.status) && store.reportId) {
     await enterReports(store.reportId)
     return
   }
+  // 勾选完成生成后带 ?report=id 回到报告区域
+  if (route.query.report) await enterReports(String(route.query.report))
   // 旧地址 /#/reports 会带到 ?section=reports
-  if (route.query.section === 'reports') await enterReports()
+  else if (route.query.section === 'reports') await enterReports()
   await nextTick()
-  updateActiveByScroll()
+  if (!requestedAnchor) updateActiveByScroll()
 })
 
 /** 准备当前评估（没有就新建、有草稿就续录）；失败时页面给重试入口 */
@@ -365,6 +407,141 @@ async function doNewReport(): Promise<void> {
   }
 }
 
+function top3Audit(candidates: KgCandidatesResponse['candidates']) {
+  return candidates.map((c) => ({
+    rank: c.rank, path_id: c.path_id, path_summary: c.path_summary,
+    component: c.component, system: c.system, score: c.score,
+  }))
+}
+
+async function autoSelectKg(unfitItems: { no: string; name: string }[]): Promise<KgSelection[]> {
+  /* 关闭「人工选择」后：每项先取 Top3，再由 AI 从 Top3 中自动判断。
+     前端不再进入 /kg-confirm；仍写 kg_selection 审计。 */
+  const prepared = await Promise.all(unfitItems.map(async (item) => {
+    const state = store.states[item.no]
+    try {
+      const res = await fetchKgCandidates({
+        item_no: item.no,
+        item_name: item.name,
+        reasons: state?.reasons || [],
+        other_text: state ? otherTextList(state).join('\n') : '',
+        top_k: 3,
+      })
+      return { item, res }
+    } catch {
+      return { item, res: null as KgCandidatesResponse | null }
+    }
+  }))
+
+  const recByNo = new Map<string, KgRecommendation>()
+  const withCandidates = prepared.filter((p) => p.res && (p.res.candidates || []).length > 0)
+  for (let i = 0; i < withCandidates.length; i += 3) {
+    const group = withCandidates.slice(i, i + 3)
+    try {
+      const batch = await fetchKgRecommendationBatch(group.map(({ item }) => ({
+        item_no: item.no,
+        item_name: item.name,
+        reasons: store.states[item.no]?.reasons || [],
+        other_text: otherTextList(store.states[item.no]).join('\n'),
+        top_k: 3,
+      })))
+      if (!batch.success) throw new Error(batch.error || '批量推荐失败')
+      for (const row of batch.recommendations) recByNo.set(row.item_no, row.recommendation)
+    } catch {
+      for (const { item } of group) {
+        try {
+          const one = await fetchKgRecommendation({
+            item_no: item.no,
+            item_name: item.name,
+            reasons: store.states[item.no]?.reasons || [],
+            other_text: otherTextList(store.states[item.no]).join('\n'),
+            top_k: 3,
+          })
+          if (one.recommendation) recByNo.set(item.no, one.recommendation)
+        } catch { /* 这一项降级为无候选 */ }
+      }
+    }
+  }
+
+  const selections: KgSelection[] = prepared.map(({ item, res }) => {
+    const rec = recByNo.get(item.no)
+    const selected = rec && !rec.none && rec.path_id ? rec : null
+    return {
+      item_no: item.no,
+      path_id: selected?.path_id || null,
+      decision: selected ? 'selected' : 'no_candidate',
+      rank: selected?.rank ?? null,
+      query: res?.query || '',
+    }
+  })
+
+  // 审计：自动模式同样记录 Top3 和最终选择
+  await Promise.all(selections.map(async (sel) => {
+    const found = prepared.find((p) => p.item.no === sel.item_no)
+    if (!found) return
+    const rec = recByNo.get(sel.item_no)
+    await selectKgPath({
+      report_id: store.reportId,
+      item_no: sel.item_no,
+      item_name: found.item.name,
+      query: sel.query || '',
+      path_id: sel.path_id,
+      decision: sel.decision,
+      rank: sel.rank,
+      top3: top3Audit(found.res?.candidates || []),
+      selection_source: rec?.source === 'rule' ? 'rule' : 'model',
+      model_path_id: rec?.path_id || null,
+      model_reason: rec?.reason || '',
+    }).catch(() => null)
+  }))
+  return selections
+}
+
+async function runSelections(selections: KgSelection[]): Promise<void> {
+  const timing = beginInteraction('report_generate')
+  generating.value = true
+  generationStore.generating = true
+  streamText.value = ''
+  view.value = 'reports'
+  shell.active = 'reports'
+  shell.reportsView = true
+  await nextTick()
+  try {
+    const report = await store.generate(timing, selections, (text) => {
+      streamText.value += text
+    })
+    const hadStreamTokens = streamText.value.trim().length > 0
+    timing.finish('ok')
+    generating.value = false
+    generationStore.generating = false
+    if (!hadStreamTokens) generationStore.requestReplay(report.id)
+    await nextTick()
+    await enterReports(report.id)
+  } catch (err) {
+    timing.finish('error')
+    generating.value = false
+    generationStore.generating = false
+    view.value = 'input'
+    shell.active = 'items'
+    shell.reportsView = false
+    show(err instanceof Error ? err.message : '生成失败')
+  }
+}
+
+function requestGenerate(): void {
+  if (generating.value) return
+  if (regenerateNeeded.value) {
+    regenerateOpen.value = true
+    return
+  }
+  void generate()
+}
+
+function confirmRegenerate(): void {
+  regenerateOpen.value = false
+  void generate()
+}
+
 async function generate(): Promise<void> {
   /* 漏填不再罗列清单：直接滚到第一处并给红色短提示（提示内容不宜过长）。
      jump() 会滚动 + 高亮，字段类还会把光标放进输入框，方便直接补填。 */
@@ -375,19 +552,37 @@ async function generate(): Promise<void> {
     return
   }
   if (generating.value) return
-  const timing = beginInteraction('report_generate')
-  generating.value = true
-  try {
-    const report = await store.generate(timing)
-    timing.finish('ok')
-    // 生成完成直接进入报告查看（右侧区域就地切换，不跳路由）
-    await enterReports(report.id)
-  } catch (err) {
-    timing.finish('error')
-    show(err instanceof Error ? err.message : '生成失败')
-  } finally {
-    generating.value = false
+  /* 有不符合项：人工模式跳确认页；自动模式让 AI 从 Top3 中判断后直接生成 */
+  const unfitItems = store.items.filter((it) => store.states[it.no]?.result === '不符合')
+  if (unfitItems.length) {
+    if (manualKgSelection.value) {
+      try {
+        await store.save()
+        await router.push({ name: 'kg-confirm' })
+      } catch (err) {
+        show(err instanceof Error ? err.message : '保存草稿失败')
+      }
+      return
+    }
+    generating.value = true
+    generationStore.generating = true
+    streamText.value = 'AI 正在从 Top3 候选中判断故障路径…'
+    view.value = 'reports'
+    shell.active = 'reports'
+    shell.reportsView = true
+    try {
+      await store.save()
+      const selections = await autoSelectKg(unfitItems)
+      await runSelections(selections)
+    } catch (err) {
+      generating.value = false
+      generationStore.generating = false
+      view.value = 'input'
+      show(err instanceof Error ? err.message : '生成失败')
+    }
+    return
   }
+  await runSelections([])
 }
 
 async function jump(key: string, kind: 'field' | 'item'): Promise<void> {
@@ -519,7 +714,13 @@ async function jump(key: string, kind: 'field' | 'item'): Promise<void> {
 
       <!-- 报告管理 + 查看：在右侧区域内就地切换，不跳路由 -->
       <section v-show="view === 'reports'">
-        <ReportCenter ref="reportCenter" @continue-edit="editDraft" />
+        <ReportInlineViewer
+          v-if="generating && store.reportId"
+          :report-id="store.reportId"
+          :generating="true"
+          :stream-text="streamText"
+        />
+        <ReportCenter v-else ref="reportCenter" @continue-edit="editDraft" />
       </section>
 
       <div class="actionbar">
@@ -554,9 +755,9 @@ async function jump(key: string, kind: 'field' | 'item'): Promise<void> {
               class="btn btn-lg btn-primary"
               type="button"
               :disabled="generating || locked || view === 'reports'"
-              @click="generate"
+              @click="requestGenerate"
             >
-              {{ generating ? '生成中…' : '校验并生成报告' }}
+              {{ generating ? '生成中…' : (regenerateNeeded ? '重新检测并生成报告' : '校验并生成报告') }}
             </button>
           </div>
         </div>
@@ -595,6 +796,17 @@ async function jump(key: string, kind: 'field' | 'item'): Promise<void> {
         </p>
       </AppDialog>
       <AppDialog
+        :open="regenerateOpen"
+        title="重新检测并生成报告"
+        confirm-text="重新生成"
+        danger
+        @close="regenerateOpen = false"
+        @confirm="confirmRegenerate"
+      >
+        <p class="dialog-p">当前报告已经生成，重新检测并生成会覆盖现有报告内容。</p>
+        <p class="dialog-p">确定继续吗？</p>
+      </AppDialog>
+      <AppDialog
         :open="confirmNew"
         title="新建评估"
         confirm-text="新建"
@@ -613,6 +825,128 @@ async function jump(key: string, kind: 'field' | 'item'): Promise<void> {
 </template>
 
 <style scoped>
+.gen-view {
+  height: calc(100vh - 52px);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  padding: 10px 14px 12px;
+  overflow: hidden;
+}
+.gen-top {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 8px 12px;
+  margin-bottom: 10px;
+  background: var(--c-panel);
+  border: 1px solid var(--c-line);
+  border-radius: var(--radius);
+  color: var(--c-primary);
+}
+.gen-top b { font-size: 16px; }
+.gen-top span { font-size: 12px; color: var(--c-muted); }
+.gen-main {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  gap: 12px;
+}
+.gen-paper {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  border: 1px solid var(--c-line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+.gen-placeholder { color: var(--c-muted); font-size: 14px; }
+.gen-drawer {
+  flex: 0 0 380px;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--c-panel);
+  border: 1px solid var(--c-line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.gen-drawer-head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--c-line);
+  color: var(--c-secondary);
+  font-size: 13px;
+}
+.gen-drawer-head span { font-size: 11px; color: var(--c-muted); }
+.gen-drawer-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 10px 14px 20px;
+  scroll-behavior: smooth;
+}
+.gen-drawer-body h3 {
+  margin: 12px 0 6px;
+  color: var(--c-secondary);
+  font-size: 12.5px;
+}
+.gen-analysis {
+  margin-top: 16px;
+  padding-top: 10px;
+  border-top: 1px solid var(--c-line);
+}
+.gen-analysis .md { font-size: 13px; line-height: 1.75; color: #223; }
+.gen-analysis .md :deep(p) { margin: 0 0 8px; }
+.gen-analysis .md :deep(h1),
+.gen-analysis .md :deep(h2),
+.gen-analysis .md :deep(h3) { margin: 8px 0 6px; color: #1b5e7a; }
+.gen-analysis .md :deep(ul),
+.gen-analysis .md :deep(ol) { margin: 4px 0 8px; padding-left: 20px; }
+@media (max-width: 760px) {
+  .gen-drawer { flex-basis: 46%; }
+}
+.inline-stream {
+  margin: 18px 0 110px;
+  padding: 14px 16px;
+  border: 1px solid #cfe3ea;
+  border-radius: 10px;
+  background: #f7fcfd;
+  box-shadow: 0 2px 10px rgba(27, 94, 122, 0.08);
+}
+.inline-stream-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-bottom: 8px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid #dceef3;
+  color: #1b5e7a;
+  font-size: 13px;
+}
+.inline-stream-head span { color: #6b8b98; font-size: 11.5px; }
+.inline-stream-body {
+  max-height: 320px;
+  overflow-y: auto;
+  line-height: 1.8;
+  font-size: 13.5px;
+  color: #223;
+}
+.inline-stream-body.md :deep(h1),
+.inline-stream-body.md :deep(h2),
+.inline-stream-body.md :deep(h3) { margin: 8px 0 6px; color: #1b5e7a; }
+.inline-stream-body.md :deep(p) { margin: 0 0 8px; }
+.inline-stream-body.md :deep(ul),
+.inline-stream-body.md :deep(ol) { margin: 4px 0 8px; padding-left: 22px; }
 .section-bar {
   display: flex;
   align-items: center;

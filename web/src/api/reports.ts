@@ -1,5 +1,5 @@
 /* 报告作业接口。id 一律当字符串（雪花 ID 超出 JS 安全整数）。 */
-import { request } from '@/utils/http'
+import { getToken, request } from '@/utils/http'
 import type { Grade, RiskCategory } from '@/domain/riskScore'
 import type { SelectedRisk } from '@/domain/riskAssign'
 
@@ -94,11 +94,76 @@ export function saveReport(
   return request(`/reports/${id}`, { method: 'PUT', body })
 }
 
+export interface KgSelection {
+  item_no: string
+  path_id: string | null
+  decision: 'selected' | 'no_candidate'
+  rank?: number | null
+  query?: string
+}
+
 export function generateReport(
   id: string,
   useLlm = false,
+  kgSelections: KgSelection[] = [],
 ): Promise<{ success: boolean; report: ReportSummary }> {
-  return request(`/reports/${id}/generate`, { method: 'POST', body: { use_llm: useLlm }, timeout: 180_000 })
+  return request(`/reports/${id}/generate`, {
+    method: 'POST',
+    body: { use_llm: useLlm, kg_selections: kgSelections },
+    timeout: 180_000,
+  })
+}
+
+/** 流式生成：只接收最终正文文本片段，report 事件返回完整报告。 */
+export async function generateReportStream(
+  id: string,
+  useLlm: boolean,
+  kgSelections: KgSelection[],
+  onText: (text: string) => void,
+): Promise<{ success: boolean; report: ReportSummary }> {
+  const base = import.meta.env.VITE_API_BASE || '/api'
+  const token = getToken()
+  const res = await fetch(`${base}/reports/${id}/generate/stream`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ use_llm: useLlm, kg_selections: kgSelections }),
+  })
+  if (!res.ok || !res.body) {
+    throw new Error(`生成请求失败（HTTP ${res.status}）`)
+  }
+  const reader = res.body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+  let report: ReportSummary | null = null
+  let streamError = ''
+  while (true) {
+    const { value, done } = await reader.read()
+    if (done) break
+    buffer += decoder.decode(value, { stream: true })
+    const blocks = buffer.split('\n\n')
+    buffer = blocks.pop() || ''
+    for (const block of blocks) {
+      const line = block.split('\n').find((l) => l.startsWith('data: '))
+      if (!line) continue
+      const payload = line.slice(6).trim()
+      if (!payload || payload === '[DONE]') continue
+      let event: { type?: string; text?: string; report?: ReportSummary; message?: string }
+      try {
+        event = JSON.parse(payload)
+      } catch {
+        continue
+      }
+      if (event.type === 'text' && event.text) onText(event.text)
+      else if (event.type === 'report' && event.report) report = event.report
+      else if (event.type === 'error') streamError = event.message || '生成失败'
+    }
+  }
+  if (streamError) throw new Error(streamError)
+  if (!report) throw new Error('生成结束但没有收到报告')
+  return { success: true, report }
 }
 
 export function listReports(

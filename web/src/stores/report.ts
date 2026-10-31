@@ -9,6 +9,7 @@ import {
   collectMissing,
   countItems,
   createItemState,
+  otherTextList,
   type ItemResult,
   type ItemState,
 } from '@/domain/validation'
@@ -46,6 +47,8 @@ export interface GeneratedInfo {
   score: number | null
   grade: Grade | null
   narrative: string
+  /** 大模型生成的报告文末「文本分析报告」；评估概况不混入 */
+  analysis_text: string
   /** 模型是否参与概况；带新策略标识的可信规则摘要也可打印。 */
   llm_used: boolean | null
   overview_policy: string
@@ -150,6 +153,7 @@ export const useReportStore = defineStore('report', () => {
   const version = ref(1)
   const status = ref('')
   const generated = ref<GeneratedInfo | null>(null)
+  const hasGeneratedReport = ref(false)
   const uncertainExports = reactive<Record<string, boolean>>({})
   const exportUncertain = computed(() => !!reportId.value && !!uncertainExports[reportId.value])
   function markExportUncertain(id: string, uncertain: boolean): void {
@@ -350,9 +354,10 @@ export const useReportStore = defineStore('report', () => {
         no: item.no,
         result: RESULT_TO_CODE[state.result] ?? '',
         reasons: state.result === '不符合' && (!state.other || state.legacyCombined) ? state.reasons.slice() : [],
-        other_text: state.result === '不符合' && state.other ? state.otherText.trim() : '',
+        other_text: state.result === '不符合' && state.other
+          ? otherTextList(state).map((text) => text.trim()).filter(Boolean).join('\n') : '',
         editing: { reasons: state.reasons.slice(), other: state.other,
-          other_text: state.otherText, legacy_combined: !!state.legacyCombined },
+          other_text: otherTextList(state).join('\n'), legacy_combined: !!state.legacyCombined },
       }
     })
   }
@@ -377,22 +382,30 @@ export const useReportStore = defineStore('report', () => {
       const saved = draft.items.find((i) => i.no === item.no)
       const state = createItemState()
       if (saved) {
-        state.result = CODE_TO_RESULT[saved.result] ?? ''
-        state.reasons = saved.reasons ?? []
-        state.other = !!saved.other_text
-        state.otherText = saved.other_text ?? ''
-        state.legacyCombined = !saved.editing && !!saved.other_text && !!saved.reasons?.length
+        /* 旧草稿里 result 可能是空串（历史版本没有默认「符合」）。
+           现在统一补成「符合」：现场默认全项符合，只改例外项；
+           否则退出重进后会出现一部分条目未选、计数为「未填」。 */
+        state.result = CODE_TO_RESULT[saved.result] ?? '符合'
+        const currentOpts = new Set(item.opts || [])
+        const keepCurrent = (values: string[]) => values.filter((value) => currentOpts.has(value))
+        state.reasons = keepCurrent(saved.reasons ?? [])
+        const savedOther = saved.editing ? (saved.editing.other_text ?? '') : (saved.other_text ?? '')
+        state.other = saved.editing ? saved.editing.other : !!saved.other_text
+        state.otherText = savedOther
+        state.otherTexts = savedOther ? savedOther.split('\n') : []
+        state.legacyCombined = !saved.editing && !!saved.other_text && state.reasons.length > 0
         if (saved.editing) {
-          state.reasons = saved.editing.reasons.slice()
-          state.other = saved.editing.other
-          state.otherText = saved.editing.other_text
-          state.legacyCombined = !!saved.editing.legacy_combined
+          state.reasons = keepCurrent(saved.editing.reasons || [])
+          state.legacyCombined = !!saved.editing.legacy_combined && state.reasons.length > 0
         }
       }
       states[item.no] = state
     }
     version.value = draft.version
     status.value = draft.status
+    if (draft.status === 'generated' || draft.status === 'filed') {
+      hasGeneratedReport.value = true
+    }
     ready.value = wasReady
   }
 
@@ -418,6 +431,7 @@ export const useReportStore = defineStore('report', () => {
     version.value = created.report.version
     status.value = created.report.status
     generated.value = null
+    hasGeneratedReport.value = false
     saveState.value = 'idle'
     savedAt.value = ''
     // 新建评估带入本机保存的常用基础信息（没有再回退默认值）
@@ -469,6 +483,7 @@ export const useReportStore = defineStore('report', () => {
 
   /** 保存当前全部状态（草稿保存的就是全部） */
   async function save(): Promise<void> {
+    if (generationInFlight) return
     if (status.value === 'filed' || status.value === 'void' || exportUncertain.value) return
     // Autosave, manual save and generation share one ordered stream of writes.
     while (saveInFlight) await saveInFlight
@@ -503,8 +518,11 @@ export const useReportStore = defineStore('report', () => {
     }
   }
 
+  let generationInFlight = false
+
   /** 改动后防抖保存：既保证不丢，又不至于每敲一个字写一次盘 */
   function scheduleSave(delay = 800): void {
+    if (generationInFlight) return
     if (!ready.value || !reportId.value) return
     if (status.value === 'filed' || status.value === 'void' || exportUncertain.value) return
     generated.value = null
@@ -515,7 +533,11 @@ export const useReportStore = defineStore('report', () => {
   }
 
   /** 生成报告：编号、风险评定值、得分等级都由服务端给 */
-  async function generate(timing?: Interaction): Promise<ReportSummary> {
+  async function generate(
+    timing?: Interaction,
+    kgSelections: import('@/api/reports').KgSelection[] = [],
+    onText?: (text: string) => void,
+  ): Promise<ReportSummary> {
     if (!reportId.value) throw new Error('还没有正在编辑的报告')
     /* 评估日期不填时自动取系统当天日期 */
     if (!form.value.assessDate.trim() || form.value.assessDate === '/') {
@@ -524,12 +546,23 @@ export const useReportStore = defineStore('report', () => {
     }
     if (timing) await timing.measure('save', save)
     else await save()
+    window.clearTimeout(saveTimer)
+    saveTimer = undefined
     const requestedId = reportId.value
     const inputSnapshot = JSON.stringify({ form: form.value, items: serializeItems() })
-    // use_llm=true：模型可用就用模型写概况；不可用后端会自动降级，不影响出报告
-    const res = timing
-      ? await timing.measure('generate_http', () => flowApi.generateReport(reportId.value!, true))
-      : await flowApi.generateReport(reportId.value, true)
+    // 生成期间禁止自动保存插队，避免客户端自己的请求把版本号撞旧。
+    generationInFlight = true
+    let res
+    try {
+      // use_llm=true：模型可用就用模型写概况；不可用后端会自动降级，不影响出报告
+      res = onText
+        ? await flowApi.generateReportStream(reportId.value, true, kgSelections, onText)
+        : timing
+          ? await timing.measure('generate_http', () => flowApi.generateReport(reportId.value!, true, kgSelections))
+          : await flowApi.generateReport(reportId.value, true, kgSelections)
+    } finally {
+      generationInFlight = false
+    }
     const report = res.report
     if (reportId.value !== requestedId) throw new Error('当前报告已切换，没有覆盖新报告')
     if (inputSnapshot !== JSON.stringify({ form: form.value, items: serializeItems() })) {
@@ -538,12 +571,14 @@ export const useReportStore = defineStore('report', () => {
     }
     version.value = report.version
     status.value = report.status
+    hasGeneratedReport.value = true
     generated.value = {
       result_digest: String(report.provenance?.result_digest || ''),
       report_no: report.report_no,
       score: report.score,
       grade: report.grade,
       narrative: report.narrative,
+      analysis_text: String(report.provenance?.analysis_text || ''),
       llm_used: typeof report.provenance?.llm_used === 'boolean' ? report.provenance.llm_used : null,
       llm_status: typeof report.provenance?.llm_status === 'string' ? report.provenance.llm_status : '',
       llm_error_code: typeof report.provenance?.llm_error_code === 'string' ? report.provenance.llm_error_code : '',
@@ -581,6 +616,7 @@ export const useReportStore = defineStore('report', () => {
             score: report.score,
             grade: report.grade,
             narrative: report.narrative,
+            analysis_text: String(report.provenance?.analysis_text || ''),
             llm_used: typeof report.provenance?.llm_used === 'boolean' ? report.provenance.llm_used : null,
             llm_status: typeof report.provenance?.llm_status === 'string' ? report.provenance.llm_status : '',
             llm_error_code: typeof report.provenance?.llm_error_code === 'string' ? report.provenance.llm_error_code : '',
@@ -671,6 +707,7 @@ export const useReportStore = defineStore('report', () => {
     version,
     status,
     generated,
+    hasGeneratedReport,
     exportUncertain,
     markExportUncertain,
     saveState,

@@ -56,6 +56,59 @@ def page_break(paragraph):
         props.appendChild(paragraph.ownerDocument.createElement("w:pageBreakBefore"))
 
 
+def _append_paragraph(document, body, text_value="", *, bold=False, size=24,
+                     page_break=False, color=None):
+    paragraph = document.createElement("w:p")
+    if page_break:
+        run = document.createElement("w:r")
+        br = document.createElement("w:br")
+        br.setAttribute("w:type", "page")
+        run.appendChild(br)
+        paragraph.appendChild(run)
+    run = document.createElement("w:r")
+    props = document.createElement("w:rPr")
+    if bold:
+        props.appendChild(document.createElement("w:b"))
+    if color:
+        color_node = document.createElement("w:color")
+        color_node.setAttribute("w:val", color)
+        props.appendChild(color_node)
+    sz = document.createElement("w:sz")
+    sz.setAttribute("w:val", str(size))
+    props.appendChild(sz)
+    run.appendChild(props)
+    node = document.createElement("w:t")
+    node.setAttribute("xml:space", "preserve")
+    node.appendChild(document.createTextNode(str(text_value)))
+    run.appendChild(node)
+    paragraph.appendChild(run)
+    sections = children(body, "w:sectPr")
+    if sections:
+        body.insertBefore(paragraph, sections[0])
+    else:
+        body.appendChild(paragraph)
+
+
+def _append_analysis(document, body, analysis_text):
+    """在 Word 模板末尾追加「文本分析报告」，不改模板原有页面。"""
+    _append_paragraph(document, body, "文本分析报告", bold=True, size=32,
+                      page_break=True, color="1B5E7A")
+    _append_paragraph(document, body, "以下内容由大模型基于本次评估事实与人工勾选的候选路径生成，未签核，供复核。",
+                      size=18)
+    for line in str(analysis_text).split("\n"):
+        # Word 不渲染 Markdown；标题保留层级样式，正文去掉标记
+        is_heading = bool(re.match(r"^\s*#{1,6}\s+", line))
+        clean = re.sub(r"^\s*#{1,6}\s*", "", line)
+        clean = re.sub(r"\*\*(.+?)\*\*", r"\1", clean)
+        clean = re.sub(r"(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)", r"\1", clean)
+        clean = re.sub(r"`(.+?)`", r"\1", clean)
+        clean = re.sub(r"^\s*[-*+]\s+", "· ", clean)
+        if is_heading:
+            _append_paragraph(document, body, clean, bold=True, size=24, color="1B5E7A")
+        else:
+            _append_paragraph(document, body, clean, size=22)
+
+
 def build_docx(report):
     try:
         original = TEMPLATE.read_bytes()
@@ -115,7 +168,7 @@ def build_docx(report):
         risks = report["risks"]
         counts = {c: sum(r.get("category") == c for r in risks.values()) for c in ("Ⅰ类", "Ⅱ类")}
         overview = (f"1、存在Ⅰ类风险 {counts['Ⅰ类']} 项，Ⅱ类风险 {counts['Ⅱ类']} 项。\n"
-                    f"2、综合安全状况得分 {report['score']}。\n{report['narrative']}")
+                    f"2、综合安全状况得分 {report['score']}。")
         replace_text(children(header[13], "w:tc")[1], overview)
         replace_text(children(header[14], "w:tc")[1], f"综合安全状况等级：{report['grade']}")
 
@@ -268,6 +321,11 @@ def build_docx(report):
                         else:
                             paragraph.appendChild(piece)
                     changed[name] = footer.toxml(encoding="UTF-8")
+        analysis_text = str((report.get("provenance") or {}).get("analysis_text") or "").strip()
+        if analysis_text:
+            _append_analysis(doc, body, analysis_text)
+            # document.xml 在第 275 行已序列化一次；追加段落后必须重新写回 changed
+            changed["word/document.xml"] = doc.toxml(encoding="UTF-8")
         settings = minidom.parseString(source.read("word/settings.xml"))
         fields = settings.getElementsByTagName("w:updateFields")
         field = fields[0] if fields else settings.documentElement.appendChild(settings.createElement("w:updateFields"))

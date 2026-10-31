@@ -74,6 +74,16 @@ SPECS: list[dict] = [
         "key": "kiosk_exit_enabled", "label": "允许退出系统", "type": "bool",
         "desc": "是否允许在界面上退出到桌面", "restart": False,
     },
+    {
+        "key": "manual_kg_selection", "label": "人工选择候选故障路径", "type": "bool",
+        "desc": "启用：生成前进入人工确认页，可手动选择路径、展开 AI 推荐或直接拼接候选；关闭：AI 自动选择候选路径并生成",
+        "restart": False,
+    },
+    {
+        "key": "ai_prompt_candidate_count", "label": "AI 提示词候选项拼接数", "type": "int",
+        "desc": "人工确认页选择「将前 N 个候选拼接进提示词」时使用；默认 3，范围 1–9",
+        "min": 1, "max": 9, "restart": False,
+    },
 ]
 
 SPEC_BY_KEY = {spec["key"]: spec for spec in SPECS}
@@ -136,7 +146,7 @@ def readonly_items() -> list[dict]:
         {"key": "app_version", "label": "系统版本", "value": settings.app_version,
          "editable": False, "type": "str", "desc": "对外展示的版本号", "restart": False},
         {"key": "model", "label": "大模型", "value": _MODEL_NAME,
-         "editable": False, "type": "str", "desc": "模型不可用时自动降级为规则摘要", "restart": False},
+         "editable": False, "type": "str", "desc": "模型不可用或分析校验失败时，自动采用固定四段规则分析", "restart": False},
         {"key": "sqlite_path", "label": "业务库路径", "value": settings.sqlite_path,
          "editable": False, "type": "str", "desc": "SQLite 业务库位置（部署时确定）", "restart": False},
     ]

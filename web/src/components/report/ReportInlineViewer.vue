@@ -2,38 +2,47 @@
 /* 内嵌报告查看：在主页面右侧区域就地显示，不跳路由。
    顶部工具条含返回（回报告管理）/ 报告信息 / 导出；右边缘抽屉只读展示当时的填写内容。
    打开前由主页面暂存录入现场，切回录入锚点时由主页面恢复。 */
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import ReportDocument from '@/components/report/ReportDocument.vue'
-import InfoTable from '@/components/report/InfoTable.vue'
-import { itemGroupName } from '@/domain/itemGroups'
-import { reasonList } from '@/domain/validation'
+import ReportEvaluationDrawer from '@/components/report/ReportEvaluationDrawer.vue'
 import { overviewText, countByCategory } from '@/domain/riskScore'
-import { buildAppendixRows, overviewNarrative } from '@/domain/reportResult'
-import { modelStatus } from '@/domain/modelStatus'
+import { buildAppendixRows } from '@/domain/reportResult'
 import { useReportStore } from '@/stores/report'
+import { useGenerationStore } from '@/stores/generation'
 import { useExport } from '@/utils/export'
-import { useToast } from '@/utils/toast'
 import { ApiError } from '@/utils/http'
-import type { JteItem } from '@/types/api'
 
-const props = defineProps<{ reportId: string }>()
+const props = defineProps<{
+  reportId: string
+  generating?: boolean
+  streamText?: string
+}>()
 const emit = defineEmits<{ back: [] }>()
 
 const store = useReportStore()
+const generationStore = useGenerationStore()
 const exp = useExport()
-const { show } = useToast()
 
 /* 父组件在切换前已经把报告装进 store：这种情况下首帧直接渲染报告，
    不用再经历一次"加载中"的闪屏。 */
-const preloaded = store.reportId === props.reportId && store.ready
+const preloaded = props.generating
+  ? true
+  : (store.reportId === props.reportId && store.ready)
 const loading = ref(!preloaded)
 const loadError = ref('')
 /* 纸张要先按 A4 原尺寸渲染、再由 fitPapers() 等比缩放；
    在缩放完成前先藏起来，避免"完整宽度闪一下再缩回去"。 */
 const fitted = ref(false)
 const reportWrap = ref<HTMLElement | null>(null)
-const panelOpen = ref(false)
-const collapsed = reactive<Record<string, boolean>>({})
+const panelOpen = ref(!!props.generating)
+watch(() => props.generating, (active) => {
+  if (active) panelOpen.value = true
+})
+watch(panelOpen, () => { void nextTick(fitPapers) })
+const typingText = ref('')
+const typing = ref(false)
+let typingTimer: number | undefined
+
 
 const STATUS_TEXT: Record<string, string> = {
   draft: '草稿',
@@ -63,62 +72,39 @@ const categories = computed(() => Object.values(riskByNo.value).map((risk) => ri
 const g = computed(() => store.generated?.score ?? null)
 const grade = computed(() => store.generated?.grade ?? null)
 const assessmentIssues = computed(() => store.generated?.assessment_issues ?? [])
-const modelNotice = computed(() => modelStatus(store.generated))
 const overview = computed(() => {
   const count = countByCategory(categories.value)
   const base = g.value === null
     ? `1、存在Ⅰ类风险 ${count['Ⅰ类']} 项，Ⅱ类风险 ${count['Ⅱ类']} 项。\n2、综合评定暂不可用，详见评定提示。`
     : overviewText(categories.value, g.value)
-  const narrative = overviewNarrative(store.generated)
-  return narrative ? `${base}\n${narrative}` : base
+  return base
 })
 const conclusion = computed(() => `综合安全状况等级：${grade.value ?? '待确认'}`)
 const appendixRows = computed(() => buildAppendixRows(store.items, store.stateOf, riskByNo.value))
+const analysisText = computed(() => store.generated?.analysis_text ?? '')
 
-/* ── 只读填写内容（右边缘抽屉）───────────────────────── */
-interface RefGroup {
-  key: string
-  name: string
-  range: string
-  items: JteItem[]
-  total: number
-  unfit: number
-}
-const refGroups = computed<RefGroup[]>(() => {
-  const map = new Map<string, RefGroup>()
-  for (const item of store.items) {
-    const key = item.no.split('.')[0] || item.no
-    let group = map.get(key)
-    if (!group) {
-      group = { key, name: itemGroupName(key), range: item.no, items: [], total: 0, unfit: 0 }
-      map.set(key, group)
-    }
-    group.items.push(item)
-    group.range = group.items.length === 1 ? item.no : group.items[0].no + '–' + item.no
-    group.total += 1
-    if (store.stateOf(item.no).result === '不符合') group.unfit += 1
+function stopTyping(): void {
+  if (typingTimer !== undefined) {
+    window.clearInterval(typingTimer)
+    typingTimer = undefined
   }
-  return [...map.values()]
-})
-
-function toggleGroup(key: string): void {
-  collapsed[key] = !collapsed[key]
+  typing.value = false
 }
 
-function resultOf(no: string): string {
-  return store.stateOf(no).result || '未填'
-}
-
-/** 不符合项明细：与录入页「不符合情形」同源（含「其他」自行填写内容） */
-function detailsOf(no: string): string[] {
-  const state = store.stateOf(no)
-  if (state.result !== '不符合') return []
-  return reasonList(state)
-}
-
-/** 风险评定值来自服务端的专家查表结果，与报告里的「风险评定值」列一致 */
-function riskOf(no: string) {
-  return store.generated?.risks?.[no]
+function startTyping(text: string): void {
+  stopTyping()
+  typingText.value = ''
+  if (!text) return
+  typing.value = true
+  let cursor = 0
+  typingTimer = window.setInterval(() => {
+    cursor = Math.min(text.length, cursor + 2)
+    typingText.value = text.slice(0, cursor)
+    if (cursor >= text.length) {
+      stopTyping()
+      typingText.value = text
+    }
+  }, 18)
 }
 
 /* A4 宽度（210mm @96dpi），报告页按视口等比缩放 */
@@ -165,7 +151,7 @@ function observePapers(): void {
 }
 
 onMounted(async () => {
-  if (!preloaded) {
+  if (!preloaded && !props.generating) {
     try {
       await store.loadItems()
       await store.openReport(props.reportId)
@@ -179,19 +165,24 @@ onMounted(async () => {
   observePapers()
   fitPapers()
   fitted.value = true
+  if (generationStore.consumeReplay(props.reportId)) {
+    panelOpen.value = true
+    await nextTick()
+    startTyping(analysisText.value)
+  }
   window.addEventListener('resize', fitPapers)
   void document.fonts?.ready.then(fitPapers)
-  if (modelNotice.value) show(modelNotice.value, 5200)
 })
 
 onBeforeUnmount(() => {
   paperObserver?.disconnect()
+  stopTyping()
   window.removeEventListener('resize', fitPapers)
 })
 </script>
 
 <template>
-  <section class="report-viewer">
+  <section class="report-viewer" :class="{ 'panel-open': panelOpen }">
     <div class="viewer-bar">
       <button
         class="viewer-back"
@@ -269,6 +260,7 @@ onBeforeUnmount(() => {
         :categories="categories"
         :g="g"
         :grade="grade"
+        :analysis-text="analysisText"
       />
     </div>
 
@@ -299,88 +291,13 @@ onBeforeUnmount(() => {
       </svg>
     </button>
 
-    <!-- 右侧折叠侧栏：当时的填写页面（只读，不可编辑） -->
-    <aside v-if="panelOpen && !loading && !loadError" class="ref-panel" aria-label="评估填写内容（只读）">
-      <div class="ref-head">
-        <button class="ref-close" type="button" title="收起" aria-label="收起" @click="panelOpen = false">
-          ×
-        </button>
-        <b>评估填写内容</b>
-        <span class="ref-tag">只读</span>
-      </div>
-      <div class="ref-body">
-        <h3>基础信息</h3>
-        <InfoTable readonly :show-computed="true" class="ref-info" />
-
-        <h3>检测项目（{{ store.items.length }} 项 · 不符合 {{ riskRows.length }} 项）</h3>
-        <table class="ref-items">
-          <thead>
-            <tr>
-              <th rowspan="2" style="width: 56px">编号</th>
-              <th rowspan="2">项目</th>
-              <th rowspan="2" style="width: 62px">结果</th>
-              <th colspan="3" class="ref-risk-head">风险评定值</th>
-            </tr>
-            <tr>
-              <th style="width: 50px">严重程度</th>
-              <th style="width: 50px">概率等级</th>
-              <th style="width: 50px">风险类别</th>
-            </tr>
-          </thead>
-          <tbody v-for="group in refGroups" :key="group.key">
-            <tr class="ref-group">
-              <td colspan="6">
-                <button
-                  class="ref-group-toggle"
-                  type="button"
-                  :aria-expanded="!collapsed[group.key]"
-                  @click="toggleGroup(group.key)"
-                >
-                  <span class="caret" :class="{ open: !collapsed[group.key] }">▸</span>
-                  <span class="ref-group-name">{{ group.key }} {{ group.name }}</span>
-                  <span class="ref-group-range">{{ group.range }}</span>
-                  <span class="ref-group-meta">{{ group.total }} 项 · 不符合 {{ group.unfit }}</span>
-                </button>
-              </td>
-            </tr>
-            <template v-if="!collapsed[group.key]">
-              <template v-for="item in group.items" :key="item.no">
-                <tr :class="{ 'ref-unfit': resultOf(item.no) === '不符合' }">
-                  <td class="ref-no">{{ item.no }}</td>
-                  <td>
-                    {{ item.name }}<span v-if="item.sub" class="ref-sub">（{{ item.sub }}）</span>
-                  </td>
-                  <td class="ref-result" :class="{ unfit: resultOf(item.no) === '不符合' }">
-                    {{ resultOf(item.no) }}
-                  </td>
-                  <template v-if="riskOf(item.no)">
-                    <td class="ref-risk">{{ riskOf(item.no)?.severity ?? '待确认' }}</td>
-                    <td class="ref-risk">{{ riskOf(item.no)?.probability ?? '待确认' }}</td>
-                    <td class="ref-risk">{{ riskOf(item.no)?.category }}</td>
-                  </template>
-                  <template v-else>
-                    <td class="ref-risk">—</td>
-                    <td class="ref-risk">—</td>
-                    <td class="ref-risk">—</td>
-                  </template>
-                </tr>
-                <tr v-if="detailsOf(item.no).length" class="ref-reasons">
-                  <td></td>
-                  <td colspan="5">
-                    <div class="ref-reasons-box">
-                      <div class="ref-reasons-head">不符合项</div>
-                      <ul class="ref-reasons-list">
-                        <li v-for="(reason, i) in detailsOf(item.no)" :key="i">{{ reason }}</li>
-                      </ul>
-                    </div>
-                  </td>
-                </tr>
-              </template>
-            </template>
-          </tbody>
-        </table>
-      </div>
-    </aside>
+    <ReportEvaluationDrawer
+      :open="panelOpen && !loading && !loadError"
+      :analysis-text="analysisText"
+      :typing="props.generating ? true : typing"
+      :typing-text="props.generating ? (props.streamText || '') : typingText"
+      @close="panelOpen = false"
+    />
   </section>
 </template>
 
@@ -571,247 +488,6 @@ onBeforeUnmount(() => {
   background: var(--c-primary-soft);
 }
 
-/* ── 右侧只读填写内容抽屉 ── */
-.ref-panel {
-  position: fixed;
-  /* 横竖屏都保持右侧抽屉，统一贴顶；z-index 高于顶栏/侧栏，不会被裁切 */
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: min(560px, 100vw);
-  display: flex;
-  flex-direction: column;
-  background: var(--c-panel);
-  border-left: 1px solid var(--c-line);
-  box-shadow: -8px 0 28px rgba(0, 0, 0, 0.16);
-  z-index: 500;
-}
-
-.ref-head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 14px;
-  border-bottom: 1px solid var(--c-line);
-}
-
-.ref-head b {
-  font-family: var(--font-bold);
-  font-size: 14px;
-  color: var(--c-primary);
-}
-
-.ref-tag {
-  padding: 0 6px;
-  border-radius: 8px;
-  background: var(--c-primary-soft);
-  color: var(--c-primary);
-  font-size: 10.5px;
-  line-height: 16px;
-}
-
-.ref-close {
-  flex: 0 0 auto;
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  border: 1px solid var(--c-line);
-  border-radius: 8px;
-  background: #fff;
-  color: var(--c-primary);
-  font-size: 20px;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.ref-close:hover {
-  border-color: var(--c-primary);
-  background: var(--c-primary-soft);
-}
-
-.ref-close:hover {
-  color: var(--c-danger);
-}
-
-.ref-body {
-  flex: 1;
-  min-height: 0;
-  overflow: auto;
-  padding: 12px 14px 28px;
-}
-
-.ref-body h3 {
-  margin: 16px 0 8px;
-  font-family: var(--font-bold);
-  font-size: 13px;
-  color: var(--c-secondary);
-}
-
-.ref-body h3:first-child {
-  margin-top: 0;
-}
-
-.ref-items {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 12.5px;
-}
-
-/* 只读基础信息表：横竖屏都照搬录入页竖屏的紧凑排版 */
-.ref-info :deep(th),
-.ref-info :deep(td) {
-  display: table-cell;
-  width: auto;
-  height: 30px;
-  padding: 2px 4px;
-  border: 1px solid var(--c-line);
-  font-size: 12px;
-  line-height: 16px;
-  white-space: normal;
-}
-
-.ref-info :deep(.signature-row td) {
-  height: 28px;
-}
-
-.ref-info :deep(.signature-seal) {
-  font-size: 10px;
-  line-height: 16px;
-}
-
-.ref-info :deep(.computed-field) {
-  color: var(--c-secondary);
-}
-
-.ref-info :deep(.info) {
-  table-layout: fixed;
-}
-
-.ref-items th,
-.ref-items td {
-  border: 1px solid var(--c-line);
-  padding: 5px 6px;
-  text-align: left;
-  vertical-align: top;
-}
-
-.ref-items thead th {
-  background: var(--c-head);
-  color: var(--c-text);
-}
-
-.ref-no {
-  color: var(--c-secondary);
-  white-space: nowrap;
-}
-
-.ref-result {
-  white-space: nowrap;
-}
-
-.ref-result.unfit {
-  color: var(--c-danger);
-  font-weight: 700;
-}
-
-.ref-risk-head,
-.ref-items thead tr:nth-child(2) th {
-  text-align: center;
-}
-
-.ref-risk {
-  text-align: center;
-  color: var(--c-text);
-  white-space: nowrap;
-}
-
-.ref-sub {
-  color: var(--c-muted);
-  font-size: 11.5px;
-}
-
-.ref-items tr.ref-unfit td {
-  background: #fef0f0;
-}
-
-.ref-items tr.ref-reasons td {
-  background: #fef7f7;
-  color: var(--c-text);
-  font-size: 12px;
-  line-height: 1.7;
-}
-
-.ref-reasons-box {
-  padding: 2px 0 4px;
-}
-
-.ref-reasons-head {
-  margin-bottom: 4px;
-  color: var(--c-danger);
-  font-weight: 700;
-  font-size: 12px;
-}
-
-.ref-reasons-list {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.ref-reasons-list li {
-  padding: 1px 0 1px 2px;
-}
-
-.ref-reasons-list li + li {
-  margin-top: 2px;
-}
-
-.ref-items .ref-group td {
-  padding: 0;
-  background: var(--c-head);
-}
-
-.ref-group-toggle {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 6px 8px;
-  border: 0;
-  background: none;
-  color: var(--c-text);
-  font: inherit;
-  font-size: 12px;
-  text-align: left;
-  cursor: pointer;
-}
-
-.ref-group-toggle .caret {
-  color: var(--c-primary);
-  font-size: 10px;
-  transition: transform 0.15s;
-}
-
-.ref-group-toggle .caret.open {
-  transform: rotate(90deg);
-}
-
-.ref-group-name {
-  font-weight: 700;
-}
-
-.ref-group-range {
-  color: var(--c-muted);
-  font-size: 11px;
-}
-
-.ref-group-meta {
-  margin-left: auto;
-  color: var(--c-secondary);
-  font-size: 11px;
-  white-space: nowrap;
-}
-
 @media (max-width: 900px) {
   .report-viewer {
     padding: 6px;
@@ -902,6 +578,30 @@ onBeforeUnmount(() => {
 
   .ref-reasons-list {
     font-size: 11.5px;
+  }
+}
+.analysis-paper h1 {
+  margin-top: 0;
+}
+.analysis-note {
+  color: var(--c-muted);
+  font-size: 12px;
+  margin: 6px 0 14px;
+}
+.analysis-body {
+  white-space: pre-wrap;
+  line-height: 1.9;
+  font-size: 14px;
+  color: #222;
+}
+/* 抽屉展开时只把报告纸张往左让，不做左右分栏 */
+.report-wrap {
+  transition: padding-right 0.28s ease;
+  box-sizing: border-box;
+}
+@media (min-width: 701px) {
+  .report-viewer.panel-open .report-wrap {
+    padding-right: 430px;
   }
 }
 </style>

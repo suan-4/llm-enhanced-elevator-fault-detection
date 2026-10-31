@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { itemProblem } from '@/domain/validation'
 import { useReportStore } from '@/stores/report'
 import type { JteItem } from '@/types/api'
@@ -9,7 +9,11 @@ const store = useReportStore()
 const state = computed(() => store.stateOf(props.item.no))
 const problem = computed(() => itemProblem(state.value))
 const unfit = computed(() => state.value.result === '不符合')
-const oldReasons = computed(() => state.value.reasons.filter(text => !props.item.opts.includes(text)))
+const otherTexts = computed(() => {
+  if (!state.value.otherTexts) state.value.otherTexts = []
+  return state.value.otherTexts
+})
+const deleteIndex = ref<number | null>(null)
 
 const rowId = computed(() => 'row-' + props.item.no.replace('.', '-'))
 const reasonsId = computed(() => rowId.value + '-reasons')
@@ -54,7 +58,35 @@ function toggleOther(): void {
   if (otherLocked.value) return
   state.value.legacyCombined = false
   state.value.other = !state.value.other
+  if (state.value.other && !state.value.otherTexts?.length) state.value.otherTexts = ['']
   // Inactive inputs remain in the draft editing metadata, not in risk assessment.
+}
+
+function addOther(): void {
+  if (otherLocked.value) return
+  state.value.legacyCombined = false
+  state.value.other = true
+  if (!state.value.otherTexts?.length) state.value.otherTexts = ['']
+  state.value.otherTexts.push('')
+  deleteIndex.value = null
+}
+
+function askDeleteOther(index: number): void {
+  deleteIndex.value = index
+}
+
+function cancelDeleteOther(): void {
+  deleteIndex.value = null
+}
+
+function confirmDeleteOther(index: number): void {
+  const list = otherTexts.value
+  if (index < 0 || index >= list.length) return
+  list.splice(index, 1)
+  deleteIndex.value = null
+  if (!list.length) {
+    state.value.other = false
+  }
 }
 </script>
 
@@ -103,25 +135,9 @@ function toggleOther(): void {
   <tr v-if="unfit" :id="reasonsId" class="reasons-row">
     <td :colspan="3">
       <div class="reasons">
-        <div class="reasons-head">不符合情形（清单项与其他二选一）</div>
-        <template v-if="oldReasons.length">
-          <div class="reasons-err">以下为旧版选项，请取消并重新选择当前风险，或填入其他：</div>
-          <label
-            v-for="old in oldReasons"
-            :key="old"
-            class="chk"
-            :class="{ disabled: reasonsLocked }"
-            @click.prevent="pickReason(old)"
-          >
-            <input
-              type="checkbox"
-              checked
-              :disabled="reasonsLocked"
-              @change="toggleReason(old, false)"
-            />
-            <span>{{ old }}</span>
-          </label>
-        </template>
+        <div class="reasons-head">
+          不符合情形（清单项与其他二选一）
+        </div>
         <label
           v-for="(opt, i) in item.opts"
           :key="i"
@@ -148,15 +164,40 @@ function toggleOther(): void {
             :disabled="otherLocked"
             @change="toggleOther"
           />
-          <span>其他（自行填写）</span>
+          <span class="other-title">
+            其他（自行填写）
+            <button
+              class="other-add"
+              type="button"
+              title="添加一条其他不符合项"
+              aria-label="添加一条其他不符合项"
+              @click.stop.prevent="addOther"
+            >＋</button>
+          </span>
         </label>
         <div v-if="state.other" class="other-box">
-          <textarea
-            v-model="state.otherText"
-            class="textarea"
-            :disabled="otherLocked"
-            placeholder="请填写具体情况，将写入报告「存在风险」"
-          />
+          <div v-for="(_text, index) in otherTexts" :key="index" class="other-item">
+            <div class="other-input-row">
+              <textarea
+                v-model="otherTexts[index]"
+                class="textarea"
+                :disabled="otherLocked"
+                :placeholder="`第 ${index + 1} 条其他不符合项`"
+              />
+              <button
+                class="other-delete"
+                type="button"
+                title="删除这条其他不符合项"
+                aria-label="删除这条其他不符合项"
+                @click="askDeleteOther(index)"
+              >×</button>
+            </div>
+            <div v-if="deleteIndex === index" class="other-delete-confirm">
+              <span>确认删除这条其他不符合项？</span>
+              <button class="other-confirm-delete" type="button" @click="confirmDeleteOther(index)">删除</button>
+              <button type="button" @click="cancelDeleteOther">取消</button>
+            </div>
+          </div>
         </div>
         <div v-if="problem" class="reasons-err">{{ problem }}</div>
       </div>
@@ -165,7 +206,84 @@ function toggleOther(): void {
 </template>
 
 <style scoped>
+.reasons-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.other-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.other-input-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+.other-input-row .textarea {
+  flex: 1 1 auto;
+}
+.other-delete {
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid #e3b4b0;
+  border-radius: 6px;
+  background: #fff5f4;
+  color: #b3261e;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+.other-delete:hover {
+  border-color: #b3261e;
+  background: #fdeceb;
+}
+.other-delete-confirm {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 3px 0 2px;
+  color: #b3261e;
+  font-size: 11.5px;
+}
+.other-delete-confirm button {
+  padding: 2px 8px;
+  border: 1px solid #c9d6dd;
+  border-radius: 6px;
+  background: #f7fafb;
+  font-size: 11.5px;
+  cursor: pointer;
+}
+.other-delete-confirm .other-confirm-delete {
+  border-color: #b3261e;
+  background: #b3261e;
+  color: #fff;
+}
+.other-add {
+  margin-left: 4px;
+  vertical-align: middle;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid #c9d6dd;
+  border-radius: 6px;
+  background: #f7fafb;
+  color: #1b5e7a;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+}
+.other-add:hover {
+  border-color: #1b5e7a;
+  background: #eaf3f6;
+}
 .other-box {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
   margin-top: 6px;
 }
 

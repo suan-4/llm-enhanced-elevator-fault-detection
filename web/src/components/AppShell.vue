@@ -9,26 +9,34 @@
    - 侧栏只负责「一台电梯的录入进度」：项目进度 + 三个滚动锚点；
    - 报告管理 / 账号管理已并入系统设置，入口是右下角的齿轮 icon；
    - 设置页自带左侧树状导航，因此设置页不显示这根侧栏（.main.no-nav）。 */
-import { computed } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { systemConfig } from '@/api/system'
 import AppSidebar, { type NavItem } from '@/components/AppSidebar.vue'
 import ExportResult from '@/components/report/ExportResult.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useReportStore } from '@/stores/report'
+import { useGenerationStore } from '@/stores/generation'
 import { useShell } from '@/stores/shell'
 import { useKiosk } from '@/utils/kiosk'
 import { useToast } from '@/utils/toast'
 
-const NAV: NavItem[] = [
-  { key: 'info', label: '基础信息' },
-  { key: 'items', label: '检测项目填写' },
-  { key: 'reports', label: '报告管理' },
-]
+const manualKgSelection = ref(true)
+const NAV = computed<NavItem[]>(() => {
+  const items: NavItem[] = [
+    { key: 'info', label: '基础信息' },
+    { key: 'items', label: '检测项目填写' },
+  ]
+  if (manualKgSelection.value) items.push({ key: 'confirm', label: '人工确认' })
+  items.push({ key: 'reports', label: '报告管理' })
+  return items
+})
 
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 const report = useReportStore()
+const generation = useGenerationStore()
 const shell = useShell()
 const kiosk = useKiosk()
 const { show } = useToast()
@@ -48,13 +56,51 @@ const progress = computed(() => ({
 }))
 
 function onNavigate(key: string): void {
+  if (generation.generating) {
+    show('报告生成中，请稍候', 2500)
+    return
+  }
+  if (key === 'confirm') {
+    // 与「校验并生成报告」共用同一套前置提示：漏填/没有不符合项时不要静默跳转
+    if (report.ready && report.missing.length) {
+      show(`还有 ${report.missing.length} 项未填写`, 3000, 'danger')
+      return
+    }
+    if (report.ready && report.counters.unfit === 0) {
+      show('当前没有不符合项，无需人工确认', 3000)
+      return
+    }
+    shell.active = 'confirm'
+    if (route.path !== '/kg-confirm') void router.push('/kg-confirm')
+    return
+  }
   const anchor = key as 'info' | 'items' | 'reports'
+  // 先同步高亮并把目标锚点挂起，再由 ReportView 挂载时消费；
+  // 不要等 router.push().then 才设置，否则会先按滚动位置闪到别的项。
+  shell.active = anchor
+  shell.requestView(anchor)
   if (route.path !== '/') {
-    void router.push('/').then(() => shell.requestView(anchor))
+    void router.push('/')
     return
   }
   shell.requestView(anchor)
 }
+
+async function loadManualSelection(): Promise<void> {
+  try {
+    const cfg = await systemConfig()
+    const item = cfg.items.find((row) => row.key === 'manual_kg_selection')
+    manualKgSelection.value = item ? item.value !== false : true
+  } catch {
+    manualKgSelection.value = true
+  }
+}
+
+onMounted(loadManualSelection)
+watch(() => route.fullPath, loadManualSelection)
+watch(() => route.name, (name) => {
+  if (name === 'kg-confirm') shell.active = 'confirm'
+})
 
 /** 与旧版一致：点右侧内容区自动收起侧栏，把宽度让给正文 */
 function onMainClick(e: MouseEvent): void {

@@ -1,0 +1,78 @@
+[
+  {
+    "id": "17",
+    "report_id": "103367961527455747",
+    "item_no": "1.10",
+    "item_name": "作用于钢丝绳系统的减速元件(如夹绳器等)",
+    "query": "作用于钢丝绳系统的减速元件(如夹绳器等) 就",
+    "reasons": [],
+    "other_text": "",
+    "gold_path_id": null,
+    "gold_decision": "no_candidate",
+    "selection_source": "human",
+    "candidates": [
+      {
+        "rank": 1,
+        "path_id": "PATH_V2_TRACTION_a21ad2439a141e",
+        "path_summary": "导向轮轮体绳路与护绳 → 反绳轮防绳跳装置缺失 → 绳松弛扰动缺少限位 → 钢丝绳离开正常槽位 → 绳摆动时无有效约束 → 悬挂失效风险",
+        "component": "导向轮轮体绳路与护绳",
+        "system": "曳引与悬挂系统",
+        "score": 0.2466
+      },
+      {
+        "rank": 2,
+        "path_id": "PATH_V2_TRACTION_44e095c1e1bed7",
+        "path_summary": "悬挂钢丝绳楔形端接 → 楔形绳头承载绳侧穿反 → 绳力使套体与楔块承受非设计偏载 → 楔紧接触分布恶化 → 绳头有偏斜和局部挤伤 → 悬挂失效风险",
+        "component": "悬挂钢丝绳楔形端接",
+        "system": "曳引与悬挂系统",
+        "score": 0.2148
+      },
+      {
+        "rank": 3,
+        "path_id": "PATH_V2_TRACTION_805ee884a07815",
+        "path_summary": "悬挂钢丝绳内部及绳形 → 钢丝绳绳芯突出 → 绳芯与绳股轴向平衡破坏 → 绳截面与接触形状异常 → 绳芯从股间凸出 → 悬挂失效风险",
+        "component": "悬挂钢丝绳内部及绳形",
+        "system": "曳引与悬挂系统",
+        "score": 0.2125
+      }
+    ]
+  },
+  {
+    "id": "18",
+    "report_id": "103367961527455747",
+    "item_no": "1.9",
+    "item_name": "限速器",
+    "query": "限速器 百合花",
+    "reasons": [],
+    "other_text": "",
+    "gold_path_id": null,
+    "gold_decision": "no_candidate",
+    "selection_source": "human_override",
+    "candidates": [
+      {
+        "rank": 1,
+        "path_id": "PATH_V2_SAFETY_8385cd589cd6f4",
+        "path_summary": "限速器棘爪棘轮 → 棘爪保持扣磨损 → 保持余量降低 → 运行振动触发误释放 → 正常运行出现限速误动作 → 运行中异常停梯",
+        "component": "限速器棘爪棘轮",
+        "system": "安全保护系统",
+        "score": 0.2122
+      },
+      {
+        "rank": 2,
+        "path_id": "PATH_V2_SAFETY_a219f4c7dade47",
+        "path_summary": "限速器离心重块 → 重块连接杆弯曲 → 两侧重块不同步 → 脱扣时序偏离 → 重块展开不对称 → 持续下行超速风险",
+        "component": "限速器离心重块",
+        "system": "安全保护系统",
+        "score": 0.2121
+      },
+      {
+        "rank": 3,
+        "path_id": "PATH_V2_SAFETY_dcd45721952a77",
+        "path_summary": "限速器绳轮与夹绳机构 → 限速器轴承卡滞 → 绳轮转动阻力上升 → 限速绳运行张力异常 → 轮体转动不畅伴绳抖动 → 运行中异常停梯",
+        "component": "限速器绳轮与夹绳机构",
+        "system": "安全保护系统",
+        "score": 0.2121
+      }
+    ]
+  }
+]

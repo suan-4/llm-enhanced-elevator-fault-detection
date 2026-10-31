@@ -26,6 +26,14 @@ class Settings(BaseSettings):
     # ── 业务数据库（用户账号 / 报告历史 / 填写记录）──
     # 相对路径按 backend/ 目录解析；知识图谱仍在 Neo4j
     sqlite_path: str = "data/elevator.db"
+    # v2 知识图谱只读检索库（tools/kg/build_index.py 生成）；相对路径按 backend/ 解析
+    kg_v2_db: str = "data/kg_v2.sqlite"
+    # T3/T4 提示词链路开关：有勾选候选路径且模型可用时启用；无证据时走快速规则分析
+    kg_prompt_enabled: bool = True
+    # 生成前是否人工选择候选故障路径；关闭后由 AI 从 Top3 候选中自动判断
+    manual_kg_selection: bool = True
+    # 人工确认页「直接全权 AI」时，拼入提示词的候选数
+    ai_prompt_candidate_count: int = 3
     session_ttl_hours: int = 168          # 登录令牌绝对有效期，默认 7 天
     session_idle_hours: int = 8           # 空闲多久算掉线（板端是共用终端）
     history_limit: int = 50               # 每个用户保留的历史报告条数

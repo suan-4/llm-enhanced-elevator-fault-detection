@@ -52,6 +52,13 @@ echo.
 echo [4/7] 推送后端 (backend/app/) ...
 adb push backend\app %ROOT%/backend/
 
+REM 知识图谱 v2 只读索引（8MB，不进 Git）：有就一并部署，没有则跳过。
+if exist backend\data\kg_v2.sqlite (
+  echo   推送知识图谱索引 kg_v2.sqlite ...
+  adb shell "mkdir -p %ROOT%/backend/data"
+  adb push backend\data\kg_v2.sqlite %ROOT%/backend/data/kg_v2.sqlite
+)
+
 echo.
 echo [5/7] 推送原生应用与一体机组件到 /tmp ...
 adb push native\elevator_app.py /tmp/elevator_app.py
@@ -62,6 +69,15 @@ adb push kiosk\elevator.desktop /tmp/elevator.desktop
 adb push kiosk\harden_kiosk.sh /tmp/harden_kiosk.sh
 adb push kiosk\install_kiosk.sh /tmp/install_kiosk.sh
 adb push osk-helper\elevator-osk@local /tmp/elevator-osk@local
+
+echo.
+echo [5b/7] 安装原生应用、开机自启与桌面快捷方式...
+REM Windows 检出的脚本/Python 可能是 CRLF；板端 bash/python 会因此报错，先统一转 LF。
+adb shell "sed -i 's/\r$//' /tmp/install_kiosk.sh /tmp/elevator-kiosk.sh /tmp/elevator-launch.sh /tmp/elevator_app.py /tmp/elevator.desktop /tmp/elevator-kiosk.desktop /tmp/harden_kiosk.sh /tmp/elevator-osk@local/metadata.json /tmp/elevator-osk@local/extension.js 2>/dev/null; ELEVATOR_SKIP_WALLPAPER=1 bash /tmp/install_kiosk.sh; sed -i 's/\r$//' /home/user/elevator_app.py /home/user/elevator-kiosk.sh /home/user/elevator-launch.sh 2>/dev/null; echo '  桌面快捷方式: /home/user/桌面/电梯安全评估系统.desktop'"
+
+echo.
+echo [5c/7] 重启原生应用（让最新 GTK/键盘代码生效）...
+adb shell "pkill -u user -f '/home/user/elevator_app.py' 2>/dev/null; sleep 1; su user -c 'export XDG_RUNTIME_DIR=/run/user/1002 DISPLAY=:0 XAUTHORITY=/run/user/1002/gdm/Xauthority; setsid nohup /home/user/elevator-launch.sh >/dev/null 2>&1 < /dev/null &'; sleep 3; ps -ef | grep elevator_app.py | grep -v grep | head -1"
 
 echo.
 echo [6/7] 清理字节码缓存并重启后端...

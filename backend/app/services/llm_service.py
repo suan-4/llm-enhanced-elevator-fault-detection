@@ -48,7 +48,7 @@ class LLMService:
             await self._client.aclose()
             self._client = None
 
-    async def generate(self, prompt_json: str) -> str:
+    async def generate(self, prompt_json: str, max_tokens: int | None = None) -> str:
         """调用 RKLLM 服务器生成报告。
 
         prompt_json 格式: {"system": "...", "data": {...}}
@@ -77,7 +77,8 @@ class LLMService:
                 self._budget = configured_budget()
             call.update(self._budget.check(full_content))
             call['budget_ms'] = round((perf_counter()-budget_started)*1000, 3)
-            payload['max_tokens'] = self._budget.output_tokens
+            payload['max_tokens'] = (min(self._budget.output_tokens, max_tokens)
+                                     if max_tokens else self._budget.output_tokens)
             endpoint = urlsplit(settings.rkllm_server_url)
             identity_url = urlunsplit((endpoint.scheme, endpoint.netloc, '/v1/models', '', ''))
             http_started = perf_counter()

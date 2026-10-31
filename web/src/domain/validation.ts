@@ -11,8 +11,10 @@ export interface ItemState {
   reasons: string[]
   /** 是否勾选「其他」 */
   other: boolean
-  /** 「其他」的自由填写内容 */
+  /** 「其他」的自由填写内容（单条兼容字段） */
   otherText: string
+  /** 多条「其他」不符合项，每条独立检索，避免合并成一个检索词 */
+  otherTexts?: string[]
   /** Historical reports may contain both inputs; never silently discard either. */
   legacyCombined?: boolean
 }
@@ -20,7 +22,7 @@ export interface ItemState {
 /** 新条目默认「符合」：现场只关注例外项，逐条点 66 次「符合」不现实。
     未填状态只可能来自旧草稿（result 为空串），仍会触发定位提示。 */
 export function createItemState(): ItemState {
-  return { result: '符合', reasons: [], other: false, otherText: '' }
+  return { result: '符合', reasons: [], other: false, otherText: '', otherTexts: [] }
 }
 
 export interface MissingEntry {
@@ -40,12 +42,18 @@ export const REQUIRED_FIELDS = [
 
 export type FormValues = Record<string, string>
 
+/** 兼容旧草稿：saved.other_text 按换行拆成每条独立的不符合项。 */
+export function otherTextList(state: ItemState): string[] {
+  if (state.otherTexts?.length) return state.otherTexts
+  return state.otherText ? state.otherText.split('\n') : []
+}
+
 /** 单条目的漏填原因；返回空串表示无问题 */
 export function itemProblem(state: ItemState): string {
   if (!state.result) return '未选择评价结果'
   if (
     state.result === '不符合' &&
-    !(state.other && state.otherText.trim()) &&
+    !(state.other && otherTextList(state).some((text) => text.trim())) &&
     !(state.reasons.length && (!state.other || state.legacyCombined))
   ) {
     return '选择了「不符合」但未填写具体情形'
@@ -108,7 +116,12 @@ export function reasonList(state: ItemState): string[] {
   const list = (state.other && state.legacyCombined === false ? [] : state.reasons.slice())
     .map((text) => text.trim())
     .filter(Boolean)
-  if (state.other && state.otherText.trim()) list.push(state.otherText.trim())
+  if (state.other) {
+    for (const text of otherTextList(state)) {
+      const value = text.trim()
+      if (value) list.push(value)
+    }
+  }
   return list
 }
 

@@ -8,7 +8,11 @@
   - 破坏性操作要求 confirm=true；
   - 业务规则失败返回 400 并给出可直接显示的中文原因。
 """
+import asyncio
+import json
+
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 
 from app.deps import get_current_user
 from app.models.schemas import (
@@ -94,10 +98,70 @@ def save_report(report_id: str, req: ReportSaveRequest,
 async def generate_report(report_id: str, req: ReportGenerateRequest,
                           user: dict = Depends(get_current_user)) -> dict:
     try:
-        report = await wf.generate(_report_id(report_id), use_llm=req.use_llm, actor=user)
+        report = await wf.generate(_report_id(report_id), use_llm=req.use_llm, actor=user,
+                                  kg_selections=req.kg_selections)
     except (LookupError, ValueError, wf.VersionConflict) as e:
         raise _translate(e)
     return {"success": True, "report": report}
+
+
+def _sse(payload: dict) -> str:
+    return "data: " + json.dumps(payload, ensure_ascii=False) + "\n\n"
+
+
+@router.post("/{report_id}/generate/stream")
+async def generate_report_stream(report_id: str, req: ReportGenerateRequest,
+                                 user: dict = Depends(get_current_user)):
+    """只流式输出最终正文；其余风险/得分等在 report 事件里一次返回。"""
+    rid = _report_id(report_id)
+
+    async def stream():
+        yield ": connected\n\n"
+        queue: asyncio.Queue = asyncio.Queue()
+        holder: dict = {}
+
+        def on_delta(text: str) -> None:
+            queue.put_nowait({"type": "text", "text": text})
+
+        async def run():
+            try:
+                holder["report"] = await wf.generate(
+                    rid, use_llm=req.use_llm, actor=user,
+                    kg_selections=req.kg_selections,
+                    on_analysis_delta=on_delta,
+                )
+            except (LookupError, ValueError, wf.VersionConflict) as exc:
+                queue.put_nowait({"type": "error", "message": str(exc)})
+            except Exception:
+                queue.put_nowait({"type": "error", "message": "生成失败，请重试"})
+            finally:
+                queue.put_nowait(None)
+
+        task = asyncio.create_task(run())
+        try:
+            while True:
+                try:
+                    item = await asyncio.wait_for(queue.get(), timeout=10)
+                except asyncio.TimeoutError:
+                    yield ": ping\n\n"
+                    continue
+                if item is None:
+                    break
+                yield _sse(item)
+            report = holder.get("report")
+            if not report:
+                return
+            yield _sse({"type": "report", "report": report})
+            yield "data: [DONE]\n\n"
+        finally:
+            if not task.done():
+                task.cancel()
+
+    return StreamingResponse(
+        stream(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
 
 @router.post("/{report_id}/void")
