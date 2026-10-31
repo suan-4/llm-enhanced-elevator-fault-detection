@@ -110,15 +110,34 @@ function startTyping(text: string): void {
 
 /* A4 宽度（210mm @96dpi），报告页按视口等比缩放 */
 const PAPER_WIDTH = 793.7
+/* 横屏矮屏如果完全按高度适配，白色报告页会缩得很小；保留一个最小
+   可读尺寸。页面允许纵向滚动，所以宁可大一点，也不要缩成小卡片。 */
+const MIN_PAPER_SCALE = 0.55
 let paperObserver: ResizeObserver | undefined
+
+const followStream = ref(true)
+let autoScrolling = false
+let followTimer: number | undefined
+
+/** 用户主动上滚后暂停自动跟随；滚回底部再恢复。 */
+function onMainScroll(): void {
+  if (autoScrolling) return
+  const main = document.querySelector('.main') as HTMLElement | null
+  if (!main) return
+  followStream.value = main.scrollTop + main.clientHeight >= main.scrollHeight - 48
+}
 
 function scrollReportBottom(): void {
   const main = document.querySelector('.main') as HTMLElement | null
-  if (main) main.scrollTop = main.scrollHeight
+  if (!main) return
+  autoScrolling = true
+  main.scrollTop = main.scrollHeight
+  window.clearTimeout(followTimer)
+  followTimer = window.setTimeout(() => { autoScrolling = false }, 80)
 }
 
 watch([() => props.streamText, () => props.generating], () => {
-  if (!props.generating) return
+  if (!props.generating || !followStream.value) return
   void nextTick(() => {
     fitPapers()
     scrollReportBottom()
@@ -145,6 +164,7 @@ function fitPapers(): void {
       scale = Math.min(scale, maxHeight / firstPaper.offsetHeight)
     }
   }
+  scale = Math.max(scale, MIN_PAPER_SCALE)
   host.querySelectorAll<HTMLElement>('.paper').forEach((paper) => {
     const holder = paper.parentElement
     paper.style.transform = scale === 1 ? '' : `scale(${scale})`
@@ -185,6 +205,7 @@ onMounted(async () => {
     startTyping(analysisText.value)
   }
   window.addEventListener('resize', fitPapers)
+  document.querySelector('.main')?.addEventListener('scroll', onMainScroll, { passive: true })
   void document.fonts?.ready.then(fitPapers)
 })
 
@@ -192,6 +213,8 @@ onBeforeUnmount(() => {
   paperObserver?.disconnect()
   stopTyping()
   window.removeEventListener('resize', fitPapers)
+  document.querySelector('.main')?.removeEventListener('scroll', onMainScroll)
+  window.clearTimeout(followTimer)
 })
 </script>
 
