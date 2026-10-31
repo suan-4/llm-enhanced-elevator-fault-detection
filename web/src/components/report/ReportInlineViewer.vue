@@ -39,7 +39,8 @@ watch(() => props.generating, (active) => {
   // 横屏生成时自动打开侧栏，方便和不合格项对照；竖屏不自动占满屏幕。
   if (active) panelOpen.value = window.innerWidth >= 701
 })
-watch(panelOpen, () => { void nextTick(fitPapers) })
+// 侧栏展开/收起只做 transform 位移，纸张尺寸不变；不要再重算缩放，
+// 否则滚动条/布局测量会让纸张看起来忽大忽小。
 const typingText = ref('')
 const typing = ref(false)
 let typingTimer: number | undefined
@@ -364,6 +365,8 @@ onBeforeUnmount(() => {
   min-height: 100%;
   background: var(--c-bg);
   padding: 12px;
+  /* 侧栏展开时避免出现/消失滚动条改变白页宽度 */
+  scrollbar-gutter: stable;
 }
 
 /* 就地查看：工具条吸附在正文顶部（让开 52px 全局顶栏），返回/导出永远可见 */
