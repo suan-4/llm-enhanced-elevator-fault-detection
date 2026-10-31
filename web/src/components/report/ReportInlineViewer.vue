@@ -131,9 +131,6 @@ function startTyping(text: string): void {
 
 /* A4 宽度（210mm @96dpi），报告页按视口等比缩放 */
 const PAPER_WIDTH = 793.7
-/* 横屏矮屏如果完全按高度适配，白色报告页会缩得很小；保留一个最小
-   可读尺寸。页面允许纵向滚动，所以宁可大一点，也不要缩成小卡片。 */
-const MIN_PAPER_SCALE = 0.55
 let paperObserver: ResizeObserver | undefined
 
 const followStream = ref(true)
@@ -204,7 +201,6 @@ function fitPapers(): void {
       scale = Math.min(scale, maxHeight / firstPaper.offsetHeight)
     }
   }
-  scale = Math.max(scale, MIN_PAPER_SCALE)
   host.querySelectorAll<HTMLElement>('.paper').forEach((paper) => {
     const holder = paper.parentElement
     paper.style.transform = scale === 1 ? '' : `scale(${scale})`
