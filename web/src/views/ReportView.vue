@@ -106,14 +106,18 @@ async function enterReports(reportId?: string): Promise<void> {
     store.stashSession()
     stashedForReports = true
   }
-  // 先把要显示的内容准备好（列表刷新 / 重新装回正在查看的报告），再切区域
-  if (reportId) await reportCenter.value?.showReport(reportId)
-  else await reportCenter.value?.prepareEnter()
+  // 生成完成时 ReportCenter 是刚挂载的，必须先切到 reports、等它出现在
+  // DOM 后再 showReport，否则 ref 为空，showReport 根本不会执行。
+  const keepPosition = generationStore.keepView
   view.value = 'reports'
   shell.active = 'reports'
   shell.reportsView = true
   await nextTick()
-  if (!generationStore.keepView) mainEl()?.scrollTo({ top: 0 })
+  if (reportId) await reportCenter.value?.showReport(reportId)
+  else await reportCenter.value?.prepareEnter()
+  await nextTick()
+  // 用进入前的快照判断：实际 Viewer 在 showReport 过程中会消费 keepView。
+  if (!keepPosition) mainEl()?.scrollTo({ top: 0 })
 }
 
 /** 从报告区域回到录入页：恢复离开前的现场 */
