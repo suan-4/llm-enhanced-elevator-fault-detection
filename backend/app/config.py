@@ -30,6 +30,8 @@ class Settings(BaseSettings):
     kg_v2_db: str = "data/kg_v2.sqlite"
     # T3/T4 提示词链路开关：有勾选候选路径且模型可用时启用；无证据时走快速规则分析
     kg_prompt_enabled: bool = True
+    # 生成前是否人工选择候选故障路径；关闭后由 AI 从 Top3 候选中自动判断
+    manual_kg_selection: bool = True
     session_ttl_hours: int = 168          # 登录令牌绝对有效期，默认 7 天
     session_idle_hours: int = 8           # 空闲多久算掉线（板端是共用终端）
     history_limit: int = 50               # 每个用户保留的历史报告条数

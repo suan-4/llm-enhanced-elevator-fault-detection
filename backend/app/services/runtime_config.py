@@ -74,6 +74,11 @@ SPECS: list[dict] = [
         "key": "kiosk_exit_enabled", "label": "允许退出系统", "type": "bool",
         "desc": "是否允许在界面上退出到桌面", "restart": False,
     },
+    {
+        "key": "manual_kg_selection", "label": "人工选择候选故障路径", "type": "bool",
+        "desc": "启用：生成前进入故障路径确认页人工勾选；关闭：AI 从 Top3 候选中自动判断并直接生成",
+        "restart": False,
+    },
 ]
 
 SPEC_BY_KEY = {spec["key"]: spec for spec in SPECS}

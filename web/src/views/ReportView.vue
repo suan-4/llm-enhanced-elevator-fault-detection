@@ -11,6 +11,10 @@ import { defaultProfileName } from '@/domain/baseInfo'
 import { useReportStore } from '@/stores/report'
 import { useShell } from '@/stores/shell'
 import { useToast } from '@/utils/toast'
+import { systemConfig } from '@/api/system'
+import { fetchKgCandidates, fetchKgRecommendation, fetchKgRecommendationBatch, selectKgPath,
+  type KgCandidatesResponse, type KgRecommendation } from '@/api/kg'
+import type { KgSelection } from '@/api/reports'
 
 const store = useReportStore()
 const route = useRoute()
@@ -52,6 +56,7 @@ const selectedProfileName = computed(
 )
 const generating = ref(false)
 const streamText = ref('')
+const manualKgSelection = ref(true)
 const confirmNew = ref(false)
 const newBusy = ref(false)
 const itemTable = ref<InstanceType<typeof ItemTable> | null>(null)
@@ -172,7 +177,18 @@ watch(view, (v) => {
   else void nextTick(updateActiveByScroll)
 })
 
+async function loadSelectionMode(): Promise<void> {
+  try {
+    const cfg = await systemConfig()
+    const item = cfg.items.find((row) => row.key === 'manual_kg_selection')
+    manualKgSelection.value = item ? item.value !== false : true
+  } catch {
+    manualKgSelection.value = true
+  }
+}
+
 onMounted(async () => {
+  await loadSelectionMode()
   await store.loadItems()
   store.ensureBaseInfoLoaded()
   refreshSelectedProfile()
@@ -370,6 +386,96 @@ async function doNewReport(): Promise<void> {
   }
 }
 
+function top3Audit(candidates: KgCandidatesResponse['candidates']) {
+  return candidates.map((c) => ({
+    rank: c.rank, path_id: c.path_id, path_summary: c.path_summary,
+    component: c.component, system: c.system, score: c.score,
+  }))
+}
+
+async function autoSelectKg(unfitItems: { no: string; name: string }[]): Promise<KgSelection[]> {
+  /* 关闭「人工选择」后：每项先取 Top3，再由 AI 从 Top3 中自动判断。
+     前端不再进入 /kg-confirm；仍写 kg_selection 审计。 */
+  const prepared = await Promise.all(unfitItems.map(async (item) => {
+    const state = store.states[item.no]
+    try {
+      const res = await fetchKgCandidates({
+        item_no: item.no,
+        item_name: item.name,
+        reasons: state?.reasons || [],
+        other_text: state?.otherText || '',
+        top_k: 3,
+      })
+      return { item, res }
+    } catch {
+      return { item, res: null as KgCandidatesResponse | null }
+    }
+  }))
+
+  const recByNo = new Map<string, KgRecommendation>()
+  const withCandidates = prepared.filter((p) => p.res && (p.res.candidates || []).length > 0)
+  for (let i = 0; i < withCandidates.length; i += 3) {
+    const group = withCandidates.slice(i, i + 3)
+    try {
+      const batch = await fetchKgRecommendationBatch(group.map(({ item }) => ({
+        item_no: item.no,
+        item_name: item.name,
+        reasons: store.states[item.no]?.reasons || [],
+        other_text: store.states[item.no]?.otherText || '',
+        top_k: 3,
+      })))
+      if (!batch.success) throw new Error(batch.error || '批量推荐失败')
+      for (const row of batch.recommendations) recByNo.set(row.item_no, row.recommendation)
+    } catch {
+      for (const { item } of group) {
+        try {
+          const one = await fetchKgRecommendation({
+            item_no: item.no,
+            item_name: item.name,
+            reasons: store.states[item.no]?.reasons || [],
+            other_text: store.states[item.no]?.otherText || '',
+            top_k: 3,
+          })
+          if (one.recommendation) recByNo.set(item.no, one.recommendation)
+        } catch { /* 这一项降级为无候选 */ }
+      }
+    }
+  }
+
+  const selections: KgSelection[] = prepared.map(({ item, res }) => {
+    const rec = recByNo.get(item.no)
+    const selected = rec && !rec.none && rec.path_id ? rec : null
+    return {
+      item_no: item.no,
+      path_id: selected?.path_id || null,
+      decision: selected ? 'selected' : 'no_candidate',
+      rank: selected?.rank ?? null,
+      query: res?.query || '',
+    }
+  })
+
+  // 审计：自动模式同样记录 Top3 和最终选择
+  await Promise.all(selections.map(async (sel) => {
+    const found = prepared.find((p) => p.item.no === sel.item_no)
+    if (!found) return
+    const rec = recByNo.get(sel.item_no)
+    await selectKgPath({
+      report_id: store.reportId,
+      item_no: sel.item_no,
+      item_name: found.item.name,
+      query: sel.query || '',
+      path_id: sel.path_id,
+      decision: sel.decision,
+      rank: sel.rank,
+      top3: top3Audit(found.res?.candidates || []),
+      selection_source: rec?.source === 'rule' ? 'rule' : 'model',
+      model_path_id: rec?.path_id || null,
+      model_reason: rec?.reason || '',
+    }).catch(() => null)
+  }))
+  return selections
+}
+
 async function generate(): Promise<void> {
   /* 漏填不再罗列清单：直接滚到第一处并给红色短提示（提示内容不宜过长）。
      jump() 会滚动 + 高亮，字段类还会把光标放进输入框，方便直接补填。 */
@@ -380,14 +486,35 @@ async function generate(): Promise<void> {
     return
   }
   if (generating.value) return
-  /* 有不符合项：先保存草稿，跳到「故障路径确认」页；勾选完成后再生成 */
+  /* 有不符合项：人工模式跳确认页；自动模式让 AI 从 Top3 中判断后直接生成 */
   const unfitItems = store.items.filter((it) => store.states[it.no]?.result === '不符合')
   if (unfitItems.length) {
+    if (manualKgSelection.value) {
+      try {
+        await store.save()
+        await router.push({ name: 'kg-confirm' })
+      } catch (err) {
+        show(err instanceof Error ? err.message : '保存草稿失败')
+      }
+      return
+    }
+    const timing = beginInteraction('report_generate')
+    generating.value = true
+    streamText.value = 'AI 正在从 Top3 候选中判断故障路径…'
     try {
       await store.save()
-      await router.push({ name: 'kg-confirm' })
+      const selections = await autoSelectKg(unfitItems)
+      streamText.value = ''
+      const report = await store.generate(timing, selections, (text) => {
+        streamText.value += text
+      })
+      timing.finish('ok')
+      await enterReports(report.id)
     } catch (err) {
-      show(err instanceof Error ? err.message : '保存草稿失败')
+      timing.finish('error')
+      show(err instanceof Error ? err.message : '生成失败')
+    } finally {
+      generating.value = false
     }
     return
   }
