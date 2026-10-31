@@ -66,7 +66,9 @@ const itemTable = ref<InstanceType<typeof ItemTable> | null>(null)
 /* 已归档 / 已作废的报告统一在报告查看页阅读，不再复用录入页置灰；
    录入页只剩「导出状态待确认」这一种临时只读。 */
 const locked = computed(() => store.exportUncertain)
-const regenerateNeeded = computed(() => store.status === 'generated')
+const regenerateNeeded = computed(
+  () => store.hasGeneratedReport || store.status === 'generated',
+)
 
 /* 侧栏是「项目进度 + 三个区域」：基础信息 / 检测项目填写 / 报告管理。
    前两个是滚动锚点，第三个就地切换到报告管理/查看区域。

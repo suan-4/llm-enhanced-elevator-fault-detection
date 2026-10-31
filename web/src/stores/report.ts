@@ -152,6 +152,7 @@ export const useReportStore = defineStore('report', () => {
   const version = ref(1)
   const status = ref('')
   const generated = ref<GeneratedInfo | null>(null)
+  const hasGeneratedReport = ref(false)
   const uncertainExports = reactive<Record<string, boolean>>({})
   const exportUncertain = computed(() => !!reportId.value && !!uncertainExports[reportId.value])
   function markExportUncertain(id: string, uncertain: boolean): void {
@@ -400,6 +401,9 @@ export const useReportStore = defineStore('report', () => {
     }
     version.value = draft.version
     status.value = draft.status
+    if (draft.status === 'generated' || draft.status === 'filed') {
+      hasGeneratedReport.value = true
+    }
     ready.value = wasReady
   }
 
@@ -425,6 +429,7 @@ export const useReportStore = defineStore('report', () => {
     version.value = created.report.version
     status.value = created.report.status
     generated.value = null
+    hasGeneratedReport.value = false
     saveState.value = 'idle'
     savedAt.value = ''
     // 新建评估带入本机保存的常用基础信息（没有再回退默认值）
@@ -551,6 +556,7 @@ export const useReportStore = defineStore('report', () => {
     }
     version.value = report.version
     status.value = report.status
+    hasGeneratedReport.value = true
     generated.value = {
       result_digest: String(report.provenance?.result_digest || ''),
       report_no: report.report_no,
@@ -686,6 +692,7 @@ export const useReportStore = defineStore('report', () => {
     version,
     status,
     generated,
+    hasGeneratedReport,
     exportUncertain,
     markExportUncertain,
     saveState,
