@@ -651,15 +651,14 @@ async def generate(report_id: int | str, *, use_llm: bool = False,
     analysis_text = ""
     kg_appendix_text = ""
     kg_prompt_result: dict = {"used": False, "errors": []}
-    # 全部「无合适候选」/没有勾选路径：不调用模型，直接规则分析，避免白等几十秒
-    rule_only = bool(use_llm and not has_kg_paths)
-    if rule_only:
-        analysis_text = _rule_analysis_text(unfit, risks)
-    if settings.kg_prompt_enabled and has_kg_paths and use_llm:
+    # 「无合适候选」不等于不能写分析：仍让 T4 依据不符合项和通用知识生成；
+    # 只有模型不可用/校验失败时才回退规则摘要。
+    rule_only = False
+    if settings.kg_prompt_enabled and use_llm and unfit:
         try:
             with stage('kg_prompt_flow'):
                 kg_prompt_result = await _run_kg_prompt_flow(
-                    kg_evidence=kg_evidence, unfit=unfit, risks=risks,
+                    kg_evidence=kg_evidence or {}, unfit=unfit, risks=risks,
                     score=score, grade=grade, required_keys=required_keys,
                     model_text=model_text,
                     on_analysis_delta=on_analysis_delta,
