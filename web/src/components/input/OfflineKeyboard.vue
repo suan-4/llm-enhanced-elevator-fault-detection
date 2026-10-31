@@ -100,6 +100,8 @@ async function cancelVoice() {
 function switchMode(next: typeof mode.value) {
   if (next !== 'keyboard' && (password.value || numeric.value)) return
   resetComposition(); void cancelVoice(); mode.value = next; error.value = ''
+  // 进入语音模式就开始预加载常驻模型，不等按下麦克风才加载。
+  if (next === 'voice') void inputRequest('/voice/warm', {}).catch(() => {})
 }
 
 function beginHold(event: Event): void {
