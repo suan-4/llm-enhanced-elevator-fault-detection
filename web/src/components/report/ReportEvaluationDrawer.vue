@@ -187,7 +187,7 @@ watch([() => props.open, () => props.typingText, () => props.analysisText], () =
   top: 0;
   right: 0;
   bottom: 0;
-  width: min(560px, 100vw);
+  width: min(430px, 100vw);
   display: flex;
   flex-direction: column;
   background: var(--c-panel);
@@ -277,4 +277,11 @@ watch([() => props.open, () => props.typingText, () => props.analysisText], () =
 .ref-analysis .md :deep(ul),
 .ref-analysis .md :deep(ol) { margin: 4px 0 8px; padding-left: 20px; }
 .ref-typing { color: #6b8b98; font-size: 11.5px; margin-bottom: 4px; }
+@media (orientation: landscape) and (max-height: 700px) {
+  .ref-body { font-size: 11.5px; }
+  .ref-body h3 { font-size: 12px; margin: 10px 0 6px; }
+  .ref-items { font-size: 11px; }
+  .ref-head { padding: 8px 12px; }
+  .ref-head b { font-size: 13px; }
+}
 </style>

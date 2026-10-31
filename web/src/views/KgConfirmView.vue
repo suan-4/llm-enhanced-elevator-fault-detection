@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /* 生成前的「故障路径确认」页：
    每个不符合项 / 其他填写 → Top3 候选 → 人工勾选 / 无合适候选 → 生成报告。 */
-import { computed, onMounted, ref } from 'vue'
+import { computed, onActivated, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { fetchKgCandidates, fetchKgRecommendation, fetchKgRecommendationBatch,
   selectKgPath, type KgCandidatesResponse, type KgRecommendation } from '@/api/kg'
@@ -37,6 +37,8 @@ const batchLoading = ref(false)
 const currentIndex = ref(0)
 const recommendQueue: Row[] = []
 let recommendActive = 0
+const lastReportId = ref('')
+const lastVersion = ref(-1)
 
 const allChosen = computed(() => rows.value.length > 0 && rows.value.every((r) => !!r.choice))
 const doneCount = computed(() => rows.value.filter((r) => !!r.choice).length)
@@ -56,9 +58,11 @@ function goPage(delta: number): void {
   main?.scrollTo({ top: 0 })
 }
 
-onMounted(async () => {
-  shell.active = 'confirm'
-  shell.reportsView = false
+async function loadRows(): Promise<void> {
+  rows.value = []
+  currentIndex.value = 0
+  recommendQueue.splice(0)
+  loading.value = true
   if (!store.reportId) {
     await router.replace('/')
     return
@@ -86,6 +90,25 @@ onMounted(async () => {
   }
   await Promise.all(rows.value.map(loadRow))
   loading.value = false
+  lastReportId.value = store.reportId
+  lastVersion.value = store.version
+}
+
+onMounted(async () => {
+  shell.active = 'confirm'
+  shell.reportsView = false
+  await loadRows()
+})
+
+onActivated(async () => {
+  shell.active = 'confirm'
+  shell.reportsView = false
+  // 从录入页改过不符合项再回来时，不能继续用旧 rows/旧候选
+  if (lastReportId.value && (store.reportId !== lastReportId.value
+      || store.version !== lastVersion.value
+      || store.status !== 'draft')) {
+    await loadRows()
+  }
 })
 
 async function loadRow(row: Row): Promise<void> {
@@ -303,10 +326,10 @@ function back(): void {
         <b>{{ doneCount }}/{{ rows.length }}</b> 已确认
         <span class="page-count">{{ currentIndex + 1 }}/{{ rows.length }}</span>
         <button
-          v-if="remainingRows.length"
+          v-if="remainingRows.length || batchLoading"
           class="btn tiny batch-btn"
           type="button"
-          :disabled="batchLoading"
+          :disabled="batchLoading || !remainingRows.length"
           @click="recommendRemaining"
         >{{ batchLoading ? 'AI 批量推荐中…' : 'AI 推荐剩余 ' + Math.min(3, remainingRows.length) + ' 项' }}</button>
       </div>
@@ -354,8 +377,9 @@ function back(): void {
           v-else-if="(row.result?.candidates || []).length"
           class="btn tiny ai-trigger"
           type="button"
+          :disabled="batchLoading"
           @click="requestRecommendation(row)"
-        >AI 推荐</button>
+        >{{ batchLoading ? '批量推荐中…' : 'AI 推荐' }}</button>
 
         <div class="candidates">
         <label

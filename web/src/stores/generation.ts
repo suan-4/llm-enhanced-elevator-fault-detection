@@ -8,6 +8,7 @@ import type { KgSelection } from '@/api/reports'
 export const useGenerationStore = defineStore('generation', () => {
   const pendingSelections = ref<KgSelection[] | null>(null)
   const replayReportId = ref('')
+  const generating = ref(false)
 
   function setPending(selections: KgSelection[]): void {
     pendingSelections.value = selections
@@ -29,6 +30,6 @@ export const useGenerationStore = defineStore('generation', () => {
     return true
   }
 
-  return { pendingSelections, replayReportId, setPending, consume,
-    requestReplay, consumeReplay }
+  return { pendingSelections, replayReportId, generating,
+    setPending, consume, requestReplay, consumeReplay }
 })

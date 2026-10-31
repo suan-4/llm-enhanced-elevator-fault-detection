@@ -16,6 +16,7 @@ import AppSidebar, { type NavItem } from '@/components/AppSidebar.vue'
 import ExportResult from '@/components/report/ExportResult.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useReportStore } from '@/stores/report'
+import { useGenerationStore } from '@/stores/generation'
 import { useShell } from '@/stores/shell'
 import { useKiosk } from '@/utils/kiosk'
 import { useToast } from '@/utils/toast'
@@ -35,6 +36,7 @@ const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 const report = useReportStore()
+const generation = useGenerationStore()
 const shell = useShell()
 const kiosk = useKiosk()
 const { show } = useToast()
@@ -54,6 +56,10 @@ const progress = computed(() => ({
 }))
 
 function onNavigate(key: string): void {
+  if (generation.generating) {
+    show('报告生成中，请稍候', 2500)
+    return
+  }
   if (key === 'confirm') {
     // 与「校验并生成报告」共用同一套前置提示：漏填/没有不符合项时不要静默跳转
     if (report.ready && report.missing.length) {
@@ -69,6 +75,8 @@ function onNavigate(key: string): void {
     return
   }
   const anchor = key as 'info' | 'items' | 'reports'
+  // 先同步高亮，避免跳转后先闪一下旧项再切到目标项
+  shell.active = anchor
   if (route.path !== '/') {
     void router.push('/').then(() => shell.requestView(anchor))
     return

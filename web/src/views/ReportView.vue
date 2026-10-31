@@ -61,10 +61,12 @@ const streamText = ref('')
 const manualKgSelection = ref(true)
 const confirmNew = ref(false)
 const newBusy = ref(false)
+const regenerateOpen = ref(false)
 const itemTable = ref<InstanceType<typeof ItemTable> | null>(null)
 /* 已归档 / 已作废的报告统一在报告查看页阅读，不再复用录入页置灰；
    录入页只剩「导出状态待确认」这一种临时只读。 */
 const locked = computed(() => store.exportUncertain)
+const regenerateNeeded = computed(() => store.status === 'generated')
 
 /* 侧栏是「项目进度 + 三个区域」：基础信息 / 检测项目填写 / 报告管理。
    前两个是滚动锚点，第三个就地切换到报告管理/查看区域。
@@ -203,6 +205,7 @@ onMounted(async () => {
   }
   mainEl()?.addEventListener('scroll', updateActiveByScroll, { passive: true })
   document.addEventListener('click', onDocumentClick)
+  const requestedAnchor = shell.requested
   consumeShellRequest()
   // 兜底：恢复的现场若仍指向已归档/已作废报告，直接进报告区域查看
   if (['filed', 'void'].includes(store.status) && store.reportId) {
@@ -214,7 +217,7 @@ onMounted(async () => {
   // 旧地址 /#/reports 会带到 ?section=reports
   else if (route.query.section === 'reports') await enterReports()
   await nextTick()
-  updateActiveByScroll()
+  if (!requestedAnchor) updateActiveByScroll()
 })
 
 /** 准备当前评估（没有就新建、有草稿就续录）；失败时页面给重试入口 */
@@ -487,6 +490,7 @@ async function autoSelectKg(unfitItems: { no: string; name: string }[]): Promise
 async function runSelections(selections: KgSelection[]): Promise<void> {
   const timing = beginInteraction('report_generate')
   generating.value = true
+  generationStore.generating = true
   streamText.value = ''
   view.value = 'reports'
   shell.active = 'reports'
@@ -498,16 +502,32 @@ async function runSelections(selections: KgSelection[]): Promise<void> {
     })
     timing.finish('ok')
     generating.value = false
+    generationStore.generating = false
     await nextTick()
     await enterReports(report.id)
   } catch (err) {
     timing.finish('error')
     generating.value = false
+    generationStore.generating = false
     view.value = 'input'
     shell.active = 'items'
     shell.reportsView = false
     show(err instanceof Error ? err.message : '生成失败')
   }
+}
+
+function requestGenerate(): void {
+  if (generating.value) return
+  if (regenerateNeeded.value) {
+    regenerateOpen.value = true
+    return
+  }
+  void generate()
+}
+
+function confirmRegenerate(): void {
+  regenerateOpen.value = false
+  void generate()
 }
 
 async function generate(): Promise<void> {
@@ -533,6 +553,7 @@ async function generate(): Promise<void> {
       return
     }
     generating.value = true
+    generationStore.generating = true
     streamText.value = 'AI 正在从 Top3 候选中判断故障路径…'
     view.value = 'reports'
     shell.active = 'reports'
@@ -543,6 +564,7 @@ async function generate(): Promise<void> {
       await runSelections(selections)
     } catch (err) {
       generating.value = false
+      generationStore.generating = false
       view.value = 'input'
       show(err instanceof Error ? err.message : '生成失败')
     }
@@ -721,9 +743,9 @@ async function jump(key: string, kind: 'field' | 'item'): Promise<void> {
               class="btn btn-lg btn-primary"
               type="button"
               :disabled="generating || locked || view === 'reports'"
-              @click="generate"
+              @click="requestGenerate"
             >
-              {{ generating ? '生成中…' : '校验并生成报告' }}
+              {{ generating ? '生成中…' : (regenerateNeeded ? '重新检测并生成报告' : '校验并生成报告') }}
             </button>
           </div>
         </div>
@@ -760,6 +782,17 @@ async function jump(key: string, kind: 'field' | 'item'): Promise<void> {
           确定删除「{{ store.baseInfoProfiles.find((item) => item.id === deleteProfileId)?.name || '这套常用信息' }}」？
           删除不影响当前已填写的内容。
         </p>
+      </AppDialog>
+      <AppDialog
+        :open="regenerateOpen"
+        title="重新检测并生成报告"
+        confirm-text="重新生成"
+        danger
+        @close="regenerateOpen = false"
+        @confirm="confirmRegenerate"
+      >
+        <p class="dialog-p">当前报告已经生成，重新检测并生成会覆盖现有报告内容。</p>
+        <p class="dialog-p">确定继续吗？</p>
       </AppDialog>
       <AppDialog
         :open="confirmNew"

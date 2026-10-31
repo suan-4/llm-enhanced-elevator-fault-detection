@@ -41,6 +41,7 @@ const panelOpen = ref(!!props.generating)
 watch(() => props.generating, (active) => {
   if (active) panelOpen.value = true
 })
+watch(panelOpen, () => { void nextTick(fitPapers) })
 const typingText = ref('')
 const typing = ref(false)
 let typingTimer: number | undefined
@@ -186,7 +187,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <section class="report-viewer">
+  <section class="report-viewer" :class="{ 'panel-open': panelOpen }">
     <div class="viewer-bar">
       <button
         class="viewer-back"
@@ -853,5 +854,15 @@ onBeforeUnmount(() => {
   line-height: 1.9;
   font-size: 14px;
   color: #222;
+}
+/* 抽屉展开时只把报告纸张往左让，不做左右分栏 */
+.report-wrap {
+  transition: padding-right 0.28s ease;
+  box-sizing: border-box;
+}
+@media (min-width: 701px) {
+  .report-viewer.panel-open .report-wrap {
+    padding-right: 430px;
+  }
 }
 </style>
