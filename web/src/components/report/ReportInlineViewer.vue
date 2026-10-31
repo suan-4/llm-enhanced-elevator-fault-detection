@@ -34,8 +34,26 @@ const loadError = ref('')
    在缩放完成前先藏起来，避免"完整宽度闪一下再缩回去"。 */
 const fitted = ref(false)
 const reportWrap = ref<HTMLElement | null>(null)
-const panelOpen = ref(!!props.generating && window.innerWidth >= 701)
-const panelShift = ref(0)
+const restoredFromGeneration = !props.generating && generationStore.keepView
+
+function estimatePanelShift(): number {
+  if (window.innerWidth < 701) return 0
+  const sidebar = document.querySelector('.sidebar') as HTMLElement | null
+  const sidebarRight = sidebar ? sidebar.getBoundingClientRect().right : 50
+  const hostLeft = sidebarRight + 12
+  const hostInner = window.innerWidth - hostLeft - 16
+  const paperWidth = 793.7 * 0.52
+  const baseLeft = hostLeft + (hostInner - paperWidth) / 2
+  const baseRight = baseLeft + paperWidth
+  const drawerLeft = window.innerWidth - Math.min(430, window.innerWidth)
+  return Math.max(0, Math.min(baseRight - drawerLeft + 16, baseLeft - sidebarRight - 16))
+}
+
+const panelOpen = ref((!!props.generating || restoredFromGeneration) && window.innerWidth >= 701)
+// 生成页和刚切回的查看页首帧就使用同一个位移，避免挂载/首 token 时移动。
+const panelShift = ref(restoredFromGeneration
+  ? generationStore.panelShift
+  : (panelOpen.value ? estimatePanelShift() : 0))
 watch(() => props.generating, (active) => {
   // 横屏生成时自动打开侧栏，方便和不合格项对照；竖屏不自动占满屏幕。
   if (active) panelOpen.value = window.innerWidth >= 701
@@ -46,25 +64,30 @@ function computePanelShift(): void {
     panelShift.value = 0
     return
   }
-  // 生成刚开始时纸张还在首次布局，测量结果会让白页先左移一次；
-  // 第一个 token 到达前不施加侧栏位移，等正文真正开始流式输出再算。
-  if (props.generating && !(props.streamText || '').trim()) {
+  const host = reportWrap.value
+  if (!host) {
     panelShift.value = 0
     return
   }
-  const paper = document.querySelector('.report-wrap .paper') as HTMLElement | null
-  if (!paper) return
+  // 用“最终纸张宽度”计算一次固定位移，而不是测当前尚未完成布局的
+  // paper。这样首 token 前后位置一致，也不会在流式阶段反复左右横跳。
+  const paperWidth = PAPER_WIDTH * MIN_PAPER_SCALE
+  const hostRect = host.getBoundingClientRect()
+  // host 本身也带着 panelShift 的 transform；getBoundingClientRect 已经
+  // 包含左移量，必须加回来才是未位移时的基准，否则越算越往右。
+  const hostLeft = hostRect.left + panelShift.value
+    + (parseFloat(getComputedStyle(host).paddingLeft) || 0)
+  const hostInner = host.clientWidth - (parseFloat(getComputedStyle(host).paddingLeft) || 0)
+    - (parseFloat(getComputedStyle(host).paddingRight) || 0)
+  const baseLeft = hostLeft + (hostInner - paperWidth) / 2
+  const baseRight = baseLeft + paperWidth
   const drawerLeft = window.innerWidth - Math.min(430, window.innerWidth)
-  const rect = paper.getBoundingClientRect()
-  // 当前 panelShift 已作用在纸张上，先还原到未左移的位置再统一计算。
-  const baseLeft = rect.left + panelShift.value
-  const baseRight = rect.right + panelShift.value
   const sidebar = document.querySelector('.sidebar') as HTMLElement | null
   const sidebarRight = sidebar ? sidebar.getBoundingClientRect().right : 0
-  // 右边避开抽屉，左边避开导航栏；两边不能同时满足时优先不压左侧导航。
   const maxByDrawer = baseRight - drawerLeft + 16
   const maxBySidebar = baseLeft - sidebarRight - 16
   panelShift.value = Math.max(0, Math.min(maxByDrawer, maxBySidebar))
+  if (props.generating) generationStore.panelShift = panelShift.value
 }
 
 watch(panelOpen, async () => {
@@ -75,12 +98,6 @@ watch(panelOpen, async () => {
   await nextTick()
   fitPapers()
   computePanelShift()
-  for (const delay of [60, 180, 400]) {
-    window.setTimeout(() => {
-      fitPapers()
-      computePanelShift()
-    }, delay)
-  }
 })
 // 侧栏展开/收起只做 transform 位移，纸张尺寸不变；不要再重算缩放，
 // 否则滚动条/布局测量会让纸张看起来忽大忽小。
@@ -199,8 +216,6 @@ watch([() => props.streamText, () => props.generating], () => {
   if (!props.generating) return
   void nextTick(() => {
     fitPapers()
-    // 第一个 token 到达后才允许计算侧栏位移；此时纸张已按正确比例布局。
-    computePanelShift()
     if (followStream.value) scrollToAnalysisPageTop()
   })
 })
@@ -269,7 +284,6 @@ function observePapers(): void {
   layoutObserver = new MutationObserver(() => {
     fitPapers()
     if (props.generating && followStream.value) scrollToAnalysisPageTop()
-    if (panelOpen.value) computePanelShift()
   })
   layoutObserver.observe(host, { childList: true, subtree: true })
 }
@@ -288,23 +302,12 @@ onMounted(async () => {
   await nextTick()
   observePapers()
   fitPapers()
-  computePanelShift()
+  if (!restoredFromGeneration) computePanelShift()
   fitted.value = true
   if (!props.generating && generationStore.keepView) {
     generationStore.keepView = false
-    // 先生成页是“打开侧栏”的布局；切回查看页时也保持打开。
-    // 首次挂载时纸张布局还没稳定，必须延迟重算位移，否则会按错误位置
-    // 左移；手动关闭再打开能正常，就是因为它触发了第二次计算。
-    panelOpen.value = true
-    await nextTick()
+    // 查看页首帧已经沿用生成页的 panelShift，这里不再重新计算/延迟修正。
     fitPapers()
-    computePanelShift()
-    for (const delay of [50, 160, 360, 700]) {
-      window.setTimeout(() => {
-        fitPapers()
-        computePanelShift()
-      }, delay)
-    }
   }
   if (generationStore.consumeReplay(props.reportId)) {
     panelOpen.value = true
@@ -762,7 +765,8 @@ onBeforeUnmount(() => {
 }
 /* 抽屉展开时只把报告纸张整体往左移，不改变纸张尺寸。 */
 .report-wrap {
-  transition: transform 0.28s ease;
+  /* 侧栏位移是一次性布局，不做动画；动画期间反复测量会让纸张来回移动。 */
+  transition: none;
   box-sizing: border-box;
 }
 @media (min-width: 701px) {
