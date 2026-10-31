@@ -27,7 +27,7 @@ def lookup(actions):
     context = GLib.MainContext.default()
 
     def drain():
-        end = time.monotonic() + .025
+        end = time.monotonic() + .008
         while time.monotonic() < end:
             while context.pending():
                 context.iteration(False)
@@ -60,8 +60,12 @@ def lookup(actions):
 
 
 if __name__ == '__main__':
-    try:
-        print(json.dumps(lookup(json.load(sys.stdin)), ensure_ascii=False))
-    except Exception:
-        print(json.dumps({'error': '本机拼音输入暂不可用，请重试'}, ensure_ascii=False))
-        sys.exit(1)
+    # 常驻进程：每次请求只复用 Python/DBus 初始化，避免每敲一个键重新启动解释器。
+    for line in sys.stdin:
+        try:
+            result = lookup(json.loads(line))
+            sys.stdout.write(json.dumps(result, ensure_ascii=False) + '\n')
+        except Exception:
+            sys.stdout.write(json.dumps({'error': '本机拼音输入暂不可用，请重试'},
+                                         ensure_ascii=False) + '\n')
+        sys.stdout.flush()

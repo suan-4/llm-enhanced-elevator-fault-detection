@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import re
 import shutil
+import select
 import signal
 import subprocess
 import tempfile
@@ -20,6 +21,8 @@ PY = '/usr/bin/python3'
 DESKTOP = ['runuser', '-u', 'user', '--', 'env',
            'DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1002/bus', 'XDG_RUNTIME_DIR=/run/user/1002']
 _pinyin_lock = threading.Lock()
+_pinyin_worker = None
+_pinyin_source = ''
 
 
 def offline_pinyin_ready():
@@ -49,22 +52,57 @@ def validate_actions(actions):
     return actions
 
 
+def _stop_pinyin_worker():
+    global _pinyin_worker
+    proc = _pinyin_worker
+    _pinyin_worker = None
+    if proc is not None:
+        try:
+            proc.kill()
+        except OSError:
+            pass
+
+
+def _ensure_pinyin_worker():
+    global _pinyin_worker, _pinyin_source
+    if _pinyin_worker is not None and _pinyin_worker.poll() is None:
+        return _pinyin_worker
+    # Candidate releases can be root-only directories; send trusted source as argv,
+    # and user input only through stdin, so the desktop user need not read releases.
+    _pinyin_source = Path(__file__).with_name('fcitx_worker.py').read_text(encoding='utf-8')
+    _pinyin_worker = subprocess.Popen(
+        DESKTOP + [PY, '-u', '-c', _pinyin_source],
+        stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+        text=True, bufsize=1, start_new_session=True,
+    )
+    return _pinyin_worker
+
+
 def pinyin(actions):
     validate_actions(actions)
     if not offline_pinyin_ready():
         raise ValueError('离线拼音未就绪，请检查输入法并关闭云候选')
     with _pinyin_lock:
         try:
-            # Candidate releases can be root-only directories; send trusted source as argv,
-            # and user input only through stdin, so the desktop user need not read releases.
-            source = Path(__file__).with_name('fcitx_worker.py').read_text(encoding='utf-8')
-            result = subprocess.run(DESKTOP + [PY, '-c', source],
-                                    input=json.dumps(actions), text=True, capture_output=True, timeout=9)
-            data = json.loads(result.stdout)
-            if result.returncode or data.get('error'):
-                raise ValueError('本机拼音输入暂不可用，请重试')
-            return data
-        except (OSError, subprocess.TimeoutExpired, json.JSONDecodeError):
+            for _ in range(2):
+                proc = _ensure_pinyin_worker()
+                if proc.stdin is None or proc.stdout is None:
+                    raise OSError('pinyin worker pipe unavailable')
+                proc.stdin.write(json.dumps(actions, ensure_ascii=False) + '\n')
+                proc.stdin.flush()
+                ready, _, _ = select.select([proc.stdout], [], [], 9)
+                if not ready:
+                    raise TimeoutError('pinyin worker timeout')
+                line = proc.stdout.readline()
+                if not line:
+                    raise OSError('pinyin worker exited')
+                data = json.loads(line)
+                if data.get('error'):
+                    raise ValueError('本机拼音输入暂不可用，请重试')
+                return data
+            raise ValueError('本机拼音输入暂不可用，请重试')
+        except (OSError, TimeoutError, subprocess.SubprocessError, json.JSONDecodeError):
+            _stop_pinyin_worker()
             raise ValueError('本机拼音输入暂不可用，请重试') from None
 
 

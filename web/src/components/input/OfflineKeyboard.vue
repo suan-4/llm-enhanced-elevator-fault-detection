@@ -63,7 +63,7 @@ function action(value: InputAction, immediately = false) {
   if (actions.value.length >= 155) { error.value = '请先完成当前拼音输入'; return }
   actions.value.push(value); clearTimeout(debounce)
   if (immediately) void refresh()
-  else debounce = setTimeout(refresh, 100)
+  else debounce = setTimeout(refresh, 25)
 }
 function key(text: string) {
   error.value = ''
