@@ -131,6 +131,9 @@ function startTyping(text: string): void {
 
 /* A4 宽度（210mm @96dpi），报告页按视口等比缩放 */
 const PAPER_WIDTH = 793.7
+/* 白页不能缩成小卡片，也不能大到溢出成“巨页”。0.46 是板端
+   960×600 横屏下的可读折中：约 365×516，仍能完整看到，左右不因侧栏改变。 */
+const MIN_PAPER_SCALE = 0.46
 let paperObserver: ResizeObserver | undefined
 let layoutObserver: MutationObserver | undefined
 
@@ -217,6 +220,7 @@ function fitPapers(): void {
       scale = Math.min(scale, maxHeight / firstPaper.offsetHeight)
     }
   }
+  scale = Math.max(scale, MIN_PAPER_SCALE)
   host.querySelectorAll<HTMLElement>('.paper').forEach((paper) => {
     const holder = paper.parentElement
     paper.style.transform = scale === 1 ? '' : `scale(${scale})`
