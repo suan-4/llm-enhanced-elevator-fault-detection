@@ -542,14 +542,17 @@ function back(): void {
 
 <style scoped>
 .kg-confirm {
+  position: relative;
   max-width: 1180px;
   margin: 0 auto;
   padding: 18px 20px 120px;
 }
 .kg-loading {
-  position: fixed;
-  inset: 52px 0 0 0;
+  /* 只覆盖内容区，不再 fixed 到屏幕左侧，避免压住侧边导航栏 */
+  position: absolute;
+  inset: 0;
   z-index: 300;
+  min-height: calc(100vh - 120px);
   display: flex;
   flex-direction: column;
   align-items: center;

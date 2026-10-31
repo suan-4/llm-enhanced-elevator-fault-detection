@@ -133,7 +133,7 @@ function startTyping(text: string): void {
 const PAPER_WIDTH = 793.7
 /* 白页不能缩成小卡片，也不能大到溢出成“巨页”。0.46 是板端
    960×600 横屏下的可读折中：约 365×516，仍能完整看到，左右不因侧栏改变。 */
-const MIN_PAPER_SCALE = 0.46
+const MIN_PAPER_SCALE = 0.52
 let paperObserver: ResizeObserver | undefined
 let layoutObserver: MutationObserver | undefined
 
