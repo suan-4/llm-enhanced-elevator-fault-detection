@@ -188,7 +188,7 @@ def validate_analysis_text(text: str, *, item_nos: list[str],
     if len(body) < 200:
         errors.append({"code": "SCHEMA_INVALID", "item_no": "",
                        "detail": f"分析正文过短（{len(body)} 字）"})
-    if len(body) > 600:
+    if len(body) > 900:
         errors.append({"code": "SCHEMA_INVALID", "item_no": "",
                        "detail": f"分析正文过长（{len(body)} 字）"})
     # 项目编号缺失只作为提示，不直接判失败：模型可能用项目名称表述。

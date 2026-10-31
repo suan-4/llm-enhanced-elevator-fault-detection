@@ -563,6 +563,9 @@ h1 { margin: 0; font-size: 21px; }
 
 /* 一页确认：页面本身不滚动，候选区按视口自适应 */
 .kg-confirm {
+  width: 100%;
+  max-width: none;
+  margin: 0;
   height: calc(100vh - 52px);
   box-sizing: border-box;
   padding: 8px 18px 8px;

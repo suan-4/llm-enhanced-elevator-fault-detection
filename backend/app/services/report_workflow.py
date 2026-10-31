@@ -659,6 +659,14 @@ async def generate(report_id: int | str, *, use_llm: bool = False,
             # Preserve controlled model errors, never print arbitrary response text/URLs.
             llm_error = (str(e) if getattr(e, 'code', '') else '模型概况调用超时，已采用规则摘要' if is_timeout
                          else '模型概况未通过校验或未完成，已采用规则摘要')
+    # 模型 T4/旧链路失败时，不能让报告只显示“模型生成失败”而没有正文：
+    # 用固定四段规则分析兜底，报告仍可完整阅读。
+    if not analysis_text and unfit:
+        analysis_text = _rule_analysis_text(unfit, risks)
+        if not llm_error_code:
+            llm_error_code = "kg_t4_failed"
+        if not llm_error:
+            llm_error = "模型未成功生成，已采用规则表固定结构分析"
     if kg_prompt_result.get("appendix") and (
             kg_prompt_result.get("used") or kg_prompt_result.get("partial")):
         kg_appendix_text = kg_prompt_result["appendix"]

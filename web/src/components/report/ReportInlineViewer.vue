@@ -7,11 +7,9 @@ import ReportDocument from '@/components/report/ReportDocument.vue'
 import ReportEvaluationDrawer from '@/components/report/ReportEvaluationDrawer.vue'
 import { overviewText, countByCategory } from '@/domain/riskScore'
 import { buildAppendixRows } from '@/domain/reportResult'
-import { modelStatus } from '@/domain/modelStatus'
 import { useReportStore } from '@/stores/report'
 import { useGenerationStore } from '@/stores/generation'
 import { useExport } from '@/utils/export'
-import { useToast } from '@/utils/toast'
 import { ApiError } from '@/utils/http'
 
 const props = defineProps<{
@@ -24,7 +22,6 @@ const emit = defineEmits<{ back: [] }>()
 const store = useReportStore()
 const generationStore = useGenerationStore()
 const exp = useExport()
-const { show } = useToast()
 
 /* 父组件在切换前已经把报告装进 store：这种情况下首帧直接渲染报告，
    不用再经历一次"加载中"的闪屏。 */
@@ -75,7 +72,6 @@ const categories = computed(() => Object.values(riskByNo.value).map((risk) => ri
 const g = computed(() => store.generated?.score ?? null)
 const grade = computed(() => store.generated?.grade ?? null)
 const assessmentIssues = computed(() => store.generated?.assessment_issues ?? [])
-const modelNotice = computed(() => modelStatus(store.generated))
 const overview = computed(() => {
   const count = countByCategory(categories.value)
   const base = g.value === null
@@ -176,7 +172,6 @@ onMounted(async () => {
   }
   window.addEventListener('resize', fitPapers)
   void document.fonts?.ready.then(fitPapers)
-  if (modelNotice.value) show(modelNotice.value, 5200)
 })
 
 onBeforeUnmount(() => {
