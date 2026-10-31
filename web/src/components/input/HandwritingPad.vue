@@ -25,17 +25,31 @@ function draw() {
     ctx.stroke()
   }
 }
-function point(event: PointerEvent) {
+type PadEvent = PointerEvent | TouchEvent
+
+function touchPoint(event: TouchEvent): [number, number] {
+  const touch = event.touches[0] || event.changedTouches[0]
   const rect = canvas.value!.getBoundingClientRect()
-  return [(event.clientX - rect.left) * 420 / rect.width, (event.clientY - rect.top) * 220 / rect.height]
+  return [(touch.clientX - rect.left) * 420 / rect.width,
+          (touch.clientY - rect.top) * 220 / rect.height]
 }
-function begin(event: PointerEvent) {
+
+function point(event: PadEvent): [number, number] {
+  if ('touches' in event || 'changedTouches' in event) return touchPoint(event as TouchEvent)
+  const pointer = event as PointerEvent
+  const rect = canvas.value!.getBoundingClientRect()
+  return [(pointer.clientX - rect.left) * 420 / rect.width,
+          (pointer.clientY - rect.top) * 220 / rect.height]
+}
+function begin(event: PadEvent) {
   if (drawing) return
   drawing = true; sequence++; clearTimeout(timer); candidates.value = []
-  canvas.value!.setPointerCapture(event.pointerId)
+  if ('pointerId' in event && canvas.value) {
+    try { canvas.value.setPointerCapture((event as PointerEvent).pointerId) } catch { /* ignore */ }
+  }
   strokes.push([point(event)]); draw()
 }
-function move(event: PointerEvent) { if (drawing) { strokes[strokes.length - 1].push(point(event)); draw() } }
+function move(event: PadEvent) { if (drawing) { strokes[strokes.length - 1].push(point(event)); draw() } }
 function recognize() {
   sequence++
   candidates.value = []
@@ -43,7 +57,7 @@ function recognize() {
   busy.value = true
   worker.postMessage({ id: sequence, strokes })
 }
-function end(event: PointerEvent) {
+function end(event: PadEvent) {
   if (!drawing) return
   move(event); drawing = false
   timer = setTimeout(recognize, 220)
@@ -61,8 +75,11 @@ onBeforeUnmount(() => { clearTimeout(timer); worker.terminate() })
       <span v-if="!candidates.length">{{ busy ? '正在识别…' : '写一个字，点选候选字' }}</span>
     </div>
     <div class="handwriting-body">
-      <canvas ref="canvas" width="420" height="220" aria-label="手写区域" @pointerdown.prevent="begin"
-        @pointermove.prevent="move" @pointerup.prevent="end" @pointercancel="drawing = false" />
+      <canvas ref="canvas" width="420" height="220" aria-label="手写区域"
+        @pointerdown.prevent="begin" @pointermove.prevent="move"
+        @pointerup.prevent="end" @pointercancel="drawing = false"
+        @touchstart.prevent="begin" @touchmove.prevent="move"
+        @touchend.prevent="end" @touchcancel.prevent="drawing = false" />
       <div class="handwriting-tools">
         <button type="button" @click="undo">撤一笔</button>
         <button type="button" @click="clear">重写</button>

@@ -283,6 +283,9 @@ onBeforeUnmount(() => {
             @pointerdown.prevent="beginHold"
             @pointerup.prevent="endHold"
             @pointercancel="endHold"
+            @touchstart.prevent="beginHold"
+            @touchend.prevent="endHold"
+            @touchcancel.prevent="endHold"
             @contextmenu.prevent
             @keydown.space.prevent="beginHold"
             @keyup.space.prevent="endHold"
