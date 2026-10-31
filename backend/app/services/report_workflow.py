@@ -382,6 +382,16 @@ async def _run_kg_prompt_flow(*, kg_evidence: dict, unfit: list[dict], risks: di
             "inspection": pick("inspection"),
             "action": pick("action"),
             "verification": pick("verification"),
+            "candidates": [
+                {
+                    "system": p.get("system") or "",
+                    "component": p.get("component") or "",
+                    "fault_chain": (p.get("states") or [])[:6],
+                    "risk": _compact(p.get("risk"), 100),
+                    "action": _compact(p.get("action"), 160),
+                }
+                for p in item_paths[:3]
+            ],
             "evidence_note": ("含 %d 条候选路径，候选证据，未签核" % len(item_paths)
                               if len(item_paths) > 1 else "候选证据，未签核"),
         }
@@ -401,10 +411,9 @@ async def _run_kg_prompt_flow(*, kg_evidence: dict, unfit: list[dict], risks: di
             "item_no": no,
             "category": risk.get("category", ""),
             "measure": risk_rules.CATEGORY_MEASURE.get(risk.get("category", ""), ""),
-            "fault_chain": summary.get("fault_chain") or [],
-            "risk": summary.get("risk") or "",
-            "action": summary.get("action") or "",
-            "reasons": (item.get("reasons") or [])[:2],
+            # 候选只给模型做参考；最终以 reasons/other_text 和规则为准。
+            "candidates": summary.get("candidates") or [],
+            "reasons": (item.get("reasons") or [])[:3],
             "other_text": item.get("other_text") or "",
         })
     prompt4 = kg_prompt.build_t4_overview_prompt(

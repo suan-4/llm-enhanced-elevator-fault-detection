@@ -192,9 +192,13 @@ def build_t4_overview_prompt(*, overview_facts: dict, required_keys: list[str],
         + "### 一、总体判断；### 二、主要不符合项；### 三、处置与复验建议；### 四、综合结论。"
         + "要求：350–500 字；第一段概括涉及的系统/部件，但不要写不符合项总数、"
         + "综合得分、等级或「本次评估共发现 X 项」；"
-        + "第二段按项目编号逐项说明风险类别、现场事实、故障演化、风险后果；"
+        + "第二段按项目编号逐项说明风险类别、现场事实、可能的故障演化、风险后果；"
         + "第三段写规则表处置、整改与复验建议；第四段写综合结论；"
-        + "没有故障演化资料的项目只写现场事实、风险类别和规则表处置，不得编造故障演化链；"
+        + "候选只有 hints，不代表已认定：候选可能与本条不符合项不匹配，甚至全部不匹配；"
+        + "必须优先依据 reasons/other_text、现场事实和规则类别，自行判断最贴合的候选；"
+        + "候选不贴合就忽略，不得为了使用候选而强行拼接故障链；"
+        + "候选的匹配度/排序只是检索结果，不能作为故障是否成立的判断依据；"
+        + "没有合适候选时，依据不符合项和规则进行合理分析，但不得编造具体数值、条款或现场事实；"
         + "正文不要提及候选路径、图谱、path_id、附页或证据边界；"
         + "不得出现具体限值；"
         + "不写「已确认」「已签核」「违反」「必然」「证明」。"
@@ -207,10 +211,17 @@ def build_t4_overview_prompt(*, overview_facts: dict, required_keys: list[str],
                 "item_no": item.get("item_no", ""),
                 "category": item.get("category", ""),
                 "measure": _compact(item.get("measure", ""), 260),
-                "fault_chain": item.get("fault_chain", [])[:6],
-                "risk": _compact(item.get("risk", ""), 100),
-                "action": _compact(item.get("action", ""), 220),
-                "reasons": [ _compact(r, 120) for r in (item.get("reasons") or [])[:2] ],
+                "candidates": [
+                    {
+                        "system": _compact(c.get("system", ""), 40),
+                        "component": _compact(c.get("component", ""), 40),
+                        "fault_chain": [ _compact(s, 60) for s in (c.get("fault_chain") or [])[:6] ],
+                        "risk": _compact(c.get("risk", ""), 100),
+                        "action": _compact(c.get("action", ""), 160),
+                    }
+                    for c in (item.get("candidates") or [])[:3]
+                ],
+                "reasons": [ _compact(r, 120) for r in (item.get("reasons") or [])[:3] ],
                 "other_text": _compact(item.get("other_text", ""), 200),
             }
             for item in items[:8]
