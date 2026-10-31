@@ -73,7 +73,7 @@ adb push osk-helper\elevator-osk@local /tmp/elevator-osk@local
 echo.
 echo [5b/7] 安装原生应用、开机自启与桌面快捷方式...
 REM Windows 检出的脚本/Python 可能是 CRLF；板端 bash/python 会因此报错，先统一转 LF。
-adb shell "sed -i 's/\r$//' /tmp/install_kiosk.sh /tmp/elevator-kiosk.sh /tmp/elevator-launch.sh /tmp/elevator_app.py /tmp/elevator.desktop /tmp/elevator-kiosk.desktop /tmp/harden_kiosk.sh /tmp/elevator-osk@local/metadata.json /tmp/elevator-osk@local/extension.js 2>/dev/null; bash /tmp/install_kiosk.sh; sed -i 's/\r$//' /home/user/elevator_app.py /home/user/elevator-kiosk.sh /home/user/elevator-launch.sh 2>/dev/null; echo '  桌面快捷方式: /home/user/桌面/电梯安全评估系统.desktop'"
+adb shell "sed -i 's/\r$//' /tmp/install_kiosk.sh /tmp/elevator-kiosk.sh /tmp/elevator-launch.sh /tmp/elevator_app.py /tmp/elevator.desktop /tmp/elevator-kiosk.desktop /tmp/harden_kiosk.sh /tmp/elevator-osk@local/metadata.json /tmp/elevator-osk@local/extension.js 2>/dev/null; ELEVATOR_SKIP_WALLPAPER=1 bash /tmp/install_kiosk.sh; sed -i 's/\r$//' /home/user/elevator_app.py /home/user/elevator-kiosk.sh /home/user/elevator-launch.sh 2>/dev/null; echo '  桌面快捷方式: /home/user/桌面/电梯安全评估系统.desktop'"
 
 echo.
 echo [5c/7] 重启原生应用（让最新 GTK/键盘代码生效）...

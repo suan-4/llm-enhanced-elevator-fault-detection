@@ -66,6 +66,7 @@ NMEOF
   #   （canvas_by_roytanck.jpg / warty-final-ubuntu.png 都出现过），
   #   于是桌面又变成花哨壁纸。这里直接生成一张与登录页同色系的纯色 PNG
   #   并指向它，最稳。色值取应用启动页渐变的起始色 #10365f。
+  if [ "${ELEVATOR_SKIP_WALLPAPER:-0}" != "1" ]; then
   BG_PNG="$USER_HOME/.elevator-bg.png"
   python3 - "$BG_PNG" <<'PY' 2>/dev/null || true
 import sys
@@ -84,6 +85,7 @@ PY
   fi
   as_user "gsettings set org.gnome.desktop.background primary-color '#10365f'" 2>/dev/null
   as_user "gsettings set org.gnome.desktop.background color-shading-type 'solid'" 2>/dev/null
+  fi
   as_user "gsettings set org.gnome.desktop.background show-desktop-icons false" 2>/dev/null
   # 桌面图标（ding 扩展）
   as_user "gsettings set org.gnome.shell.extensions.ding show-home false" 2>/dev/null
@@ -93,7 +95,11 @@ PY
   as_user "gsettings set org.gnome.shell.extensions.dash-to-dock dock-fixed false" 2>/dev/null
   as_user "gsettings set org.gnome.shell.extensions.dash-to-dock autohide true" 2>/dev/null
   as_user "gsettings set org.gnome.shell.extensions.dash-to-dock intellihide true" 2>/dev/null
-  echo "    壁纸已改纯色 #10365f、桌面图标已关、Dock 已自动隐藏"
+  if [ "${ELEVATOR_SKIP_WALLPAPER:-0}" = "1" ]; then
+    echo "    保留原壁纸（部署模式）、桌面图标已关、Dock 已自动隐藏"
+  else
+    echo "    壁纸已改纯色 #10365f、桌面图标已关、Dock 已自动隐藏"
+  fi
 
   echo "[加固] 解除退回桌面的快捷键（退出请用界面上的「退出系统」按钮）"
   # Alt+F4 关闭窗口 —— 这是原先退回桌面的主要途径

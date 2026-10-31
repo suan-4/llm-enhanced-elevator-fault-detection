@@ -31,6 +31,7 @@ const generating = ref(false)
 const error = ref('')
 const streamText = ref('')
 const batchLoading = ref(false)
+const currentIndex = ref(0)
 const recommendQueue: Row[] = []
 let recommendActive = 0
 
@@ -39,6 +40,18 @@ const doneCount = computed(() => rows.value.filter((r) => !!r.choice).length)
 const remainingRows = computed(() => rows.value.filter(
   (r) => !r.recommendation && !r.recommending && (r.result?.candidates || []).length > 0,
 ))
+const currentRow = computed(() => rows.value[currentIndex.value] || null)
+const visibleRows = computed(() => (currentRow.value ? [currentRow.value] : []))
+const hasPrev = computed(() => currentIndex.value > 0)
+const hasNext = computed(() => currentIndex.value < rows.value.length - 1)
+
+function goPage(delta: number): void {
+  const next = currentIndex.value + delta
+  if (next < 0 || next >= rows.value.length) return
+  currentIndex.value = next
+  const main = document.querySelector('.main') as HTMLElement | null
+  main?.scrollTo({ top: 0 })
+}
 
 onMounted(async () => {
   if (!store.reportId) {
@@ -285,6 +298,7 @@ function back(): void {
       </div>
       <div class="progress">
         <b>{{ doneCount }}/{{ rows.length }}</b> 已确认
+        <span class="page-count">{{ currentIndex + 1 }}/{{ rows.length }}</span>
         <button
           v-if="remainingRows.length"
           class="btn tiny batch-btn"
@@ -297,7 +311,7 @@ function back(): void {
 
     <div v-if="loading" class="loading">正在检索候选路径…</div>
 
-    <section v-for="row in rows" :key="row.no" class="item">
+    <section v-for="row in visibleRows" :key="row.no" class="item">
       <div class="item-head">
         <h2>{{ row.no }}　{{ row.name }}</h2>
         <span v-if="row.result" class="hint">{{ row.result.item_system }} · {{ row.result.query_terms.join('、') }}</span>
@@ -372,6 +386,23 @@ function back(): void {
       </div>
     </section>
 
+    <button
+      v-if="rows.length > 1"
+      class="page-turn prev"
+      type="button"
+      aria-label="上一项"
+      :disabled="!hasPrev"
+      @click="goPage(-1)"
+    >‹</button>
+    <button
+      v-if="rows.length > 1"
+      class="page-turn next"
+      type="button"
+      aria-label="下一项"
+      :disabled="!hasNext"
+      @click="goPage(1)"
+    >›</button>
+
     <footer class="foot">
       <p v-if="error" class="error-line">{{ error }}</p>
       <div class="foot-actions">
@@ -396,6 +427,31 @@ function back(): void {
 h1 { margin: 0; font-size: 21px; }
 .sub { margin: 4px 0 0; color: var(--c-muted); font-size: 12.5px; line-height: 1.5; }
 .progress { background: #eef6f8; color: #1b5e7a; border-radius: 999px; padding: 6px 14px; font-size: 12.5px; white-space: nowrap; }
+.page-count { margin-left: 8px; color: #5b7; font-weight: 700; }
+.page-turn {
+  position: fixed;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 260;
+  width: 52px;
+  height: 72px;
+  border: 1px solid rgba(27, 94, 122, 0.35);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.94);
+  color: #1b5e7a;
+  font-size: 38px;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 8px 22px rgba(20, 50, 70, 0.18);
+}
+.page-turn.prev { left: 64px; }
+.page-turn.next { right: 18px; }
+.page-turn:disabled { opacity: 0.28; cursor: default; box-shadow: none; }
+@media (max-width: 900px) {
+  .page-turn { width: 46px; height: 64px; font-size: 32px; }
+  .page-turn.prev { left: 58px; }
+  .page-turn.next { right: 10px; }
+}
 .batch-btn { margin-left: 8px; }
 .loading { padding: 30px; text-align: center; color: var(--c-muted); }
 .item {

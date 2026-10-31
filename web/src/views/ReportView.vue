@@ -5,7 +5,7 @@ import { beginInteraction } from '@/utils/performance'
 import InfoTable from '@/components/report/InfoTable.vue'
 import ItemTable from '@/components/report/ItemTable.vue'
 import AppDialog from '@/components/AppDialog.vue'
-import StreamingOverlay from '@/components/StreamingOverlay.vue'
+import { renderMarkdown } from '@/utils/markdown'
 import ReportCenter from '@/components/report/ReportCenter.vue'
 import { defaultProfileName } from '@/domain/baseInfo'
 import { useReportStore } from '@/stores/report'
@@ -57,6 +57,7 @@ const selectedProfileName = computed(
 const generating = ref(false)
 const streamText = ref('')
 const manualKgSelection = ref(true)
+const streamPanel = ref<HTMLElement | null>(null)
 const confirmNew = ref(false)
 const newBusy = ref(false)
 const itemTable = ref<InstanceType<typeof ItemTable> | null>(null)
@@ -186,6 +187,19 @@ async function loadSelectionMode(): Promise<void> {
     manualKgSelection.value = true
   }
 }
+
+function scrollToStreamBottom(): void {
+  const main = mainEl()
+  if (!main || !streamPanel.value) return
+  main.scrollTo({ top: main.scrollHeight, behavior: 'smooth' })
+}
+
+watch(generating, (active) => {
+  if (active) void nextTick(scrollToStreamBottom)
+})
+watch(streamText, () => {
+  if (generating.value) void nextTick(scrollToStreamBottom)
+})
 
 onMounted(async () => {
   await loadSelectionMode()
@@ -658,6 +672,13 @@ async function jump(key: string, kind: 'field' | 'item'): Promise<void> {
             </div>
             <div id="sec-items" style="margin-top: 14px">
               <ItemTable ref="itemTable" />
+              <div v-if="generating" ref="streamPanel" class="inline-stream" role="status">
+                <div class="inline-stream-head">
+                  <b>文本分析报告</b>
+                  <span>生成中…</span>
+                </div>
+                <div class="inline-stream-body md" v-html="renderMarkdown(streamText || '正在从 Top3 候选中判断并生成…')" />
+              </div>
             </div>
           </fieldset>
         </div>
@@ -756,10 +777,42 @@ async function jump(key: string, kind: 'field' | 'item'): Promise<void> {
         </p>
         <p class="dialog-p">确定新建一份空白评估吗？</p>
       </AppDialog>
-  <StreamingOverlay v-if="generating" :text="streamText" />
 </template>
 
 <style scoped>
+.inline-stream {
+  margin: 18px 0 110px;
+  padding: 14px 16px;
+  border: 1px solid #cfe3ea;
+  border-radius: 10px;
+  background: #f7fcfd;
+  box-shadow: 0 2px 10px rgba(27, 94, 122, 0.08);
+}
+.inline-stream-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-bottom: 8px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid #dceef3;
+  color: #1b5e7a;
+  font-size: 13px;
+}
+.inline-stream-head span { color: #6b8b98; font-size: 11.5px; }
+.inline-stream-body {
+  max-height: 320px;
+  overflow-y: auto;
+  line-height: 1.8;
+  font-size: 13.5px;
+  color: #223;
+}
+.inline-stream-body.md :deep(h1),
+.inline-stream-body.md :deep(h2),
+.inline-stream-body.md :deep(h3) { margin: 8px 0 6px; color: #1b5e7a; }
+.inline-stream-body.md :deep(p) { margin: 0 0 8px; }
+.inline-stream-body.md :deep(ul),
+.inline-stream-body.md :deep(ol) { margin: 4px 0 8px; padding-left: 22px; }
 .section-bar {
   display: flex;
   align-items: center;
