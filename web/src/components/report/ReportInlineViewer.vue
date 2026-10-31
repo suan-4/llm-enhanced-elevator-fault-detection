@@ -176,6 +176,16 @@ watch([() => props.streamText, () => props.generating], () => {
   })
 })
 
+// props.generating 在组件已挂载后才变 true 时，也立即滚到分析页。
+watch(() => props.generating, (active) => {
+  if (!active) return
+  followStream.value = true
+  void nextTick(() => {
+    fitPapers()
+    scrollToAnalysisPageTop()
+  })
+})
+
 function onResize(): void {
   fitPapers()
   computePanelShift()
@@ -246,7 +256,15 @@ onMounted(async () => {
   void document.fonts?.ready.then(fitPapers)
   if (props.generating) {
     await nextTick()
+    // 生成页首次布局时纸张/分析页可能还没完成，延迟再测一次；
+    // 否则会误判为“取不到分析页”，直到第一个 token 才滚动。
     scrollToAnalysisPageTop()
+    for (const delay of [60, 160, 320, 600]) {
+      window.setTimeout(() => {
+        fitPapers()
+        if (followStream.value) scrollToAnalysisPageTop()
+      }, delay)
+    }
   }
 })
 
