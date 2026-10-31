@@ -5,6 +5,7 @@ import { computed, onActivated, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { fetchKgCandidates, fetchKgRecommendation, fetchKgRecommendationBatch,
   selectKgPath, type KgCandidatesResponse, type KgRecommendation } from '@/api/kg'
+import { systemConfig } from '@/api/system'
 import { useReportStore } from '@/stores/report'
 import { useGenerationStore } from '@/stores/generation'
 import { useShell } from '@/stores/shell'
@@ -36,6 +37,7 @@ const generating = ref(false)
 const error = ref('')
 const batchLoading = ref(false)
 const currentIndex = ref(0)
+const directTop3 = ref(false)
 const recommendQueue: Row[] = []
 let recommendActive = 0
 const lastReportId = ref('')
@@ -44,7 +46,7 @@ const lastVersion = ref(-1)
 const allChosen = computed(() => rows.value.length > 0 && rows.value.every((r) => !!r.choice))
 const doneCount = computed(() => rows.value.filter((r) => !!r.choice).length)
 const remainingRows = computed(() => rows.value.filter(
-  (r) => !r.recommendation && !r.recommending && (r.result?.candidates || []).length > 0,
+  (r) => !r.choice && !r.recommending && (r.result?.candidates || []).length > 0,
 ))
 const BATCH_SIZE = 3
 const currentRow = computed(() => rows.value[currentIndex.value] || null)
@@ -118,9 +120,20 @@ async function loadRows(): Promise<void> {
   lastVersion.value = store.version
 }
 
+async function loadDirectTop3(): Promise<void> {
+  try {
+    const cfg = await systemConfig()
+    const item = cfg.items.find((row) => row.key === 'direct_top3_prompt')
+    directTop3.value = item ? item.value === true : false
+  } catch {
+    directTop3.value = false
+  }
+}
+
 onMounted(async () => {
   shell.active = 'confirm'
   shell.reportsView = false
+  await loadDirectTop3()
   await loadRows()
 })
 
@@ -149,7 +162,7 @@ async function loadRow(row: Row): Promise<void> {
     row.result = res
     if (!res.candidates.length) {
       row.choice = 'none'
-    } else {
+    } else if (!directTop3.value) {
       // 页面打开时只跑规则快路径；模糊项等用户点「AI 推荐」再调模型
       void recommendRow(row, true)
     }
@@ -161,6 +174,7 @@ async function loadRow(row: Row): Promise<void> {
 }
 
 async function recommendRemaining(): Promise<void> {
+  if (directTop3.value) return
   const targets = remainingRows.value.slice(0, 3)
   if (!targets.length || batchLoading.value) return
   batchLoading.value = true
@@ -194,7 +208,8 @@ async function recommendRemaining(): Promise<void> {
 }
 
 function requestRecommendation(row: Row): void {
-  if (row.recommending || row.recommendation || row.loading) return
+  if (directTop3.value || row.recommending
+      || row.recommendation?.source === 'model' || row.loading) return
   enqueueRecommendation(row)
 }
 
@@ -354,7 +369,7 @@ function back(): void {
         <b>{{ doneCount }}/{{ rows.length }}</b> 已确认
         <span class="page-count">{{ currentIndex + 1 }}/{{ rows.length }}</span>
         <button
-          v-if="remainingRows.length || batchLoading"
+          v-if="!directTop3 && (remainingRows.length || batchLoading)"
           class="btn tiny batch-btn"
           type="button"
           :disabled="batchLoading || !remainingRows.length"
@@ -381,12 +396,8 @@ function back(): void {
         <button class="btn tiny" type="button" @click="loadRow(row)">重试</button>
       </div>
       <div v-else>
-        <div v-if="row.recommending || row.recommendation" class="ai-line">
-        <span v-if="row.recommending" class="muted">AI 正在推荐…</span>
-        <template v-else-if="row.recommendation">
-          <span class="ai-badge">
-            {{ row.recommendation.source === 'rule' ? '规则推荐' : 'AI 推荐' }}
-          </span>
+        <div v-if="row.recommendation?.source === 'rule'" class="rule-line">
+          <span class="rule-badge">规则推荐</span>
           <span v-if="row.recommendation.none">
             建议「无合适候选」：{{ row.recommendation.reason || '未匹配到候选路径' }}
           </span>
@@ -399,10 +410,29 @@ function back(): void {
             type="button"
             @click="applyRecommendation(row)"
           >采用</button>
-        </template>
         </div>
+
+        <div v-if="row.recommending || row.recommendation?.source === 'model'" class="ai-line">
+          <span v-if="row.recommending" class="muted">AI 正在推荐…</span>
+          <template v-else-if="row.recommendation">
+            <span class="ai-badge">AI 推荐</span>
+            <span v-if="row.recommendation.none">
+              建议「无合适候选」：{{ row.recommendation.reason || '未匹配到候选路径' }}
+            </span>
+            <span v-else>
+              #{{ row.recommendation.rank }}　{{ row.recommendation.reason || '候选路径' }}
+            </span>
+            <button
+              v-if="row.choice !== recommendedChoice(row)"
+              class="btn tiny"
+              type="button"
+              @click="applyRecommendation(row)"
+            >采用</button>
+          </template>
+        </div>
+
         <button
-          v-else-if="(row.result?.candidates || []).length"
+          v-if="!directTop3 && !row.recommending && row.recommendation?.source !== 'model' && visibleCandidates(row).length"
           class="btn tiny ai-trigger"
           type="button"
           :disabled="batchLoading"
@@ -549,6 +579,28 @@ h1 { margin: 0; font-size: 21px; }
 .candidate.on { border-color: #1b5e7a; background: #f5fbfc; }
 .candidate.recommended { border-color: #2c8a5a; }
 .candidate.recommended.on { border-color: #1b5e7a; }
+.rule-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 6px 0 4px;
+  padding: 5px 9px;
+  border-radius: 7px;
+  background: #f2faf5;
+  color: #2c6b42;
+  font-size: 12px;
+}
+.rule-badge {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: #2c8a5a;
+  color: #fff;
+  font-size: 10.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
 .ai-line {
   display: flex;
   align-items: center;

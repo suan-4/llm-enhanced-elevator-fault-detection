@@ -79,6 +79,11 @@ SPECS: list[dict] = [
         "desc": "启用：生成前进入故障路径确认页人工勾选；关闭：AI 从 Top3 候选中自动判断并直接生成",
         "restart": False,
     },
+    {
+        "key": "direct_top3_prompt", "label": "人工确认：Top3 直接进入提示词", "type": "bool",
+        "desc": "仅在人工确认开启时生效。开启后确认页不调用 AI 推荐，操作员选中的 Top3 直接进入生成提示词；关闭保留 AI 推荐轮次",
+        "restart": False,
+    },
 ]
 
 SPEC_BY_KEY = {spec["key"]: spec for spec in SPECS}

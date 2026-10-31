@@ -32,6 +32,8 @@ class Settings(BaseSettings):
     kg_prompt_enabled: bool = True
     # 生成前是否人工选择候选故障路径；关闭后由 AI 从 Top3 候选中自动判断
     manual_kg_selection: bool = True
+    # 自动模式下是否把 Top3 直接拼进生成提示词（省一轮 AI 推荐）
+    direct_top3_prompt: bool = False
     session_ttl_hours: int = 168          # 登录令牌绝对有效期，默认 7 天
     session_idle_hours: int = 8           # 空闲多久算掉线（板端是共用终端）
     history_limit: int = 50               # 每个用户保留的历史报告条数
