@@ -35,7 +35,10 @@ popd
 
 echo.
 echo [2/7] 快照板端当前状态（失败可回滚）...
-adb shell "TS=$(date +%%Y%%m%%d_%%H%%M%%S); mkdir -p /userdata/releases/$TS; cp -a %ROOT%/backend/app /userdata/releases/$TS/app 2>/dev/null; cp -a %ROOT%/web /userdata/releases/$TS/web 2>/dev/null; echo   快照: /userdata/releases/$TS"
+adb shell "TS=$(date +%%Y%%m%%d_%%H%%M%%S); mkdir -p /userdata/releases/$TS; cp -a %ROOT%/backend/app /userdata/releases/$TS/app 2>/dev/null; cp -a %ROOT%/web/dist /userdata/releases/$TS/web 2>/dev/null; echo   快照: /userdata/releases/$TS"
+REM 只保留最近 3 个快照：快照里曾包含 web/node_modules，部署几十次后
+REM /userdata 的 inode 会耗尽，SQLite 会报 unable to open database file。
+adb shell "ls -1dt /userdata/releases/2026* 2>/dev/null | tail -n +4 | xargs -r rm -rf"
 
 echo.
 echo [3/7] 推送前端构建产物到 web/dist ...
