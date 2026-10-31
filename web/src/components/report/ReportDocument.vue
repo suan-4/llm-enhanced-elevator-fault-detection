@@ -63,6 +63,7 @@ defineProps<{
 <style scoped>
 .analysis-paper h1 {
   margin-top: 0;
+  color: #1b5e7a;
 }
 .analysis-note {
   color: var(--c-muted);

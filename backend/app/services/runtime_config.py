@@ -76,7 +76,7 @@ SPECS: list[dict] = [
     },
     {
         "key": "manual_kg_selection", "label": "人工选择候选故障路径", "type": "bool",
-        "desc": "启用：生成前进入人工确认页，可手动选择路径、展开 AI 推荐或直接拼接候选；关闭：AI 自动从 Top3 选择路径并生成",
+        "desc": "启用：生成前进入人工确认页，可手动选择路径、展开 AI 推荐或直接拼接候选；关闭：AI 自动选择候选路径并生成",
         "restart": False,
     },
     {

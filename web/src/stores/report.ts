@@ -483,6 +483,7 @@ export const useReportStore = defineStore('report', () => {
 
   /** 保存当前全部状态（草稿保存的就是全部） */
   async function save(): Promise<void> {
+    if (generationInFlight) return
     if (status.value === 'filed' || status.value === 'void' || exportUncertain.value) return
     // Autosave, manual save and generation share one ordered stream of writes.
     while (saveInFlight) await saveInFlight
@@ -517,8 +518,11 @@ export const useReportStore = defineStore('report', () => {
     }
   }
 
+  let generationInFlight = false
+
   /** 改动后防抖保存：既保证不丢，又不至于每敲一个字写一次盘 */
   function scheduleSave(delay = 800): void {
+    if (generationInFlight) return
     if (!ready.value || !reportId.value) return
     if (status.value === 'filed' || status.value === 'void' || exportUncertain.value) return
     generated.value = null
@@ -542,14 +546,23 @@ export const useReportStore = defineStore('report', () => {
     }
     if (timing) await timing.measure('save', save)
     else await save()
+    window.clearTimeout(saveTimer)
+    saveTimer = undefined
     const requestedId = reportId.value
     const inputSnapshot = JSON.stringify({ form: form.value, items: serializeItems() })
-    // use_llm=true：模型可用就用模型写概况；不可用后端会自动降级，不影响出报告
-    const res = onText
-      ? await flowApi.generateReportStream(reportId.value, true, kgSelections, onText)
-      : timing
-        ? await timing.measure('generate_http', () => flowApi.generateReport(reportId.value!, true, kgSelections))
-        : await flowApi.generateReport(reportId.value, true, kgSelections)
+    // 生成期间禁止自动保存插队，避免客户端自己的请求把版本号撞旧。
+    generationInFlight = true
+    let res
+    try {
+      // use_llm=true：模型可用就用模型写概况；不可用后端会自动降级，不影响出报告
+      res = onText
+        ? await flowApi.generateReportStream(reportId.value, true, kgSelections, onText)
+        : timing
+          ? await timing.measure('generate_http', () => flowApi.generateReport(reportId.value!, true, kgSelections))
+          : await flowApi.generateReport(reportId.value, true, kgSelections)
+    } finally {
+      generationInFlight = false
+    }
     const report = res.report
     if (reportId.value !== requestedId) throw new Error('当前报告已切换，没有覆盖新报告')
     if (inputSnapshot !== JSON.stringify({ form: form.value, items: serializeItems() })) {

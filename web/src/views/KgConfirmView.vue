@@ -452,14 +452,14 @@ function back(): void {
 
         </div>
 
-        <div class="candidates">
+        <div class="candidates" :class="{ 'is-direct': row.choice === 'direct_ai' }">
         <label
           v-for="c in visibleCandidates(row)"
           :key="c.path_id"
           class="candidate"
           :class="{ on: row.choice === c.path_id, recommended: row.recommendation?.path_id === c.path_id }"
         >
-          <input v-model="row.choice" type="radio" :value="c.path_id" @change="markChoice(row)" />
+          <input v-model="row.choice" type="radio" :value="c.path_id" :disabled="row.choice === 'direct_ai'" @change="markChoice(row)" />
           <span class="body">
             <span class="path">
               #{{ c.rank }}　{{ chainOf(c) }}
@@ -738,6 +738,10 @@ h1 { font-size: 18px; }
   gap: 5px;
   overflow-y: auto;
   padding-right: 2px;
+}
+.candidates.is-direct > .candidate {
+  opacity: 0.5;
+  pointer-events: none;
 }
 .candidate { padding: 7px 9px; gap: 7px; min-width: 0; overflow: hidden; }
 .path { font-size: 11.5px; line-height: 1.35; }
