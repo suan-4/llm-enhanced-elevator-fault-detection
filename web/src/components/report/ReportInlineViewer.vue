@@ -35,9 +35,29 @@ const loadError = ref('')
 const fitted = ref(false)
 const reportWrap = ref<HTMLElement | null>(null)
 const panelOpen = ref(!!props.generating && window.innerWidth >= 701)
+const panelShift = ref(0)
 watch(() => props.generating, (active) => {
   // 横屏生成时自动打开侧栏，方便和不合格项对照；竖屏不自动占满屏幕。
   if (active) panelOpen.value = window.innerWidth >= 701
+})
+
+function computePanelShift(): void {
+  if (!panelOpen.value || window.innerWidth < 701) {
+    panelShift.value = 0
+    return
+  }
+  const paper = document.querySelector('.report-wrap .paper') as HTMLElement | null
+  if (!paper) return
+  const drawerLeft = window.innerWidth - Math.min(430, window.innerWidth)
+  // 纸张当前可能已经左移；只补足仍被抽屉压住的宽度，避免来回累积。
+  const needed = Math.max(0, paper.getBoundingClientRect().right - drawerLeft + 16)
+  if (needed > 1) panelShift.value = Math.min(panelShift.value + needed, 560)
+}
+
+watch(panelOpen, async () => {
+  if (!panelOpen.value) panelShift.value = 0
+  await nextTick()
+  computePanelShift()
 })
 // 侧栏展开/收起只做 transform 位移，纸张尺寸不变；不要再重算缩放，
 // 否则滚动条/布局测量会让纸张看起来忽大忽小。
@@ -159,6 +179,11 @@ watch([() => props.streamText, () => props.generating], () => {
   })
 })
 
+function onResize(): void {
+  fitPapers()
+  computePanelShift()
+}
+
 function fitPapers(): void {
   const host = reportWrap.value
   if (!host) return
@@ -213,13 +238,14 @@ onMounted(async () => {
   await nextTick()
   observePapers()
   fitPapers()
+  computePanelShift()
   fitted.value = true
   if (generationStore.consumeReplay(props.reportId)) {
     panelOpen.value = true
     await nextTick()
     startTyping(analysisText.value)
   }
-  window.addEventListener('resize', fitPapers)
+  window.addEventListener('resize', onResize)
   document.querySelector('.main')?.addEventListener('scroll', onMainScroll, { passive: true })
   void document.fonts?.ready.then(fitPapers)
   if (props.generating) {
@@ -231,14 +257,18 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   paperObserver?.disconnect()
   stopTyping()
-  window.removeEventListener('resize', fitPapers)
+  window.removeEventListener('resize', onResize)
   document.querySelector('.main')?.removeEventListener('scroll', onMainScroll)
   window.clearTimeout(followTimer)
 })
 </script>
 
 <template>
-  <section class="report-viewer" :class="{ 'panel-open': panelOpen }">
+  <section
+    class="report-viewer"
+    :class="{ 'panel-open': panelOpen }"
+    :style="{ '--panel-shift': `${panelShift}px` }"
+  >
     <div class="viewer-bar">
       <button
         class="viewer-back"
@@ -662,7 +692,7 @@ onBeforeUnmount(() => {
 }
 @media (min-width: 701px) {
   .report-viewer.panel-open .report-wrap {
-    transform: translateX(-180px);
+    transform: translateX(calc(-1 * var(--panel-shift, 0px)));
   }
 }
 </style>
