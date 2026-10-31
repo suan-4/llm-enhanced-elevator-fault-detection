@@ -41,6 +41,13 @@ def pinyin(request: Request, body: PinyinRequest):
         raise HTTPException(400, str(exc)) from None
 
 
+@router.post('/voice/warm')
+def voice_warm(request: Request):
+    require_local(request)
+    engine.warm_asr_server()
+    return {'success': True, 'warming': True}
+
+
 @router.post('/voice/start')
 def voice_start(request: Request):
     require_local(request)

@@ -60,6 +60,7 @@ const selectedProfileName = computed(
 const generating = ref(false)
 const streamText = ref('')
 const manualKgSelection = ref(true)
+const aiPromptCandidateCount = ref(3)
 const confirmNew = ref(false)
 const newBusy = ref(false)
 const regenerateOpen = ref(false)
@@ -105,14 +106,18 @@ async function enterReports(reportId?: string): Promise<void> {
     store.stashSession()
     stashedForReports = true
   }
-  // 先把要显示的内容准备好（列表刷新 / 重新装回正在查看的报告），再切区域
-  if (reportId) await reportCenter.value?.showReport(reportId)
-  else await reportCenter.value?.prepareEnter()
+  // 生成完成时 ReportCenter 是刚挂载的，必须先切到 reports、等它出现在
+  // DOM 后再 showReport，否则 ref 为空，showReport 根本不会执行。
+  const keepPosition = generationStore.keepView
   view.value = 'reports'
   shell.active = 'reports'
   shell.reportsView = true
   await nextTick()
-  mainEl()?.scrollTo({ top: 0 })
+  if (reportId) await reportCenter.value?.showReport(reportId)
+  else await reportCenter.value?.prepareEnter()
+  await nextTick()
+  // 用进入前的快照判断：实际 Viewer 在 showReport 过程中会消费 keepView。
+  if (!keepPosition) mainEl()?.scrollTo({ top: 0 })
 }
 
 /** 从报告区域回到录入页：恢复离开前的现场 */
@@ -197,6 +202,9 @@ async function loadSelectionMode(): Promise<void> {
     const cfg = await systemConfig()
     const item = cfg.items.find((row) => row.key === 'manual_kg_selection')
     manualKgSelection.value = item ? item.value !== false : true
+    const countItem = cfg.items.find((row) => row.key === 'ai_prompt_candidate_count')
+    const count = countItem && typeof countItem.value === 'number' ? countItem.value : 3
+    aiPromptCandidateCount.value = Math.max(1, Math.min(9, count))
   } catch {
     manualKgSelection.value = true
   }
@@ -415,7 +423,7 @@ function top3Audit(candidates: KgCandidatesResponse['candidates']) {
 }
 
 async function autoSelectKg(unfitItems: { no: string; name: string }[]): Promise<KgSelection[]> {
-  /* 关闭「人工选择」后：每项先取 Top3，再由 AI 从 Top3 中自动判断。
+  /* 关闭「人工选择」后：每项按配置的候选数取候选，再由 AI 自动判断。
      前端不再进入 /kg-confirm；仍写 kg_selection 审计。 */
   const prepared = await Promise.all(unfitItems.map(async (item) => {
     const state = store.states[item.no]
@@ -425,7 +433,7 @@ async function autoSelectKg(unfitItems: { no: string; name: string }[]): Promise
         item_name: item.name,
         reasons: state?.reasons || [],
         other_text: state ? otherTextList(state).join('\n') : '',
-        top_k: 3,
+        top_k: aiPromptCandidateCount.value,
       })
       return { item, res }
     } catch {
@@ -443,7 +451,7 @@ async function autoSelectKg(unfitItems: { no: string; name: string }[]): Promise
         item_name: item.name,
         reasons: store.states[item.no]?.reasons || [],
         other_text: otherTextList(store.states[item.no]).join('\n'),
-        top_k: 3,
+        top_k: aiPromptCandidateCount.value,
       })))
       if (!batch.success) throw new Error(batch.error || '批量推荐失败')
       for (const row of batch.recommendations) recByNo.set(row.item_no, row.recommendation)
@@ -455,7 +463,7 @@ async function autoSelectKg(unfitItems: { no: string; name: string }[]): Promise
             item_name: item.name,
             reasons: store.states[item.no]?.reasons || [],
             other_text: otherTextList(store.states[item.no]).join('\n'),
-            top_k: 3,
+            top_k: aiPromptCandidateCount.value,
           })
           if (one.recommendation) recByNo.set(item.no, one.recommendation)
         } catch { /* 这一项降级为无候选 */ }
@@ -515,6 +523,8 @@ async function runSelections(selections: KgSelection[]): Promise<void> {
     generating.value = false
     generationStore.generating = false
     if (!hadStreamTokens) generationStore.requestReplay(report.id)
+    // 生成完成切到查看页时，保留侧栏和当前分析页位置，不要跳回录入页顶部。
+    generationStore.markKeepView()
     await nextTick()
     await enterReports(report.id)
   } catch (err) {

@@ -9,6 +9,8 @@ export const useGenerationStore = defineStore('generation', () => {
   const pendingSelections = ref<KgSelection[] | null>(null)
   const replayReportId = ref('')
   const generating = ref(false)
+  /* 生成完成切到报告查看时，保持侧栏打开和当前滚动位置 */
+  const keepView = ref(false)
 
   function setPending(selections: KgSelection[]): void {
     pendingSelections.value = selections
@@ -30,6 +32,10 @@ export const useGenerationStore = defineStore('generation', () => {
     return true
   }
 
-  return { pendingSelections, replayReportId, generating,
-    setPending, consume, requestReplay, consumeReplay }
+  function markKeepView(): void {
+    keepView.value = true
+  }
+
+  return { pendingSelections, replayReportId, generating, keepView,
+    setPending, consume, requestReplay, consumeReplay, markKeepView }
 })

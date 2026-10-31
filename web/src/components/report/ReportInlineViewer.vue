@@ -34,11 +34,50 @@ const loadError = ref('')
    在缩放完成前先藏起来，避免"完整宽度闪一下再缩回去"。 */
 const fitted = ref(false)
 const reportWrap = ref<HTMLElement | null>(null)
-const panelOpen = ref(!!props.generating)
+const panelOpen = ref(!!props.generating && window.innerWidth >= 701)
+const panelShift = ref(0)
 watch(() => props.generating, (active) => {
-  if (active) panelOpen.value = true
+  // 横屏生成时自动打开侧栏，方便和不合格项对照；竖屏不自动占满屏幕。
+  if (active) panelOpen.value = window.innerWidth >= 701
 })
-watch(panelOpen, () => { void nextTick(fitPapers) })
+
+function computePanelShift(): void {
+  if (!panelOpen.value || window.innerWidth < 701) {
+    panelShift.value = 0
+    return
+  }
+  const paper = document.querySelector('.report-wrap .paper') as HTMLElement | null
+  if (!paper) return
+  const drawerLeft = window.innerWidth - Math.min(430, window.innerWidth)
+  const rect = paper.getBoundingClientRect()
+  // 当前 panelShift 已作用在纸张上，先还原到未左移的位置再统一计算。
+  const baseLeft = rect.left + panelShift.value
+  const baseRight = rect.right + panelShift.value
+  const sidebar = document.querySelector('.sidebar') as HTMLElement | null
+  const sidebarRight = sidebar ? sidebar.getBoundingClientRect().right : 0
+  // 右边避开抽屉，左边避开导航栏；两边不能同时满足时优先不压左侧导航。
+  const maxByDrawer = baseRight - drawerLeft + 16
+  const maxBySidebar = baseLeft - sidebarRight - 16
+  panelShift.value = Math.max(0, Math.min(maxByDrawer, maxBySidebar))
+}
+
+watch(panelOpen, async () => {
+  if (!panelOpen.value) {
+    panelShift.value = 0
+    return
+  }
+  await nextTick()
+  fitPapers()
+  computePanelShift()
+  for (const delay of [60, 180, 400]) {
+    window.setTimeout(() => {
+      fitPapers()
+      computePanelShift()
+    }, delay)
+  }
+})
+// 侧栏展开/收起只做 transform 位移，纸张尺寸不变；不要再重算缩放，
+// 否则滚动条/布局测量会让纸张看起来忽大忽小。
 const typingText = ref('')
 const typing = ref(false)
 let typingTimer: number | undefined
@@ -109,7 +148,69 @@ function startTyping(text: string): void {
 
 /* A4 宽度（210mm @96dpi），报告页按视口等比缩放 */
 const PAPER_WIDTH = 793.7
+/* 白页不能缩成小卡片，也不能大到溢出成“巨页”。0.46 是板端
+   960×600 横屏下的可读折中：约 365×516，仍能完整看到，左右不因侧栏改变。 */
+const MIN_PAPER_SCALE = 0.52
 let paperObserver: ResizeObserver | undefined
+let layoutObserver: MutationObserver | undefined
+
+const followStream = ref(true)
+let autoScrolling = false
+let followTimer: number | undefined
+
+function analysisPageTop(): number | null {
+  const main = document.querySelector('.main') as HTMLElement | null
+  const holder = document.querySelector('.report-wrap .analysis-paper')?.closest('.paper-holder') as HTMLElement | null
+  if (!main || !holder) return null
+  const mainRect = main.getBoundingClientRect()
+  const holderRect = holder.getBoundingClientRect()
+  const bar = document.querySelector('.report-viewer .viewer-bar') as HTMLElement | null
+  // 顶栏/查看工具条是 sticky 的，页面顶端必须让开它们，否则标题会被遮住。
+  const inset = bar ? Math.max(60, bar.getBoundingClientRect().bottom - mainRect.top + 12) : 60
+  return Math.max(0, main.scrollTop + holderRect.top - mainRect.top - inset)
+}
+
+/** 用户主动移动后暂停自动跟随；回到分析页顶部再恢复。 */
+function onMainScroll(): void {
+  if (autoScrolling) return
+  const main = document.querySelector('.main') as HTMLElement | null
+  const target = analysisPageTop()
+  if (!main || target === null) return
+  followStream.value = Math.abs(main.scrollTop - target) < 96
+}
+
+function scrollToAnalysisPageTop(): void {
+  const main = document.querySelector('.main') as HTMLElement | null
+  const target = analysisPageTop()
+  if (!main || target === null) return
+  autoScrolling = true
+  main.scrollTo({ top: target, behavior: 'auto' })
+  window.clearTimeout(followTimer)
+  followTimer = window.setTimeout(() => { autoScrolling = false }, 80)
+}
+
+watch([() => props.streamText, () => props.generating], () => {
+  if (!props.generating || !followStream.value) return
+  void nextTick(() => {
+    fitPapers()
+    scrollToAnalysisPageTop()
+  })
+})
+
+// props.generating 在组件已挂载后才变 true 时，也立即滚到分析页。
+watch(() => props.generating, (active) => {
+  if (!active) return
+  followStream.value = true
+  void nextTick(() => {
+    fitPapers()
+    scrollToAnalysisPageTop()
+  })
+})
+
+function onResize(): void {
+  fitPapers()
+  computePanelShift()
+}
 
 function fitPapers(): void {
   const host = reportWrap.value
@@ -120,7 +221,12 @@ function fitPapers(): void {
   let scale = Math.min(1, Math.max(available, 0) / PAPER_WIDTH)
   /* 横屏矮视口（板端 960×600）：宽度与高度同时约束，整页 A4 能一屏看全 */
   if (window.innerHeight <= 700) {
+    // host 在 .main 滚动容器里；滚动到分析页后 rect.top 会变成负数，
+    // 若直接用它算 maxHeight，会把“可用高度”算得无穷大，纸张会回到 scale(1)。
+    const main = document.querySelector('.main') as HTMLElement | null
     const hostTop = host.getBoundingClientRect().top
+      - (main?.getBoundingClientRect().top || 0)
+      + (main?.scrollTop || 0)
     const actionbar = document.querySelector('.actionbar')
     const bottom = actionbar
       ? Math.max(0, window.innerHeight - actionbar.getBoundingClientRect().top)
@@ -131,6 +237,7 @@ function fitPapers(): void {
       scale = Math.min(scale, maxHeight / firstPaper.offsetHeight)
     }
   }
+  scale = Math.max(scale, MIN_PAPER_SCALE)
   host.querySelectorAll<HTMLElement>('.paper').forEach((paper) => {
     const holder = paper.parentElement
     paper.style.transform = scale === 1 ? '' : `scale(${scale})`
@@ -148,6 +255,15 @@ function observePapers(): void {
   paperObserver = new ResizeObserver(fitPapers)
   paperObserver.observe(host)
   host.querySelectorAll('.paper').forEach((paper) => paperObserver?.observe(paper))
+  // 生成中分析页/新纸张是动态插入的；插入后立即缩放并对齐，
+  // 不能等第一个 token 到达才做，否则会先看到未缩放的大白页。
+  layoutObserver?.disconnect()
+  layoutObserver = new MutationObserver(() => {
+    fitPapers()
+    if (props.generating && followStream.value) scrollToAnalysisPageTop()
+    if (panelOpen.value) computePanelShift()
+  })
+  layoutObserver.observe(host, { childList: true, subtree: true })
 }
 
 onMounted(async () => {
@@ -164,25 +280,62 @@ onMounted(async () => {
   await nextTick()
   observePapers()
   fitPapers()
+  computePanelShift()
   fitted.value = true
+  if (!props.generating && generationStore.keepView) {
+    generationStore.keepView = false
+    // 先生成页是“打开侧栏”的布局；切回查看页时也保持打开。
+    // 首次挂载时纸张布局还没稳定，必须延迟重算位移，否则会按错误位置
+    // 左移；手动关闭再打开能正常，就是因为它触发了第二次计算。
+    panelOpen.value = true
+    await nextTick()
+    fitPapers()
+    computePanelShift()
+    for (const delay of [50, 160, 360, 700]) {
+      window.setTimeout(() => {
+        fitPapers()
+        computePanelShift()
+      }, delay)
+    }
+  }
   if (generationStore.consumeReplay(props.reportId)) {
     panelOpen.value = true
     await nextTick()
     startTyping(analysisText.value)
   }
-  window.addEventListener('resize', fitPapers)
+  window.addEventListener('resize', onResize)
+  document.querySelector('.main')?.addEventListener('scroll', onMainScroll, { passive: true })
   void document.fonts?.ready.then(fitPapers)
+  if (props.generating) {
+    await nextTick()
+    // 生成页首次布局时纸张/分析页可能还没完成，延迟再测一次；
+    // 否则会误判为“取不到分析页”，直到第一个 token 才滚动。
+    scrollToAnalysisPageTop()
+    for (const delay of [60, 160, 320, 600]) {
+      window.setTimeout(() => {
+        fitPapers()
+        if (followStream.value) scrollToAnalysisPageTop()
+      }, delay)
+    }
+  }
 })
 
 onBeforeUnmount(() => {
   paperObserver?.disconnect()
+  layoutObserver?.disconnect()
   stopTyping()
-  window.removeEventListener('resize', fitPapers)
+  window.removeEventListener('resize', onResize)
+  document.querySelector('.main')?.removeEventListener('scroll', onMainScroll)
+  window.clearTimeout(followTimer)
 })
 </script>
 
 <template>
-  <section class="report-viewer" :class="{ 'panel-open': panelOpen }">
+  <section
+    class="report-viewer"
+    :class="{ 'panel-open': panelOpen }"
+    :style="{ '--panel-shift': `${panelShift}px` }"
+  >
     <div class="viewer-bar">
       <button
         class="viewer-back"
@@ -261,6 +414,8 @@ onBeforeUnmount(() => {
         :g="g"
         :grade="grade"
         :analysis-text="analysisText"
+        :stream-text="props.generating ? (props.streamText || '') : ''"
+        :streaming="!!props.generating"
       />
     </div>
 
@@ -293,9 +448,10 @@ onBeforeUnmount(() => {
 
     <ReportEvaluationDrawer
       :open="panelOpen && !loading && !loadError"
-      :analysis-text="analysisText"
-      :typing="props.generating ? true : typing"
-      :typing-text="props.generating ? (props.streamText || '') : typingText"
+      :analysis-text="props.generating ? '' : analysisText"
+      :typing="typing"
+      :typing-text="typingText"
+      :auto-scroll="false"
       @close="panelOpen = false"
     />
   </section>
@@ -306,6 +462,8 @@ onBeforeUnmount(() => {
   min-height: 100%;
   background: var(--c-bg);
   padding: 12px;
+  /* 侧栏展开时避免出现/消失滚动条改变白页宽度 */
+  scrollbar-gutter: stable;
 }
 
 /* 就地查看：工具条吸附在正文顶部（让开 52px 全局顶栏），返回/导出永远可见 */
@@ -594,14 +752,14 @@ onBeforeUnmount(() => {
   font-size: 14px;
   color: #222;
 }
-/* 抽屉展开时只把报告纸张往左让，不做左右分栏 */
+/* 抽屉展开时只把报告纸张整体往左移，不改变纸张尺寸。 */
 .report-wrap {
-  transition: padding-right 0.28s ease;
+  transition: transform 0.28s ease;
   box-sizing: border-box;
 }
 @media (min-width: 701px) {
   .report-viewer.panel-open .report-wrap {
-    padding-right: 430px;
+    transform: translateX(calc(-1 * var(--panel-shift, 0px)));
   }
 }
 </style>

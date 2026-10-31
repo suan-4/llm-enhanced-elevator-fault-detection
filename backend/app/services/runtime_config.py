@@ -81,7 +81,7 @@ SPECS: list[dict] = [
     },
     {
         "key": "ai_prompt_candidate_count", "label": "AI 提示词候选项拼接数", "type": "int",
-        "desc": "人工确认页选择「将前 N 个候选拼接进提示词」时使用；默认 3，范围 1–9",
+        "desc": "人工确认页直接拼接候选、以及关闭人工确认后的 AI 自动选择，都使用该候选数；默认 3，范围 1–9",
         "min": 1, "max": 9, "restart": False,
     },
 ]

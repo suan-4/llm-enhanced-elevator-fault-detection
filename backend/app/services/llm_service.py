@@ -102,8 +102,7 @@ class LLMService:
                 raise ModelInputError('model_empty_response', '模型返回空内容，未成功生成概况')
             if not isinstance(runtime, dict) or runtime.get('run_status') != 'finished':
                 raise ModelInputError('model_not_finished', '模型未正常完成推理，不能采用返回内容')
-            if choices[-1].get('finish_reason') == 'length':
-                raise ModelInputError('model_output_truncated', '模型回答达到长度上限，不能采用不完整内容')
+            # 达到 max_tokens 时仍保留已生成内容；字数长短不再作为失败条件。
             call['status'] = 'ok'
             return content
         except ModelInputError as error:

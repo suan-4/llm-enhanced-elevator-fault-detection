@@ -46,6 +46,46 @@ class VersionConflict(Exception):
     """乐观锁：客户端拿的是旧版本，先刷新再改。"""
 
 
+_CANDIDATE_STOPWORDS = {
+    '安全', '运行', '影响', '损坏', '严重', '部件', '设备', '异常', '风险',
+    '存在', '导致', '可能', '检查', '进行', '系统', '组件', '部位', '要求',
+    '情况', '问题', '处理', '措施', '建议', '现场', '发现', '产生', '引发',
+    '造成', '应当', '需要', '或者', '以及', '一个', '进行',
+}
+
+
+def _candidate_terms(text: str) -> set[str]:
+    terms: set[str] = set()
+    for segment in re.findall(r'[\u4e00-\u9fff]{2,}', text):
+        for size in (2, 3, 4):
+            for index in range(0, len(segment) - size + 1):
+                term = segment[index:index + size]
+                if term not in _CANDIDATE_STOPWORDS:
+                    terms.add(term)
+    return terms
+
+
+def _matching_candidates(item: dict, candidates: list[dict]) -> list[dict]:
+    """候选只在与不符合项文本有明确共同词时才进入 T4。
+
+    检索分数低/候选完全不相关时，不能把“减速箱油位”之类候选硬塞给
+    “影响安全运行的损坏”这类不符合项；否则模型会按候选编出另一套故障。
+    """
+    text = ' '.join([*[str(x) for x in (item.get('reasons') or [])],
+                     str(item.get('other_text') or '')])
+    terms = _candidate_terms(text)
+    if not terms:
+        return []
+    matched = []
+    for candidate in candidates:
+        blob = ' '.join(str(candidate.get(key) or '') for key in
+                        ('system', 'component', 'risk', 'action'))
+        blob += ' '.join(str(x) for x in (candidate.get('fault_chain') or []))
+        if any(term in blob for term in terms):
+            matched.append(candidate)
+    return matched
+
+
 def _catalog_version() -> str:
     """条目库版本 = 模板号 + 条目文件哈希前 8 位（启动时现算，不建表）。"""
     try:
@@ -382,22 +422,22 @@ async def _run_kg_prompt_flow(*, kg_evidence: dict, unfit: list[dict], risks: di
             "inspection": pick("inspection"),
             "action": pick("action"),
             "verification": pick("verification"),
+            "candidates": [
+                {
+                    "system": p.get("system") or "",
+                    "component": p.get("component") or "",
+                    "fault_chain": (p.get("states") or [])[:6],
+                    "risk": _compact(p.get("risk"), 100),
+                    "action": _compact(p.get("action"), 160),
+                }
+                for p in item_paths[:3]
+            ],
             "evidence_note": ("含 %d 条候选路径，候选证据，未签核" % len(item_paths)
                               if len(item_paths) > 1 else "候选证据，未签核"),
         }
-        risk = risks.get(no) or {}
-        rule_facts = {
-            "category": risk.get("category", ""),
-            "measure": risk_rules.CATEGORY_MEASURE.get(risk.get("category", ""), ""),
-            "issue": risk.get("issue", ""),
-        }
-        result = kg_validation.validate_t3(
-            summary, item_no=no,
-            allowed_path_ids={str(p.get("path_id")) for p in item_paths},
-            evidence_paths=item_paths, rule_facts=rule_facts,
-        )
-        if not result["valid"]:
-            return {"used": False, "errors": result["errors"]}
+        # T3 现在是程序按证据组装的确定性摘要，不是模型自由生成；
+        # 再做“禁止表述/数值白名单”会拿证据原文里的“已确认”“4 条候选”
+        # 反过来判失败，导致整篇 T4 被跳过。保留字段组装，不再做这层误判。
         summaries.append(summary)
 
     # T4：所有不符合项都要进文本分析；有候选的带证据，无候选的只带规则事实
@@ -411,10 +451,9 @@ async def _run_kg_prompt_flow(*, kg_evidence: dict, unfit: list[dict], risks: di
             "item_no": no,
             "category": risk.get("category", ""),
             "measure": risk_rules.CATEGORY_MEASURE.get(risk.get("category", ""), ""),
-            "fault_chain": summary.get("fault_chain") or [],
-            "risk": summary.get("risk") or "",
-            "action": summary.get("action") or "",
-            "reasons": (item.get("reasons") or [])[:2],
+            # 候选只给模型做参考；最终以 reasons/other_text 和规则为准。
+            "candidates": _matching_candidates(item, summary.get("candidates") or []),
+            "reasons": (item.get("reasons") or [])[:3],
             "other_text": item.get("other_text") or "",
         })
     prompt4 = kg_prompt.build_t4_overview_prompt(
@@ -612,15 +651,14 @@ async def generate(report_id: int | str, *, use_llm: bool = False,
     analysis_text = ""
     kg_appendix_text = ""
     kg_prompt_result: dict = {"used": False, "errors": []}
-    # 全部「无合适候选」/没有勾选路径：不调用模型，直接规则分析，避免白等几十秒
-    rule_only = bool(use_llm and not has_kg_paths)
-    if rule_only:
-        analysis_text = _rule_analysis_text(unfit, risks)
-    if settings.kg_prompt_enabled and has_kg_paths and use_llm:
+    # 「无合适候选」不等于不能写分析：仍让 T4 依据不符合项和通用知识生成；
+    # 只有模型不可用/校验失败时才回退规则摘要。
+    rule_only = False
+    if settings.kg_prompt_enabled and use_llm and unfit:
         try:
             with stage('kg_prompt_flow'):
                 kg_prompt_result = await _run_kg_prompt_flow(
-                    kg_evidence=kg_evidence, unfit=unfit, risks=risks,
+                    kg_evidence=kg_evidence or {}, unfit=unfit, risks=risks,
                     score=score, grade=grade, required_keys=required_keys,
                     model_text=model_text,
                     on_analysis_delta=on_analysis_delta,

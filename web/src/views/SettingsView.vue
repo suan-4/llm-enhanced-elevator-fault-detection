@@ -10,12 +10,14 @@ import AccountListView from '@/views/AccountListView.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useShell } from '@/stores/shell'
 import { ApiError } from '@/utils/http'
+import { useKiosk } from '@/utils/kiosk'
 import { useToast } from '@/utils/toast'
 
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 const shell = useShell()
+const kiosk = useKiosk()
 const { show } = useToast()
 
 type Section = 'accounts' | 'config' | 'audit' | 'backup' | 'diagnose' | 'about'
@@ -157,6 +159,8 @@ async function saveConfig(): Promise<void> {
     }
     const res = await api.updateSystemConfig(values)
     applyConfigPayload(res)
+    // 是否允许退出是全局 kiosk 状态，保存后立刻刷新，避免旧按钮继续显示。
+    await kiosk.load()
     configRestart.value = (res.restart_required || []).map(
       (key) => configItems.value.find((item) => item.key === key)?.label || key,
     )

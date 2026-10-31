@@ -185,16 +185,25 @@ def build_t4_overview_prompt(*, overview_facts: dict, required_keys: list[str],
     """T4 正文生成：只输出 Markdown 文末分析，不输出 JSON。"""
     system = (
         SYSTEM_BASE
-        + "本任务写报告文末的「文本分析报告」，不是评估概况；不得新增事实。"
+        + "本任务写报告文末的「文本分析报告」，不是评估概况；不得新增现场事实。"
+        + "允许基于不符合项做通用电梯安全机理推演，这不是新增现场事实；"
         + "只输出 Markdown 正文，不要输出 JSON、代码块、解释或字段名；"
         + "不要写「文本分析报告」标题，标题由程序添加。"
         + "正文固定使用以下四段，标题必须原样保留，不得增删或改名："
         + "### 一、总体判断；### 二、主要不符合项；### 三、处置与复验建议；### 四、综合结论。"
         + "要求：350–500 字；第一段概括涉及的系统/部件，但不要写不符合项总数、"
         + "综合得分、等级或「本次评估共发现 X 项」；"
-        + "第二段按项目编号逐项说明风险类别、现场事实、故障演化、风险后果；"
-        + "第三段写规则表处置、整改与复验建议；第四段写综合结论；"
-        + "没有故障演化资料的项目只写现场事实、风险类别和规则表处置，不得编造故障演化链；"
+        + "第二段按项目编号逐项说明风险类别、现场事实、可能的故障演化、风险后果；"
+        + "第三段写处置、整改与复验建议；没有候选时结合不符合项和通用知识给出处置思路，"
+        + "不要写「按规则表处理」这类套话；第四段写综合结论；"
+        + "候选只有 hints，不代表已认定：候选可能与本条不符合项不匹配，甚至全部不匹配；"
+        + "硬性规则：只有候选中的系统/部件/现象与 reasons/other_text 出现明确相同的词，才可采用；"
+        + "找不到明确对应时，禁止引用候选中的具体部件、故障链、数值或处置；"
+        + "候选的匹配度/排序只是检索结果，不能作为故障是否成立的判断依据；"
+        + "没有明显匹配候选时，不要退回规则表套话；要依据不符合项文本、风险类别和"
+        + "通用电梯/机械/电气安全知识，合理分析可能原因、故障演化和风险后果；"
+        + "世界知识推演允许，但不得编造具体现场数值、标准条款或虚构的检测记录；"
+        + "没有合适候选时，依据不符合项、规则和通用知识进行合理分析；"
         + "正文不要提及候选路径、图谱、path_id、附页或证据边界；"
         + "不得出现具体限值；"
         + "不写「已确认」「已签核」「违反」「必然」「证明」。"
@@ -207,10 +216,17 @@ def build_t4_overview_prompt(*, overview_facts: dict, required_keys: list[str],
                 "item_no": item.get("item_no", ""),
                 "category": item.get("category", ""),
                 "measure": _compact(item.get("measure", ""), 260),
-                "fault_chain": item.get("fault_chain", [])[:6],
-                "risk": _compact(item.get("risk", ""), 100),
-                "action": _compact(item.get("action", ""), 220),
-                "reasons": [ _compact(r, 120) for r in (item.get("reasons") or [])[:2] ],
+                "candidates": [
+                    {
+                        "system": _compact(c.get("system", ""), 40),
+                        "component": _compact(c.get("component", ""), 40),
+                        "fault_chain": [ _compact(s, 60) for s in (c.get("fault_chain") or [])[:6] ],
+                        "risk": _compact(c.get("risk", ""), 100),
+                        "action": _compact(c.get("action", ""), 160),
+                    }
+                    for c in (item.get("candidates") or [])[:3]
+                ],
+                "reasons": [ _compact(r, 120) for r in (item.get("reasons") or [])[:3] ],
                 "other_text": _compact(item.get("other_text", ""), 200),
             }
             for item in items[:8]

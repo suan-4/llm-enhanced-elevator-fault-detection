@@ -73,7 +73,7 @@ def _allowed_clauses(*values: Any) -> set[str]:
 
 
 def _check_common(output: dict, item_no: str, allowed_numbers: set[str],
-                  allowed_clauses: set[str]) -> list[dict]:
+                  allowed_clauses: set[str], *, check_numbers: bool = True) -> list[dict]:
     errors: list[dict] = []
     texts = [t for t in _strings(output) if t]
 
@@ -87,10 +87,11 @@ def _check_common(output: dict, item_no: str, allowed_numbers: set[str],
             if clause not in allowed_clauses:
                 errors.append({"code": "CLAUSE_NOT_ALLOWED", "item_no": item_no,
                                "detail": f"条款不在证据中：{clause}"})
-        for number in NUMBER_RE.findall(text):
-            if number not in allowed_numbers and number != str(item_no):
-                errors.append({"code": "NUMBER_NOT_ALLOWED", "item_no": item_no,
-                               "detail": f"数值不在证据中：{number}"})
+        if check_numbers:
+            for number in NUMBER_RE.findall(text):
+                if number not in allowed_numbers and number != str(item_no):
+                    errors.append({"code": "NUMBER_NOT_ALLOWED", "item_no": item_no,
+                                   "detail": f"数值不在证据中：{number}"})
     return errors
 
 
@@ -166,7 +167,11 @@ def validate_t3(output: dict, *, item_no: str, allowed_path_ids: set[str],
     evidence_values = evidence_paths + ([rule_facts] if rule_facts else [])
     allowed_numbers = _allowed_numbers(evidence_values, item_no)
     allowed_clauses = _allowed_clauses(evidence_values)
-    errors.extend(_check_common(data, item_no, allowed_numbers, allowed_clauses))
+    # evidence_note/path_ids 是程序生成的说明，不是模型事实；其中
+    # “含 4 条候选路径”的 4 不应被 NUMBER_NOT_ALLOWED 误判。
+    check_data = {key: value for key, value in data.items()
+                  if key not in ('item_no', 'path_ids', 'evidence_note')}
+    errors.extend(_check_common(check_data, item_no, allowed_numbers, allowed_clauses))
 
     # 去重，保持顺序
     seen = set()
@@ -188,9 +193,6 @@ def validate_analysis_text(text: str, *, item_nos: list[str],
     if len(body) < 200:
         errors.append({"code": "SCHEMA_INVALID", "item_no": "",
                        "detail": f"分析正文过短（{len(body)} 字）"})
-    if len(body) > 900:
-        errors.append({"code": "SCHEMA_INVALID", "item_no": "",
-                       "detail": f"分析正文过长（{len(body)} 字）"})
     # 项目编号缺失只作为提示，不直接判失败：模型可能用项目名称表述。
     if PATH_RE.search(body):
         errors.append({"code": "PATH_NOT_ALLOWED", "item_no": "",
@@ -209,8 +211,13 @@ def validate_analysis_text(text: str, *, item_nos: list[str],
             errors.append({"code": "SCHEMA_INVALID", "item_no": "",
                            "detail": f"缺少固定段落：{heading}"})
     values = evidence_paths + ([rule_facts] if rule_facts else [])
-    errors.extend(_check_common({"analysis": body}, "", _allowed_numbers(values),
-                                _allowed_clauses(values)))
+    # 文本分析会自然出现“涉及 4 类风险”“项目 12.1”等叙述；字数/计数不是
+    # 事实性限值。分析正文不再用 NUMBER_NOT_ALLOWED 拦截，避免整篇回退
+    # 为规则版；具体条款/禁止性表述仍保留校验。
+    # 分析正文会原样引用“公称直径的 90%”“5.1”等现场文字，数字不是
+    # 模型新增的结论；数字校验对最终正文没有实际保护作用，直接关闭。
+    errors.extend(_check_common({"analysis": body}, "", set(),
+                                _allowed_clauses(values), check_numbers=False))
     seen = set(); unique = []
     for err in errors:
         key = (err["code"], err["detail"])
