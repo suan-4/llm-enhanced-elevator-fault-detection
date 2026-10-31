@@ -273,10 +273,15 @@ onMounted(async () => {
   fitted.value = true
   if (!props.generating && generationStore.keepView) {
     generationStore.keepView = false
-    panelOpen.value = true
-    await nextTick()
-    fitPapers()
-    computePanelShift()
+    // 板端 960 宽时，右侧 430px 评估栏 + 纸张无法同时保持居中；
+    // 自动打开必然把白页左移。生成完成后默认不自动展开右栏，保持纸张位置；
+    // 只有宽度足够的桌面端才自动展开。
+    if (window.innerWidth >= 1200) {
+      panelOpen.value = true
+      await nextTick()
+      fitPapers()
+      computePanelShift()
+    }
   }
   if (generationStore.consumeReplay(props.reportId)) {
     panelOpen.value = true
