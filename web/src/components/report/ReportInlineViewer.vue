@@ -28,7 +28,9 @@ const { show } = useToast()
 
 /* 父组件在切换前已经把报告装进 store：这种情况下首帧直接渲染报告，
    不用再经历一次"加载中"的闪屏。 */
-const preloaded = store.reportId === props.reportId && store.ready
+const preloaded = props.generating
+  ? true
+  : (store.reportId === props.reportId && store.ready)
 const loading = ref(!preloaded)
 const loadError = ref('')
 /* 纸张要先按 A4 原尺寸渲染、再由 fitPapers() 等比缩放；
@@ -152,7 +154,7 @@ function observePapers(): void {
 }
 
 onMounted(async () => {
-  if (!preloaded) {
+  if (!preloaded && !props.generating) {
     try {
       await store.loadItems()
       await store.openReport(props.reportId)
