@@ -203,20 +203,33 @@ async function recommendRemaining(): Promise<void> {
   }
 }
 
-function toggleAi(row: Row): void {
-  if (row.recommendation) {
-    row.aiOpen = !row.aiOpen
-    return
-  }
-  if (row.recommending || row.loading) return
-  row.aiOpen = true
+function openAiMenu(row: Row): void {
+  if (row.recommending || row.recommendation || row.choice === 'direct_ai') return
+  row.aiOpen = !row.aiOpen
+}
+
+function chooseAiRecommend(row: Row): void {
+  row.aiOpen = false
+  if (row.recommendation || row.recommending) return
   enqueueRecommendation(row)
 }
 
-function toggleDirectAi(row: Row): void {
+function chooseDirectAi(row: Row): void {
   row.aiOpen = false
-  row.choice = row.choice === 'direct_ai' ? '' : 'direct_ai'
-  row.choiceSource = row.choice === 'direct_ai' ? 'model' : 'human'
+  row.recommendation = null
+  row.choice = 'direct_ai'
+  row.choiceSource = 'model'
+}
+
+function clearDirectAi(row: Row): void {
+  row.choice = ''
+  row.choiceSource = 'human'
+}
+
+function clearRecommendation(row: Row): void {
+  row.recommendation = null
+  row.choice = ''
+  row.choiceSource = 'human'
 }
 
 function enqueueRecommendation(row: Row): void {
@@ -384,7 +397,7 @@ function back(): void {
         <h1>故障路径确认</h1>
         <p class="sub">
           为每个不符合项选择最接近的故障演化路径；没有合适路径可选「无合适候选」，按规则表处置。
-          可展开「AI 推荐」查看候选再决定，或选「直接全权 AI」把前 N 个候选直接拼入提示词。
+          点「AI 推荐」可自选：单轮推荐并查看推荐项，或直接把前 N 个候选拼入提示词。
         </p>
       </div>
       <div class="progress">
@@ -419,25 +432,11 @@ function back(): void {
       </div>
       <div v-else>
         <div class="row-actions">
-          <button
-            class="btn tiny ai-trigger"
-            type="button"
-            :disabled="batchLoading || row.recommending"
-            @click="toggleAi(row)"
-          >{{ row.recommending ? 'AI 推荐中…' : (row.aiOpen ? '收起 AI 推荐' : 'AI 推荐') }}</button>
-          <button
-            class="btn tiny direct-ai"
-            :class="{ on: row.choice === 'direct_ai' }"
-            type="button"
-            @click="toggleDirectAi(row)"
-          >直接全权 AI</button>
-          <span v-if="row.choice === 'direct_ai'" class="direct-hint">
-            将前 {{ aiPromptCount }} 个候选直接拼入提示词
-          </span>
-        </div>
+          <template v-if="row.choice === 'direct_ai'">
+            <span class="direct-hint">已选择：前 {{ aiPromptCount }} 个候选直接拼入提示词</span>
+            <button class="btn tiny" type="button" @click="clearDirectAi(row)">取消选择</button>
+          </template>
 
-        <div v-if="row.aiOpen && (row.recommending || row.recommendation)" class="ai-line">
-          <span v-if="row.recommending" class="muted">AI 正在推荐…</span>
           <template v-else-if="row.recommendation">
             <span class="ai-badge">AI 推荐</span>
             <span v-if="row.recommendation.none">
@@ -452,7 +451,29 @@ function back(): void {
               type="button"
               @click="applyRecommendation(row)"
             >采用</button>
+            <button class="ai-close" type="button" title="清除推荐" @click="clearRecommendation(row)">×</button>
           </template>
+
+          <template v-else>
+            <button
+              class="btn tiny ai-trigger"
+              type="button"
+              :disabled="batchLoading || row.recommending"
+              @click="openAiMenu(row)"
+            >{{ row.recommending ? 'AI 推荐中…' : 'AI 推荐' }}</button>
+          </template>
+
+          <div v-if="row.aiOpen" class="ai-popover" @click.stop>
+            <button class="popover-close" type="button" title="关闭" @click="row.aiOpen = false">×</button>
+            <button class="popover-option" type="button" @click="chooseAiRecommend(row)">
+              <b>单轮 AI 推荐</b>
+              <span>先看 AI 推荐项，再决定是否采用；会多等几秒</span>
+            </button>
+            <button class="popover-option" type="button" @click="chooseDirectAi(row)">
+              <b>将前 {{ aiPromptCount }} 个候选拼接进提示词</b>
+              <span>不等待推荐，直接全权交给生成模型；更省时间</span>
+            </button>
+          </div>
         </div>
 
         <div class="candidates">
@@ -460,13 +481,13 @@ function back(): void {
           v-for="c in visibleCandidates(row)"
           :key="c.path_id"
           class="candidate"
-          :class="{ on: row.choice === c.path_id, recommended: row.aiOpen && row.recommendation?.path_id === c.path_id }"
+          :class="{ on: row.choice === c.path_id, recommended: row.recommendation?.path_id === c.path_id }"
         >
           <input v-model="row.choice" type="radio" :value="c.path_id" @change="markChoice(row)" />
           <span class="body">
             <span class="path">
               #{{ c.rank }}　{{ chainOf(c) }}
-              <span v-if="row.aiOpen && row.recommendation?.path_id === c.path_id" class="ai-badge">
+              <span v-if="row.recommendation?.path_id === c.path_id" class="ai-badge">
                 AI 推荐
                 <template v-if="row.recommendation.cached">·缓存</template>
               </span>
@@ -596,6 +617,7 @@ h1 { margin: 0; font-size: 21px; }
 .candidate.recommended { border-color: #2c8a5a; }
 .candidate.recommended.on { border-color: #1b5e7a; }
 .row-actions {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -603,28 +625,41 @@ h1 { margin: 0; font-size: 21px; }
   margin: 6px 0 4px;
 }
 .row-actions .btn.tiny { margin-left: 0; }
-.direct-ai.on {
-  border-color: #2c8a5a;
-  background: #eaf7ef;
-  color: #226b43;
-}
 .direct-hint {
   color: #2c8a5a;
   font-size: 11px;
 }
-.ai-line {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin: 8px 0 6px;
-  padding: 7px 10px;
-  border-radius: 7px;
-  background: #f2faf5;
-  color: #2c6b42;
-  font-size: 12.5px;
+.ai-trigger { margin: 2px 0; }
+.ai-close {
+  width: 24px; height: 24px; padding: 0; border: 0; background: transparent;
+  color: #879; font-size: 17px; line-height: 1; cursor: pointer;
 }
-.ai-trigger { margin: 6px 0; }
+.ai-popover {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 40;
+  width: min(430px, calc(100vw - 36px));
+  padding: 8px 38px 8px 8px;
+  border: 1px solid #cfe0e6;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 10px 28px rgba(20, 50, 65, 0.18);
+}
+.popover-close {
+  position: absolute; top: 5px; right: 6px;
+  width: 24px; height: 24px; padding: 0; border: 0; border-radius: 6px;
+  background: #eef5f7; color: #567; font-size: 17px; line-height: 1; cursor: pointer;
+}
+.popover-option {
+  display: flex; flex-direction: column; gap: 2px;
+  width: 100%; padding: 8px 9px; border: 0; border-radius: 7px;
+  background: transparent; color: #234; text-align: left; cursor: pointer;
+}
+.popover-option:hover { background: #f2faf5; }
+.popover-option b { font-size: 12.5px; color: #1b5e7a; }
+.popover-option span { font-size: 11px; color: #667; line-height: 1.35; }
+
 .ai-badge {
   display: inline-block;
   padding: 1px 7px;
@@ -695,7 +730,7 @@ h1 { font-size: 18px; }
   padding: 8px 12px;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow: visible;
 }
 .item-head h2 { font-size: 14px; }
 .inputs { margin: 4px 0 6px; }
