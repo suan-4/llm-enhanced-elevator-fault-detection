@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, ref } from 'vue'
+import { computed } from 'vue'
 import { itemProblem } from '@/domain/validation'
 import { useReportStore } from '@/stores/report'
 import type { JteItem } from '@/types/api'
@@ -9,6 +9,10 @@ const store = useReportStore()
 const state = computed(() => store.stateOf(props.item.no))
 const problem = computed(() => itemProblem(state.value))
 const unfit = computed(() => state.value.result === '不符合')
+const otherTexts = computed(() => {
+  if (!state.value.otherTexts) state.value.otherTexts = []
+  return state.value.otherTexts
+})
 
 const rowId = computed(() => 'row-' + props.item.no.replace('.', '-'))
 const reasonsId = computed(() => rowId.value + '-reasons')
@@ -49,12 +53,11 @@ function pickReason(text: string): void {
   toggleReason(text, !state.value.reasons.includes(text))
 }
 
-const otherTextarea = ref<HTMLTextAreaElement | null>(null)
-
 function toggleOther(): void {
   if (otherLocked.value) return
   state.value.legacyCombined = false
   state.value.other = !state.value.other
+  if (state.value.other && !state.value.otherTexts?.length) state.value.otherTexts = ['']
   // Inactive inputs remain in the draft editing metadata, not in risk assessment.
 }
 
@@ -62,7 +65,8 @@ function addOther(): void {
   if (otherLocked.value) return
   state.value.legacyCombined = false
   state.value.other = true
-  void nextTick(() => otherTextarea.value?.focus())
+  if (!state.value.otherTexts?.length) state.value.otherTexts = ['']
+  state.value.otherTexts.push('')
 }
 </script>
 
@@ -113,7 +117,6 @@ function addOther(): void {
       <div class="reasons">
         <div class="reasons-head">
           不符合情形（清单项与其他二选一）
-          <button class="other-add" type="button" title="添加其他情形" aria-label="添加其他情形" @click="addOther">＋</button>
         </div>
         <label
           v-for="(opt, i) in item.opts"
@@ -143,13 +146,15 @@ function addOther(): void {
           />
           <span>其他（自行填写）</span>
         </label>
+        <button class="other-add" type="button" title="添加一条其他不符合项" aria-label="添加一条其他不符合项" @click="addOther">＋</button>
         <div v-if="state.other" class="other-box">
           <textarea
-            ref="otherTextarea"
-            v-model="state.otherText"
+            v-for="(_text, index) in otherTexts"
+            :key="index"
+            v-model="otherTexts[index]"
             class="textarea"
             :disabled="otherLocked"
-            placeholder="请填写具体情况，将写入报告「存在风险」"
+            :placeholder="`第 ${index + 1} 条其他不符合项`"
           />
         </div>
         <div v-if="problem" class="reasons-err">{{ problem }}</div>
@@ -165,6 +170,8 @@ function addOther(): void {
   gap: 6px;
 }
 .other-add {
+  margin-left: 4px;
+  vertical-align: middle;
   width: 20px;
   height: 20px;
   padding: 0;
@@ -181,6 +188,9 @@ function addOther(): void {
   background: #eaf3f6;
 }
 .other-box {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
   margin-top: 6px;
 }
 

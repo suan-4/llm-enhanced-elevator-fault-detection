@@ -6,6 +6,7 @@ import { useRouter } from 'vue-router'
 import { fetchKgCandidates, fetchKgRecommendation,
   selectKgPath, type KgCandidatesResponse, type KgRecommendation } from '@/api/kg'
 import { systemConfig } from '@/api/system'
+import { otherTextList } from '@/domain/validation'
 import { useReportStore } from '@/stores/report'
 import { useGenerationStore } from '@/stores/generation'
 import { useShell } from '@/stores/shell'
@@ -94,8 +95,10 @@ async function loadRows(): Promise<void> {
     const state = store.states[item.no]
     if (state?.result !== '不符合') continue
     const entries: { reason: string; other: string }[] = state.reasons.map((reason) => ({ reason, other: '' }))
-    if (state.other && state.otherText.trim()) {
-      entries.push({ reason: '', other: state.otherText.trim() })
+    if (state.other) {
+      for (const text of otherTextList(state)) {
+        if (text.trim()) entries.push({ reason: '', other: text.trim() })
+      }
     }
     if (!entries.length) entries.push({ reason: '', other: '' })
     entries.forEach((entry, index) => {

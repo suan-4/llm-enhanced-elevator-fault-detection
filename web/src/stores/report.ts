@@ -9,6 +9,7 @@ import {
   collectMissing,
   countItems,
   createItemState,
+  otherTextList,
   type ItemResult,
   type ItemState,
 } from '@/domain/validation'
@@ -353,9 +354,10 @@ export const useReportStore = defineStore('report', () => {
         no: item.no,
         result: RESULT_TO_CODE[state.result] ?? '',
         reasons: state.result === '不符合' && (!state.other || state.legacyCombined) ? state.reasons.slice() : [],
-        other_text: state.result === '不符合' && state.other ? state.otherText.trim() : '',
+        other_text: state.result === '不符合' && state.other
+          ? otherTextList(state).map((text) => text.trim()).filter(Boolean).join('\n') : '',
         editing: { reasons: state.reasons.slice(), other: state.other,
-          other_text: state.otherText, legacy_combined: !!state.legacyCombined },
+          other_text: otherTextList(state).join('\n'), legacy_combined: !!state.legacyCombined },
       }
     })
   }
@@ -387,13 +389,13 @@ export const useReportStore = defineStore('report', () => {
         const currentOpts = new Set(item.opts || [])
         const keepCurrent = (values: string[]) => values.filter((value) => currentOpts.has(value))
         state.reasons = keepCurrent(saved.reasons ?? [])
-        state.other = !!saved.other_text
-        state.otherText = saved.other_text ?? ''
+        const savedOther = saved.editing ? (saved.editing.other_text ?? '') : (saved.other_text ?? '')
+        state.other = saved.editing ? saved.editing.other : !!saved.other_text
+        state.otherText = savedOther
+        state.otherTexts = savedOther ? savedOther.split('\n') : []
         state.legacyCombined = !saved.editing && !!saved.other_text && state.reasons.length > 0
         if (saved.editing) {
           state.reasons = keepCurrent(saved.editing.reasons || [])
-          state.other = saved.editing.other
-          state.otherText = saved.editing.other_text
           state.legacyCombined = !!saved.editing.legacy_combined && state.reasons.length > 0
         }
       }

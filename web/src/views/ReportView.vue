@@ -7,6 +7,7 @@ import ItemTable from '@/components/report/ItemTable.vue'
 import AppDialog from '@/components/AppDialog.vue'
 import ReportCenter from '@/components/report/ReportCenter.vue'
 import { defaultProfileName } from '@/domain/baseInfo'
+import { otherTextList } from '@/domain/validation'
 import { useReportStore } from '@/stores/report'
 import { useGenerationStore } from '@/stores/generation'
 import { useShell } from '@/stores/shell'
@@ -423,7 +424,7 @@ async function autoSelectKg(unfitItems: { no: string; name: string }[]): Promise
         item_no: item.no,
         item_name: item.name,
         reasons: state?.reasons || [],
-        other_text: state?.otherText || '',
+        other_text: state ? otherTextList(state).join('\n') : '',
         top_k: 3,
       })
       return { item, res }
@@ -441,7 +442,7 @@ async function autoSelectKg(unfitItems: { no: string; name: string }[]): Promise
         item_no: item.no,
         item_name: item.name,
         reasons: store.states[item.no]?.reasons || [],
-        other_text: store.states[item.no]?.otherText || '',
+        other_text: otherTextList(store.states[item.no]).join('\n'),
         top_k: 3,
       })))
       if (!batch.success) throw new Error(batch.error || '批量推荐失败')
@@ -453,7 +454,7 @@ async function autoSelectKg(unfitItems: { no: string; name: string }[]): Promise
             item_no: item.no,
             item_name: item.name,
             reasons: store.states[item.no]?.reasons || [],
-            other_text: store.states[item.no]?.otherText || '',
+            other_text: otherTextList(store.states[item.no]).join('\n'),
             top_k: 3,
           })
           if (one.recommendation) recByNo.set(item.no, one.recommendation)
