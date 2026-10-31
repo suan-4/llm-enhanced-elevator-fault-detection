@@ -11,6 +11,8 @@ import { overviewText, countByCategory } from '@/domain/riskScore'
 import { buildAppendixRows } from '@/domain/reportResult'
 import { modelStatus } from '@/domain/modelStatus'
 import { useReportStore } from '@/stores/report'
+import { useGenerationStore } from '@/stores/generation'
+import { renderMarkdown } from '@/utils/markdown'
 import { useExport } from '@/utils/export'
 import { useToast } from '@/utils/toast'
 import { ApiError } from '@/utils/http'
@@ -20,6 +22,7 @@ const props = defineProps<{ reportId: string }>()
 const emit = defineEmits<{ back: [] }>()
 
 const store = useReportStore()
+const generationStore = useGenerationStore()
 const exp = useExport()
 const { show } = useToast()
 
@@ -33,6 +36,10 @@ const loadError = ref('')
 const fitted = ref(false)
 const reportWrap = ref<HTMLElement | null>(null)
 const panelOpen = ref(false)
+const refBody = ref<HTMLElement | null>(null)
+const typingText = ref('')
+const typing = ref(false)
+let typingTimer: number | undefined
 const collapsed = reactive<Record<string, boolean>>({})
 
 const STATUS_TEXT: Record<string, string> = {
@@ -74,6 +81,36 @@ const overview = computed(() => {
 const conclusion = computed(() => `综合安全状况等级：${grade.value ?? '待确认'}`)
 const appendixRows = computed(() => buildAppendixRows(store.items, store.stateOf, riskByNo.value))
 const analysisText = computed(() => store.generated?.analysis_text ?? '')
+
+function scrollRefBottom(): void {
+  const body = refBody.value
+  if (body) body.scrollTop = body.scrollHeight
+}
+
+function stopTyping(): void {
+  if (typingTimer !== undefined) {
+    window.clearInterval(typingTimer)
+    typingTimer = undefined
+  }
+  typing.value = false
+}
+
+function startTyping(text: string): void {
+  stopTyping()
+  typingText.value = ''
+  if (!text) return
+  typing.value = true
+  let cursor = 0
+  typingTimer = window.setInterval(() => {
+    cursor = Math.min(text.length, cursor + 2)
+    typingText.value = text.slice(0, cursor)
+    void nextTick(scrollRefBottom)
+    if (cursor >= text.length) {
+      stopTyping()
+      typingText.value = text
+    }
+  }, 18)
+}
 
 /* ── 只读填写内容（右边缘抽屉）───────────────────────── */
 interface RefGroup {
@@ -179,6 +216,11 @@ onMounted(async () => {
   observePapers()
   fitPapers()
   fitted.value = true
+  if (generationStore.consumeReplay(props.reportId)) {
+    panelOpen.value = true
+    await nextTick()
+    startTyping(analysisText.value)
+  }
   window.addEventListener('resize', fitPapers)
   void document.fonts?.ready.then(fitPapers)
   if (modelNotice.value) show(modelNotice.value, 5200)
@@ -186,6 +228,7 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   paperObserver?.disconnect()
+  stopTyping()
   window.removeEventListener('resize', fitPapers)
 })
 </script>
@@ -309,7 +352,7 @@ onBeforeUnmount(() => {
         <b>评估填写内容</b>
         <span class="ref-tag">只读</span>
       </div>
-      <div class="ref-body">
+      <div ref="refBody" class="ref-body">
         <h3>基础信息</h3>
         <InfoTable readonly :show-computed="true" class="ref-info" />
 
@@ -380,6 +423,12 @@ onBeforeUnmount(() => {
             </template>
           </tbody>
         </table>
+
+        <div v-if="analysisText" class="ref-analysis">
+          <h3>文本分析报告</h3>
+          <div v-if="typing" class="ref-typing">生成中…</div>
+          <div class="md" v-html="renderMarkdown(typing ? typingText : analysisText)" />
+        </div>
       </div>
     </aside>
   </section>
@@ -633,6 +682,21 @@ onBeforeUnmount(() => {
 .ref-close:hover {
   color: var(--c-danger);
 }
+
+.ref-analysis {
+  margin: 18px 0 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--c-line);
+}
+.ref-analysis h3 { margin: 0 0 8px; }
+.ref-analysis .md { line-height: 1.75; font-size: 13px; color: #223; }
+.ref-analysis .md :deep(h1),
+.ref-analysis .md :deep(h2),
+.ref-analysis .md :deep(h3) { margin: 8px 0 6px; color: #1b5e7a; }
+.ref-analysis .md :deep(p) { margin: 0 0 8px; }
+.ref-analysis .md :deep(ul),
+.ref-analysis .md :deep(ol) { margin: 4px 0 8px; padding-left: 20px; }
+.ref-typing { color: #6b8b98; font-size: 11.5px; margin-bottom: 4px; }
 
 .ref-body {
   flex: 1;

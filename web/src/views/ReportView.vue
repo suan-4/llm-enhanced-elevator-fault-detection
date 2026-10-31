@@ -5,7 +5,6 @@ import { beginInteraction } from '@/utils/performance'
 import InfoTable from '@/components/report/InfoTable.vue'
 import ItemTable from '@/components/report/ItemTable.vue'
 import AppDialog from '@/components/AppDialog.vue'
-import { renderMarkdown } from '@/utils/markdown'
 import ReportCenter from '@/components/report/ReportCenter.vue'
 import { defaultProfileName } from '@/domain/baseInfo'
 import { useReportStore } from '@/stores/report'
@@ -59,7 +58,6 @@ const selectedProfileName = computed(
 const generating = ref(false)
 const streamText = ref('')
 const manualKgSelection = ref(true)
-const streamPanel = ref<HTMLElement | null>(null)
 const confirmNew = ref(false)
 const newBusy = ref(false)
 const itemTable = ref<InstanceType<typeof ItemTable> | null>(null)
@@ -190,19 +188,6 @@ async function loadSelectionMode(): Promise<void> {
     manualKgSelection.value = true
   }
 }
-
-function scrollToStreamBottom(): void {
-  const main = mainEl()
-  if (!main || !streamPanel.value) return
-  main.scrollTo({ top: main.scrollHeight, behavior: 'smooth' })
-}
-
-watch(generating, (active) => {
-  if (active) void nextTick(scrollToStreamBottom)
-})
-watch(streamText, () => {
-  if (generating.value) void nextTick(scrollToStreamBottom)
-})
 
 onMounted(async () => {
   await loadSelectionMode()
@@ -507,6 +492,7 @@ async function runSelections(selections: KgSelection[]): Promise<void> {
       streamText.value += text
     })
     timing.finish('ok')
+    generationStore.requestReplay(report.id)
     await enterReports(report.id)
   } catch (err) {
     timing.finish('error')
@@ -549,7 +535,8 @@ async function generate(): Promise<void> {
         streamText.value += text
       })
       timing.finish('ok')
-      await enterReports(report.id)
+      generationStore.requestReplay(report.id)
+    await enterReports(report.id)
     } catch (err) {
       timing.finish('error')
       show(err instanceof Error ? err.message : '生成失败')
@@ -567,6 +554,7 @@ async function generate(): Promise<void> {
     })
     timing.finish('ok')
     // 生成完成直接进入报告查看（右侧区域就地切换，不跳路由）
+    generationStore.requestReplay(report.id)
     await enterReports(report.id)
   } catch (err) {
     timing.finish('error')
@@ -698,13 +686,6 @@ async function jump(key: string, kind: 'field' | 'item'): Promise<void> {
             </div>
             <div id="sec-items" style="margin-top: 14px">
               <ItemTable ref="itemTable" />
-              <div v-if="generating" ref="streamPanel" class="inline-stream" role="status">
-                <div class="inline-stream-head">
-                  <b>文本分析报告</b>
-                  <span>生成中…</span>
-                </div>
-                <div class="inline-stream-body md" v-html="renderMarkdown(streamText || '正在从 Top3 候选中判断并生成…')" />
-              </div>
             </div>
           </fieldset>
         </div>

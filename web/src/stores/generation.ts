@@ -7,6 +7,7 @@ import type { KgSelection } from '@/api/reports'
    在填写区底部看到文本分析报告的流式打字机，而不是停在确认页。 */
 export const useGenerationStore = defineStore('generation', () => {
   const pendingSelections = ref<KgSelection[] | null>(null)
+  const replayReportId = ref('')
 
   function setPending(selections: KgSelection[]): void {
     pendingSelections.value = selections
@@ -18,5 +19,16 @@ export const useGenerationStore = defineStore('generation', () => {
     return value
   }
 
-  return { pendingSelections, setPending, consume }
+  function requestReplay(reportId: string): void {
+    replayReportId.value = reportId
+  }
+
+  function consumeReplay(reportId: string): boolean {
+    if (replayReportId.value !== reportId) return false
+    replayReportId.value = ''
+    return true
+  }
+
+  return { pendingSelections, replayReportId, setPending, consume,
+    requestReplay, consumeReplay }
 })
