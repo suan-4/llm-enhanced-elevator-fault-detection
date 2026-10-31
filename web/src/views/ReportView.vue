@@ -509,9 +509,11 @@ async function runSelections(selections: KgSelection[]): Promise<void> {
     const report = await store.generate(timing, selections, (text) => {
       streamText.value += text
     })
+    const hadStreamTokens = streamText.value.trim().length > 0
     timing.finish('ok')
     generating.value = false
     generationStore.generating = false
+    if (!hadStreamTokens) generationStore.requestReplay(report.id)
     await nextTick()
     await enterReports(report.id)
   } catch (err) {

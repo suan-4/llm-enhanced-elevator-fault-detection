@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 import { itemProblem } from '@/domain/validation'
 import { useReportStore } from '@/stores/report'
 import type { JteItem } from '@/types/api'
@@ -49,11 +49,20 @@ function pickReason(text: string): void {
   toggleReason(text, !state.value.reasons.includes(text))
 }
 
+const otherTextarea = ref<HTMLTextAreaElement | null>(null)
+
 function toggleOther(): void {
   if (otherLocked.value) return
   state.value.legacyCombined = false
   state.value.other = !state.value.other
   // Inactive inputs remain in the draft editing metadata, not in risk assessment.
+}
+
+function addOther(): void {
+  if (otherLocked.value) return
+  state.value.legacyCombined = false
+  state.value.other = true
+  void nextTick(() => otherTextarea.value?.focus())
 }
 </script>
 
@@ -102,7 +111,10 @@ function toggleOther(): void {
   <tr v-if="unfit" :id="reasonsId" class="reasons-row">
     <td :colspan="3">
       <div class="reasons">
-        <div class="reasons-head">不符合情形（清单项与其他二选一）</div>
+        <div class="reasons-head">
+          不符合情形（清单项与其他二选一）
+          <button class="other-add" type="button" title="添加其他情形" aria-label="添加其他情形" @click="addOther">＋</button>
+        </div>
         <label
           v-for="(opt, i) in item.opts"
           :key="i"
@@ -133,6 +145,7 @@ function toggleOther(): void {
         </label>
         <div v-if="state.other" class="other-box">
           <textarea
+            ref="otherTextarea"
             v-model="state.otherText"
             class="textarea"
             :disabled="otherLocked"
@@ -146,6 +159,27 @@ function toggleOther(): void {
 </template>
 
 <style scoped>
+.reasons-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.other-add {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid #c9d6dd;
+  border-radius: 6px;
+  background: #f7fafb;
+  color: #1b5e7a;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+}
+.other-add:hover {
+  border-color: #1b5e7a;
+  background: #eaf3f6;
+}
 .other-box {
   margin-top: 6px;
 }

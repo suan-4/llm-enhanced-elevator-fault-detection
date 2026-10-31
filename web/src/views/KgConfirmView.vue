@@ -25,6 +25,8 @@ interface Row {
   choiceSource: 'human' | 'model' | 'rule' | 'human_override'
   batch: number
   aiOpen: boolean
+  key: string
+  adopted: boolean
 }
 
 const router = useRouter()
@@ -33,7 +35,6 @@ const generationStore = useGenerationStore()
 const shell = useShell()
 defineOptions({ name: 'KgConfirmView' })
 const rows = ref<Row[]>([])
-const loading = ref(true)
 const generating = ref(false)
 const error = ref('')
 const currentIndex = ref(0)
@@ -85,7 +86,6 @@ async function loadRows(): Promise<void> {
   rows.value = []
   currentIndex.value = 0
   recommendQueue.splice(0)
-  loading.value = true
   if (!store.reportId) {
     await router.replace('/')
     return
@@ -93,20 +93,29 @@ async function loadRows(): Promise<void> {
   for (const item of store.items) {
     const state = store.states[item.no]
     if (state?.result !== '不符合') continue
-    rows.value.push({
-      no: item.no,
-      name: item.name,
-      reasons: state.reasons.slice(),
-      otherText: state.otherText || '',
-      result: null,
-      loading: true,
-      error: '',
-      choice: '',
-      recommendation: null,
-      recommending: false,
-      choiceSource: 'human',
-      batch: 0,
-      aiOpen: false,
+    const entries: { reason: string; other: string }[] = state.reasons.map((reason) => ({ reason, other: '' }))
+    if (state.other && state.otherText.trim()) {
+      entries.push({ reason: '', other: state.otherText.trim() })
+    }
+    if (!entries.length) entries.push({ reason: '', other: '' })
+    entries.forEach((entry, index) => {
+      rows.value.push({
+        no: item.no,
+        name: item.name,
+        reasons: entry.reason ? [entry.reason] : [],
+        otherText: entry.other,
+        result: null,
+        loading: true,
+        error: '',
+        choice: '',
+        recommendation: null,
+        recommending: false,
+        choiceSource: 'human',
+        batch: 0,
+        aiOpen: false,
+        key: `${item.no}#${index}`,
+        adopted: false,
+      })
     })
   }
   if (!rows.value.length) {
@@ -114,7 +123,6 @@ async function loadRows(): Promise<void> {
     return
   }
   await Promise.all(rows.value.map(loadRow))
-  loading.value = false
   lastReportId.value = store.reportId
   lastVersion.value = store.version
 }
@@ -140,6 +148,7 @@ onMounted(async () => {
 onActivated(async () => {
   shell.active = 'confirm'
   shell.reportsView = false
+  await loadAiPromptCount()
   // 从录入页改过不符合项再回来时，不能继续用旧 rows/旧候选
   if (lastReportId.value && (store.reportId !== lastReportId.value
       || store.version !== lastVersion.value
@@ -170,8 +179,9 @@ async function loadRow(row: Row): Promise<void> {
   }
 }
 
-function openAiMenu(row: Row): void {
+async function openAiMenu(row: Row): Promise<void> {
   if (row.recommending || row.recommendation || row.choice === 'direct_ai') return
+  await loadAiPromptCount()
   row.aiOpen = !row.aiOpen
 }
 
@@ -197,6 +207,7 @@ function clearRecommendation(row: Row): void {
   row.recommendation = null
   row.choice = ''
   row.choiceSource = 'human'
+  row.adopted = false
 }
 
 function enqueueRecommendation(row: Row): void {
@@ -248,6 +259,7 @@ function recommendedChoice(row: Row): string {
 }
 
 function markChoice(row: Row): void {
+  row.adopted = false
   if (!row.recommendation) {
     row.choiceSource = 'human'
     return
@@ -263,6 +275,7 @@ function applyRecommendation(row: Row): void {
   if (row.recommendation?.path_id) ensureBatchForPath(row, row.recommendation.path_id)
   row.choice = choice
   row.choiceSource = row.recommendation?.source === 'rule' ? 'rule' : 'model'
+  row.adopted = true
 }
 
 function auditSource(row: Row): 'human' | 'model' | 'rule' | 'human_override' {
@@ -371,15 +384,15 @@ function back(): void {
         <b>{{ doneCount }}/{{ rows.length }}</b> 已确认
         <span class="page-count">{{ currentIndex + 1 }}/{{ rows.length }}</span>
         <div
-          v-if="currentRow && !currentRow.recommendation && currentRow.choice !== 'direct_ai'"
+          v-if="currentRow && !currentRow.recommendation"
           class="header-ai"
         >
           <button
             class="btn tiny ai-trigger"
             type="button"
-            :disabled="currentRow.recommending || currentRow.loading"
+            :disabled="currentRow.recommending || currentRow.loading || currentRow.choice === 'direct_ai'"
             @click="openAiMenu(currentRow)"
-          >{{ currentRow.recommending ? 'AI 推荐中…' : 'AI 推荐' }}</button>
+          >{{ currentRow.recommending ? 'AI 推荐中…' : (currentRow.choice === 'direct_ai' ? '已选择拼接' : 'AI 推荐') }}</button>
           <div v-if="currentRow.aiOpen" class="ai-popover header-popover" @click.stop>
             <button class="popover-close" type="button" title="关闭" @click="currentRow.aiOpen = false">×</button>
             <button class="popover-option" type="button" @click="chooseAiRecommend(currentRow)">
@@ -395,9 +408,7 @@ function back(): void {
       </div>
     </header>
 
-    <div v-if="loading" class="loading">正在检索候选路径…</div>
-
-    <section v-for="row in visibleRows" :key="row.no" class="item">
+    <section v-for="row in visibleRows" :key="row.key" class="item">
       <div class="item-head">
         <h2>{{ row.no }}　{{ row.name }}</h2>
         <span v-if="row.result" class="hint">{{ row.result.item_system }} · {{ row.result.query_terms.join('、') }}</span>
@@ -413,7 +424,7 @@ function back(): void {
         <button class="btn tiny" type="button" @click="loadRow(row)">重试</button>
       </div>
       <div v-else>
-        <div v-if="row.choice === 'direct_ai' || row.recommendation" class="row-actions">
+        <div v-if="(row.choice === 'direct_ai' || row.recommendation) && !row.adopted" class="row-actions">
           <template v-if="row.choice === 'direct_ai'">
             <span class="direct-hint">已选择：前 {{ aiPromptCount }} 个候选直接拼入提示词</span>
             <button class="btn tiny" type="button" @click="clearDirectAi(row)">取消选择</button>
@@ -450,7 +461,7 @@ function back(): void {
             <span class="path">
               #{{ c.rank }}　{{ chainOf(c) }}
               <span v-if="row.recommendation?.path_id === c.path_id" class="ai-badge">
-                AI 推荐
+                {{ row.adopted ? '已采用' : 'AI 推荐' }}
                 <template v-if="row.recommendation.cached">·缓存</template>
               </span>
             </span>
@@ -593,7 +604,12 @@ h1 { margin: 0; font-size: 21px; }
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
-  margin: 6px 0 4px;
+  margin: 3px 0;
+  padding: 5px 8px;
+  border-radius: 7px;
+  background: #f2faf5;
+  color: #2c6b42;
+  font-size: 11.5px;
 }
 .row-actions .btn.tiny { margin-left: 0; }
 .direct-hint {
