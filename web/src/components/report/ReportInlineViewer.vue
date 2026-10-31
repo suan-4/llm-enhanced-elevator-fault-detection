@@ -62,9 +62,19 @@ function computePanelShift(): void {
 }
 
 watch(panelOpen, async () => {
-  if (!panelOpen.value) panelShift.value = 0
+  if (!panelOpen.value) {
+    panelShift.value = 0
+    return
+  }
   await nextTick()
+  fitPapers()
   computePanelShift()
+  for (const delay of [60, 180, 400]) {
+    window.setTimeout(() => {
+      fitPapers()
+      computePanelShift()
+    }, delay)
+  }
 })
 // 侧栏展开/收起只做 transform 位移，纸张尺寸不变；不要再重算缩放，
 // 否则滚动条/布局测量会让纸张看起来忽大忽小。
@@ -251,6 +261,7 @@ function observePapers(): void {
   layoutObserver = new MutationObserver(() => {
     fitPapers()
     if (props.generating && followStream.value) scrollToAnalysisPageTop()
+    if (panelOpen.value) computePanelShift()
   })
   layoutObserver.observe(host, { childList: true, subtree: true })
 }
@@ -273,14 +284,18 @@ onMounted(async () => {
   fitted.value = true
   if (!props.generating && generationStore.keepView) {
     generationStore.keepView = false
-    // 板端 960 宽时，右侧 430px 评估栏 + 纸张无法同时保持居中；
-    // 自动打开必然把白页左移。生成完成后默认不自动展开右栏，保持纸张位置；
-    // 只有宽度足够的桌面端才自动展开。
-    if (window.innerWidth >= 1200) {
-      panelOpen.value = true
-      await nextTick()
-      fitPapers()
-      computePanelShift()
+    // 先生成页是“打开侧栏”的布局；切回查看页时也保持打开。
+    // 首次挂载时纸张布局还没稳定，必须延迟重算位移，否则会按错误位置
+    // 左移；手动关闭再打开能正常，就是因为它触发了第二次计算。
+    panelOpen.value = true
+    await nextTick()
+    fitPapers()
+    computePanelShift()
+    for (const delay of [50, 160, 360, 700]) {
+      window.setTimeout(() => {
+        fitPapers()
+        computePanelShift()
+      }, delay)
     }
   }
   if (generationStore.consumeReplay(props.reportId)) {
