@@ -3,6 +3,8 @@ import { computed, onMounted, ref } from 'vue'
 import { RouterView, useRoute } from 'vue-router'
 import AppShell from '@/components/AppShell.vue'
 import SplashScreen from '@/components/SplashScreen.vue'
+import OfflineKeyboard from '@/components/input/OfflineKeyboard.vue'
+import { useOfflineInput } from '@/utils/offlineInput'
 import { useAuthStore } from '@/stores/auth'
 import { useSetupStore } from '@/stores/setup'
 import { useKiosk } from '@/utils/kiosk'
@@ -11,6 +13,7 @@ import { useToast } from '@/utils/toast'
 const auth = useAuthStore()
 const setup = useSetupStore()
 const kiosk = useKiosk()
+const offlineInput = useOfflineInput()
 const route = useRoute()
 const { message, tone } = useToast()
 
@@ -46,15 +49,16 @@ onMounted(async () => {
       type="button"
       title="切换中/英文输入"
       @mousedown.prevent
-      @click="kiosk.setIme()"
+      @click="offlineInput.enabled.value ? (offlineInput.chinese.value = !offlineInput.chinese.value) : kiosk.setIme()"
     >
-      {{ kiosk.imeLabel.value }}
+      {{ offlineInput.enabled.value ? (offlineInput.chinese.value ? '中' : '英') : kiosk.imeLabel.value }}
     </button>
 
     <AppShell v-if="withShell">
       <RouterView />
     </AppShell>
     <RouterView v-else />
+    <OfflineKeyboard />
 
     <div v-if="message" class="toast" :class="{ danger: tone === 'danger' }">{{ message }}</div>
   </template>

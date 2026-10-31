@@ -10,6 +10,7 @@ from app.api.accounts import router as accounts_router
 from app.api.auth import router as auth_router
 from app.api.export import router as export_router
 from app.api.ime import router as ime_router
+from app.api.input import router as input_router
 from app.api.kiosk import router as kiosk_router
 from app.api.report import router as report_router
 from app.api.reports import router as reports_router
@@ -73,6 +74,7 @@ app.include_router(kiosk_router)
 app.include_router(report_router)
 app.include_router(export_router)
 app.include_router(ime_router)
+app.include_router(input_router)
 
 
 @app.get("/marked.min.js", response_class=Response)
