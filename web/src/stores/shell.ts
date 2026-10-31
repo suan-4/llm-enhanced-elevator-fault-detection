@@ -9,7 +9,7 @@ import { ref } from 'vue'
    - requested：侧栏请求主页面切到哪个区域，由主页面消费后清空。
      用"待办标记"而不是事件，是因为从设置页点过来时主页面还没挂载，
      事件会丢；标记会在挂载时被读到。 */
-export type AnchorKey = 'info' | 'items' | 'reports'
+export type AnchorKey = 'info' | 'items' | 'confirm' | 'reports'
 
 export const useShell = defineStore('shell', () => {
   /* 主页面侧栏默认折叠（不区分分辨率）：

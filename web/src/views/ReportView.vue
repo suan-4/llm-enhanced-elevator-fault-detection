@@ -9,6 +9,7 @@ import { renderMarkdown } from '@/utils/markdown'
 import ReportCenter from '@/components/report/ReportCenter.vue'
 import { defaultProfileName } from '@/domain/baseInfo'
 import { useReportStore } from '@/stores/report'
+import { useGenerationStore } from '@/stores/generation'
 import { useShell } from '@/stores/shell'
 import { useToast } from '@/utils/toast'
 import { systemConfig } from '@/api/system'
@@ -17,6 +18,7 @@ import { fetchKgCandidates, fetchKgRecommendation, fetchKgRecommendationBatch, s
 import type { KgSelection } from '@/api/reports'
 
 const store = useReportStore()
+const generationStore = useGenerationStore()
 const route = useRoute()
 const router = useRouter()
 const shell = useShell()
@@ -155,6 +157,7 @@ function consumeShellRequest(): void {
   if (!want) return
   shell.requested = ''
   if (want === 'reports') void showReportsSection()
+  else if (want === 'confirm') void router.push('/kg-confirm')
   else void showAnchor(want)
 }
 
@@ -207,6 +210,11 @@ onMounted(async () => {
   store.ensureBaseInfoLoaded()
   refreshSelectedProfile()
   await withAutosavePaused(() => startDraft())
+  const pendingSelections = generationStore.consume()
+  if (pendingSelections) {
+    await nextTick()
+    await runSelections(pendingSelections)
+  }
   mainEl()?.addEventListener('scroll', updateActiveByScroll, { passive: true })
   document.addEventListener('click', onDocumentClick)
   consumeShellRequest()
@@ -488,6 +496,24 @@ async function autoSelectKg(unfitItems: { no: string; name: string }[]): Promise
     }).catch(() => null)
   }))
   return selections
+}
+
+async function runSelections(selections: KgSelection[]): Promise<void> {
+  const timing = beginInteraction('report_generate')
+  generating.value = true
+  streamText.value = ''
+  try {
+    const report = await store.generate(timing, selections, (text) => {
+      streamText.value += text
+    })
+    timing.finish('ok')
+    await enterReports(report.id)
+  } catch (err) {
+    timing.finish('error')
+    show(err instanceof Error ? err.message : '生成失败')
+  } finally {
+    generating.value = false
+  }
 }
 
 async function generate(): Promise<void> {

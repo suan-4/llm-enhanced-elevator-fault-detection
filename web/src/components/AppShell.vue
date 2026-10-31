@@ -9,8 +9,9 @@
    - 侧栏只负责「一台电梯的录入进度」：项目进度 + 三个滚动锚点；
    - 报告管理 / 账号管理已并入系统设置，入口是右下角的齿轮 icon；
    - 设置页自带左侧树状导航，因此设置页不显示这根侧栏（.main.no-nav）。 */
-import { computed } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { systemConfig } from '@/api/system'
 import AppSidebar, { type NavItem } from '@/components/AppSidebar.vue'
 import ExportResult from '@/components/report/ExportResult.vue'
 import { useAuthStore } from '@/stores/auth'
@@ -19,11 +20,16 @@ import { useShell } from '@/stores/shell'
 import { useKiosk } from '@/utils/kiosk'
 import { useToast } from '@/utils/toast'
 
-const NAV: NavItem[] = [
-  { key: 'info', label: '基础信息' },
-  { key: 'items', label: '检测项目填写' },
-  { key: 'reports', label: '报告管理' },
-]
+const manualKgSelection = ref(true)
+const NAV = computed<NavItem[]>(() => {
+  const items: NavItem[] = [
+    { key: 'info', label: '基础信息' },
+    { key: 'items', label: '检测项目填写' },
+  ]
+  if (manualKgSelection.value) items.push({ key: 'confirm', label: '人工确认' })
+  items.push({ key: 'reports', label: '报告管理' })
+  return items
+})
 
 const route = useRoute()
 const router = useRouter()
@@ -48,6 +54,10 @@ const progress = computed(() => ({
 }))
 
 function onNavigate(key: string): void {
+  if (key === 'confirm') {
+    if (route.path !== '/kg-confirm') void router.push('/kg-confirm')
+    return
+  }
   const anchor = key as 'info' | 'items' | 'reports'
   if (route.path !== '/') {
     void router.push('/').then(() => shell.requestView(anchor))
@@ -55,6 +65,19 @@ function onNavigate(key: string): void {
   }
   shell.requestView(anchor)
 }
+
+async function loadManualSelection(): Promise<void> {
+  try {
+    const cfg = await systemConfig()
+    const item = cfg.items.find((row) => row.key === 'manual_kg_selection')
+    manualKgSelection.value = item ? item.value !== false : true
+  } catch {
+    manualKgSelection.value = true
+  }
+}
+
+onMounted(loadManualSelection)
+watch(() => route.fullPath, loadManualSelection)
 
 /** 与旧版一致：点右侧内容区自动收起侧栏，把宽度让给正文 */
 function onMainClick(e: MouseEvent): void {

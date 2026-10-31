@@ -55,7 +55,11 @@ onMounted(async () => {
     </button>
 
     <AppShell v-if="withShell">
-      <RouterView />
+      <RouterView v-slot="{ Component }">
+        <KeepAlive include="KgConfirmView">
+          <component :is="Component" :key="route.name === 'kg-confirm' ? 'kg-confirm' : route.fullPath" />
+        </KeepAlive>
+      </RouterView>
     </AppShell>
     <RouterView v-else />
     <OfflineKeyboard />

@@ -6,6 +6,8 @@ import { useRouter } from 'vue-router'
 import { fetchKgCandidates, fetchKgRecommendation, fetchKgRecommendationBatch,
   selectKgPath, type KgCandidatesResponse, type KgRecommendation } from '@/api/kg'
 import { useReportStore } from '@/stores/report'
+import { useGenerationStore } from '@/stores/generation'
+import { useShell } from '@/stores/shell'
 import type { KgSelection } from '@/api/reports'
 
 interface Row {
@@ -24,11 +26,13 @@ interface Row {
 
 const router = useRouter()
 const store = useReportStore()
+const generationStore = useGenerationStore()
+const shell = useShell()
+defineOptions({ name: 'KgConfirmView' })
 const rows = ref<Row[]>([])
 const loading = ref(true)
 const generating = ref(false)
 const error = ref('')
-const streamText = ref('')
 const batchLoading = ref(false)
 const currentIndex = ref(0)
 const recommendQueue: Row[] = []
@@ -53,6 +57,8 @@ function goPage(delta: number): void {
 }
 
 onMounted(async () => {
+  shell.active = 'confirm'
+  shell.reportsView = false
   if (!store.reportId) {
     await router.replace('/')
     return
@@ -268,11 +274,9 @@ async function generate(): Promise<void> {
       model_path_id: rows.value.find((r) => r.no === sel.item_no)?.recommendation?.path_id ?? null,
       model_reason: rows.value.find((r) => r.no === sel.item_no)?.recommendation?.reason || '',
     }).catch(() => null)))
-    streamText.value = ''
-    const report = await store.generate(undefined, selections, (text) => {
-      streamText.value += text
-    })
-    await router.replace({ path: '/', query: { section: 'reports', report: report.id } })
+    // 把选择交给报告页；由报告页在填写区底部显示流式正文
+    generationStore.setPending(selections)
+    await router.replace({ path: '/' })
   } catch (err) {
     error.value = err instanceof Error ? err.message : '生成失败'
   } finally {
