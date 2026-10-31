@@ -12,7 +12,7 @@ import { useGenerationStore } from '@/stores/generation'
 import { useShell } from '@/stores/shell'
 import { useToast } from '@/utils/toast'
 import { systemConfig } from '@/api/system'
-import ReportEvaluationDrawer from '@/components/report/ReportEvaluationDrawer.vue'
+import ReportInlineViewer from '@/components/report/ReportInlineViewer.vue'
 import { fetchKgCandidates, fetchKgRecommendation, fetchKgRecommendationBatch, selectKgPath,
   type KgCandidatesResponse, type KgRecommendation } from '@/api/kg'
 import type { KgSelection } from '@/api/reports'
@@ -680,27 +680,12 @@ async function jump(key: string, kind: 'field' | 'item'): Promise<void> {
 
       <!-- 报告管理 + 查看：在右侧区域内就地切换，不跳路由 -->
       <section v-show="view === 'reports'">
-        <div v-if="generating" class="gen-view">
-          <div class="gen-top">
-            <b>报告生成中</b>
-            <span>正在生成文本分析报告，右侧为评估填写内容</span>
-          </div>
-          <div class="gen-main">
-            <div class="gen-paper">
-              <div class="gen-placeholder">正在生成报告…</div>
-            </div>
-            <div class="gen-drawer">
-              <ReportEvaluationDrawer
-                :open="true"
-                :analysis-text="streamText"
-                :typing="true"
-                :typing-text="streamText"
-                inline
-                :closable="false"
-              />
-            </div>
-          </div>
-        </div>
+        <ReportInlineViewer
+          v-if="generating && store.reportId"
+          :report-id="store.reportId"
+          :generating="true"
+          :stream-text="streamText"
+        />
         <ReportCenter v-else ref="reportCenter" @continue-edit="editDraft" />
       </section>
 

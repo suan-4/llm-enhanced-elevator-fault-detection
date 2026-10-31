@@ -172,7 +172,7 @@ watch([() => props.open, () => props.typingText, () => props.analysisText], () =
         </tbody>
       </table>
 
-      <div v-if="analysisText" class="ref-analysis">
+      <div v-if="analysisText || typingText" class="ref-analysis">
         <h3>文本分析报告</h3>
         <div v-if="typing" class="ref-typing">生成中…</div>
         <div class="md" v-html="renderMarkdown(analysis)" />

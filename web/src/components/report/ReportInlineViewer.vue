@@ -2,7 +2,7 @@
 /* 内嵌报告查看：在主页面右侧区域就地显示，不跳路由。
    顶部工具条含返回（回报告管理）/ 报告信息 / 导出；右边缘抽屉只读展示当时的填写内容。
    打开前由主页面暂存录入现场，切回录入锚点时由主页面恢复。 */
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import ReportDocument from '@/components/report/ReportDocument.vue'
 import ReportEvaluationDrawer from '@/components/report/ReportEvaluationDrawer.vue'
 import { overviewText, countByCategory } from '@/domain/riskScore'
@@ -14,7 +14,11 @@ import { useExport } from '@/utils/export'
 import { useToast } from '@/utils/toast'
 import { ApiError } from '@/utils/http'
 
-const props = defineProps<{ reportId: string }>()
+const props = defineProps<{
+  reportId: string
+  generating?: boolean
+  streamText?: string
+}>()
 const emit = defineEmits<{ back: [] }>()
 
 const store = useReportStore()
@@ -31,7 +35,10 @@ const loadError = ref('')
    在缩放完成前先藏起来，避免"完整宽度闪一下再缩回去"。 */
 const fitted = ref(false)
 const reportWrap = ref<HTMLElement | null>(null)
-const panelOpen = ref(false)
+const panelOpen = ref(!!props.generating)
+watch(() => props.generating, (active) => {
+  if (active) panelOpen.value = true
+})
 const typingText = ref('')
 const typing = ref(false)
 let typingTimer: number | undefined
@@ -289,8 +296,8 @@ onBeforeUnmount(() => {
     <ReportEvaluationDrawer
       :open="panelOpen && !loading && !loadError"
       :analysis-text="analysisText"
-      :typing="typing"
-      :typing-text="typingText"
+      :typing="props.generating ? true : typing"
+      :typing-text="props.generating ? (props.streamText || '') : typingText"
       @close="panelOpen = false"
     />
   </section>
