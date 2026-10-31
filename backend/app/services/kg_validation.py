@@ -73,7 +73,7 @@ def _allowed_clauses(*values: Any) -> set[str]:
 
 
 def _check_common(output: dict, item_no: str, allowed_numbers: set[str],
-                  allowed_clauses: set[str]) -> list[dict]:
+                  allowed_clauses: set[str], *, check_numbers: bool = True) -> list[dict]:
     errors: list[dict] = []
     texts = [t for t in _strings(output) if t]
 
@@ -87,10 +87,11 @@ def _check_common(output: dict, item_no: str, allowed_numbers: set[str],
             if clause not in allowed_clauses:
                 errors.append({"code": "CLAUSE_NOT_ALLOWED", "item_no": item_no,
                                "detail": f"条款不在证据中：{clause}"})
-        for number in NUMBER_RE.findall(text):
-            if number not in allowed_numbers and number != str(item_no):
-                errors.append({"code": "NUMBER_NOT_ALLOWED", "item_no": item_no,
-                               "detail": f"数值不在证据中：{number}"})
+        if check_numbers:
+            for number in NUMBER_RE.findall(text):
+                if number not in allowed_numbers and number != str(item_no):
+                    errors.append({"code": "NUMBER_NOT_ALLOWED", "item_no": item_no,
+                                   "detail": f"数值不在证据中：{number}"})
     return errors
 
 
@@ -213,8 +214,10 @@ def validate_analysis_text(text: str, *, item_nos: list[str],
     # 文本分析会自然出现“涉及 4 类风险”“项目 12.1”等叙述；字数/计数不是
     # 事实性限值。分析正文不再用 NUMBER_NOT_ALLOWED 拦截，避免整篇回退
     # 为规则版；具体条款/禁止性表述仍保留校验。
-    errors.extend(_check_common({"analysis": body}, "", set(NUMBER_RE.findall(body)),
-                                _allowed_clauses(values)))
+    # 分析正文会原样引用“公称直径的 90%”“5.1”等现场文字，数字不是
+    # 模型新增的结论；数字校验对最终正文没有实际保护作用，直接关闭。
+    errors.extend(_check_common({"analysis": body}, "", set(),
+                                _allowed_clauses(values), check_numbers=False))
     seen = set(); unique = []
     for err in errors:
         key = (err["code"], err["detail"])
