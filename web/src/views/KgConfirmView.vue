@@ -36,6 +36,7 @@ const generationStore = useGenerationStore()
 const shell = useShell()
 defineOptions({ name: 'KgConfirmView' })
 const rows = ref<Row[]>([])
+const booting = ref(true)
 const generating = ref(false)
 const error = ref('')
 const currentIndex = ref(0)
@@ -84,6 +85,7 @@ function goPage(delta: number): void {
 }
 
 async function loadRows(): Promise<void> {
+  booting.value = true
   rows.value = []
   currentIndex.value = 0
   recommendQueue.splice(0)
@@ -125,9 +127,13 @@ async function loadRows(): Promise<void> {
     await router.replace('/')
     return
   }
-  await Promise.all(rows.value.map(loadRow))
-  lastReportId.value = store.reportId
-  lastVersion.value = store.version
+  try {
+    await Promise.all(rows.value.map(loadRow))
+    lastReportId.value = store.reportId
+    lastVersion.value = store.version
+  } finally {
+    booting.value = false
+  }
 }
 
 async function loadAiPromptCount(): Promise<void> {
@@ -375,6 +381,11 @@ function back(): void {
 
 <template>
   <div class="kg-confirm">
+    <div v-if="booting" class="kg-loading" role="status" aria-live="polite">
+      <span class="kg-spinner" />
+      <b>正在检索故障路径…</b>
+      <span>正在读取不符合项并匹配候选路径，请稍候</span>
+    </div>
     <header class="head">
       <div>
         <h1>故障路径确认</h1>
@@ -535,6 +546,30 @@ function back(): void {
   margin: 0 auto;
   padding: 18px 20px 120px;
 }
+.kg-loading {
+  position: fixed;
+  inset: 52px 0 0 0;
+  z-index: 300;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: #f7fafb;
+  color: #1b5e7a;
+  font-size: 13px;
+}
+.kg-loading b { font-size: 16px; }
+.kg-loading span:last-child { color: #7a8b93; font-size: 12.5px; }
+.kg-spinner {
+  width: 26px;
+  height: 26px;
+  border: 3px solid #d5e4ea;
+  border-top-color: #1b5e7a;
+  border-radius: 50%;
+  animation: kg-spin 0.8s linear infinite;
+}
+@keyframes kg-spin { to { transform: rotate(360deg); } }
 .head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 14px; }
 h1 { margin: 0; font-size: 21px; }
 .sub { margin: 4px 0 0; color: var(--c-muted); font-size: 12.5px; line-height: 1.5; }
