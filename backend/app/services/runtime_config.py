@@ -80,9 +80,9 @@ SPECS: list[dict] = [
         "restart": False,
     },
     {
-        "key": "direct_top3_prompt", "label": "人工确认：Top3 直接进入提示词", "type": "bool",
-        "desc": "仅在人工确认开启时生效。开启后操作员未手动选择时直接采用已有 AI/规则推荐并生成，不再额外等待推荐轮次；关闭则必须逐项人工确认",
-        "restart": False,
+        "key": "ai_prompt_candidate_count", "label": "AI 提示词候选项拼接数", "type": "int",
+        "desc": "人工确认页选择「直接全权 AI」时，把每项前 N 个候选直接拼入生成提示词；默认 3",
+        "min": 1, "max": 9, "restart": False,
     },
 ]
 

@@ -24,6 +24,7 @@ interface Row {
   recommending: boolean
   choiceSource: 'human' | 'model' | 'rule' | 'human_override'
   batch: number
+  aiOpen: boolean
 }
 
 const router = useRouter()
@@ -37,24 +38,15 @@ const generating = ref(false)
 const error = ref('')
 const batchLoading = ref(false)
 const currentIndex = ref(0)
-const directTop3 = ref(false)
-let directPrefetching = false
+const aiPromptCount = ref(3)
 const recommendQueue: Row[] = []
 let recommendActive = 0
 const lastReportId = ref('')
 const lastVersion = ref(-1)
 
-function effectiveChoice(row: Row): string {
-  if (row.choice) return row.choice
-  if (directTop3.value && row.recommendation) {
-    return row.recommendation.none ? 'none' : (row.recommendation.path_id || '')
-  }
-  return ''
-}
-
 const canGenerate = computed(() => rows.value.length > 0
-  && rows.value.every((r) => !!effectiveChoice(r)))
-const doneCount = computed(() => rows.value.filter((r) => !!effectiveChoice(r)).length)
+  && rows.value.every((r) => !!r.choice))
+const doneCount = computed(() => rows.value.filter((r) => !!r.choice).length)
 const remainingRows = computed(() => rows.value.filter(
   (r) => !r.choice && !r.recommending && (r.result?.candidates || []).length > 0,
 ))
@@ -118,6 +110,7 @@ async function loadRows(): Promise<void> {
       recommending: false,
       choiceSource: 'human',
       batch: 0,
+      aiOpen: false,
     })
   }
   if (!rows.value.length) {
@@ -128,38 +121,23 @@ async function loadRows(): Promise<void> {
   loading.value = false
   lastReportId.value = store.reportId
   lastVersion.value = store.version
-  if (directTop3.value) void prefetchDirectRecommendations()
 }
 
-/** 直入模式下后台把未选项目的 AI 推荐先算出来，点生成时不再多等一轮。 */
-async function prefetchDirectRecommendations(): Promise<void> {
-  if (directPrefetching) return
-  directPrefetching = true
-  try {
-    while (directTop3.value && remainingRows.value.length) {
-      const before = remainingRows.value.length
-      await recommendRemaining()
-      if (remainingRows.value.length >= before) break
-    }
-  } finally {
-    directPrefetching = false
-  }
-}
-
-async function loadDirectTop3(): Promise<void> {
+async function loadAiPromptCount(): Promise<void> {
   try {
     const cfg = await systemConfig()
-    const item = cfg.items.find((row) => row.key === 'direct_top3_prompt')
-    directTop3.value = item ? item.value === true : false
+    const item = cfg.items.find((row) => row.key === 'ai_prompt_candidate_count')
+    const n = item && typeof item.value === 'number' ? item.value : 3
+    aiPromptCount.value = Math.max(1, Math.min(9, n))
   } catch {
-    directTop3.value = false
+    aiPromptCount.value = 3
   }
 }
 
 onMounted(async () => {
   shell.active = 'confirm'
   shell.reportsView = false
-  await loadDirectTop3()
+  await loadAiPromptCount()
   await loadRows()
 })
 
@@ -188,9 +166,6 @@ async function loadRow(row: Row): Promise<void> {
     row.result = res
     if (!res.candidates.length) {
       row.choice = 'none'
-    } else {
-      // 页面打开时只跑规则快路径；模糊项等用户点「AI 推荐」再调模型
-      void recommendRow(row, true)
     }
   } catch (err) {
     row.error = err instanceof Error ? err.message : '检索失败'
@@ -217,12 +192,8 @@ async function recommendRemaining(): Promise<void> {
       const row = rows.value.find((r) => r.no === item.item_no)
       if (!row || !item.recommendation) continue
       row.recommendation = item.recommendation
-      // 批量推荐同理：规则匹配不预选，AI 推荐可预选
-      if (item.recommendation.source === 'model' && !row.choice) {
-        row.choice = item.recommendation.none ? 'none' : (item.recommendation.path_id || '')
-        row.choiceSource = 'model'
-        if (item.recommendation.path_id) ensureBatchForPath(row, item.recommendation.path_id)
-      }
+      row.aiOpen = true
+      if (item.recommendation.path_id) ensureBatchForPath(row, item.recommendation.path_id)
     }
   } catch (err) {
     error.value = err instanceof Error ? err.message : '批量推荐失败'
@@ -232,9 +203,20 @@ async function recommendRemaining(): Promise<void> {
   }
 }
 
-function requestRecommendation(row: Row): void {
-  if (row.recommending || row.recommendation?.source === 'model' || row.loading) return
+function toggleAi(row: Row): void {
+  if (row.recommendation) {
+    row.aiOpen = !row.aiOpen
+    return
+  }
+  if (row.recommending || row.loading) return
+  row.aiOpen = true
   enqueueRecommendation(row)
+}
+
+function toggleDirectAi(row: Row): void {
+  row.aiOpen = false
+  row.choice = row.choice === 'direct_ai' ? '' : 'direct_ai'
+  row.choiceSource = row.choice === 'direct_ai' ? 'model' : 'human'
 }
 
 function enqueueRecommendation(row: Row): void {
@@ -271,12 +253,7 @@ async function recommendRow(row: Row, fastOnly = false): Promise<void> {
       fast_only: fastOnly,
     })
     row.recommendation = res.recommendation
-    // 规则匹配只提示，不默认选中；只有模型推荐才预选，最终仍需人工确认。
-    if (res.recommendation?.source === 'model' && !row.choice) {
-      row.choice = res.recommendation.none ? 'none' : (res.recommendation.path_id || '')
-      row.choiceSource = 'model'
-      if (res.recommendation.path_id) ensureBatchForPath(row, res.recommendation.path_id)
-    }
+    if (res.recommendation?.path_id) ensureBatchForPath(row, res.recommendation.path_id)
   } catch {
     row.recommendation = null
   } finally {
@@ -340,40 +317,51 @@ async function generate(): Promise<void> {
   generating.value = true
   error.value = ''
   try {
-    // 开启人工确认直入模式时：操作员没手动选的项，直接采用已有 AI/规则推荐，
-    // 不再额外调用推荐接口等待十几秒。
-    if (directTop3.value) {
-      for (const row of rows.value) {
-        if (row.choice || !row.recommendation) continue
-        row.choice = row.recommendation.none ? 'none' : (row.recommendation.path_id || '')
-        row.choiceSource = row.recommendation.source === 'rule' ? 'rule' : 'model'
-        if (row.recommendation.path_id) ensureBatchForPath(row, row.recommendation.path_id)
+    const selections: KgSelection[] = []
+    for (const row of rows.value) {
+      if (row.choice === 'direct_ai') {
+        const candidates = (row.result?.candidates || []).slice(0, aiPromptCount.value)
+        if (!candidates.length) {
+          selections.push({
+            item_no: row.no, path_id: null, decision: 'no_candidate',
+            rank: null, query: row.result?.query || '',
+          })
+        } else {
+          for (const candidate of candidates) {
+            selections.push({
+              item_no: row.no, path_id: candidate.path_id, decision: 'selected',
+              rank: candidate.rank, query: row.result?.query || '',
+            })
+          }
+        }
+        continue
       }
+      selections.push({
+        item_no: row.no,
+        path_id: row.choice === 'none' || !row.choice ? null : row.choice,
+        decision: row.choice === 'none' || !row.choice ? 'no_candidate' : 'selected',
+        rank: rankOf(row),
+        query: row.result?.query || '',
+      })
     }
-    const selections: KgSelection[] = rows.value.map((row) => ({
-      item_no: row.no,
-      path_id: row.choice === 'none' || !row.choice ? null : row.choice,
-      decision: row.choice === 'none' || !row.choice ? 'no_candidate' : 'selected',
-      rank: rankOf(row),
-      query: row.result?.query || '',
-    }))
     // 审计日志：失败不阻塞生成
-    await Promise.all(selections.map((sel) => selectKgPath({
-      report_id: store.reportId,
-      item_no: sel.item_no,
-      item_name: rows.value.find((r) => r.no === sel.item_no)?.name || '',
-      query: sel.query || '',
-      path_id: sel.path_id,
-      decision: sel.decision,
-      rank: sel.rank,
-      top3: top3Of(rows.value.find((r) => r.no === sel.item_no) || rows.value[0]),
-      selection_source: (() => {
-        const row = rows.value.find((r) => r.no === sel.item_no)
-        return row ? auditSource(row) : 'human'
-      })(),
-      model_path_id: rows.value.find((r) => r.no === sel.item_no)?.recommendation?.path_id ?? null,
-      model_reason: rows.value.find((r) => r.no === sel.item_no)?.recommendation?.reason || '',
-    }).catch(() => null)))
+    await Promise.all(selections.map((sel) => {
+      const row = rows.value.find((r) => r.no === sel.item_no)
+      const direct = row?.choice === 'direct_ai'
+      return selectKgPath({
+        report_id: store.reportId,
+        item_no: sel.item_no,
+        item_name: row?.name || '',
+        query: sel.query || '',
+        path_id: sel.path_id,
+        decision: sel.decision,
+        rank: sel.rank,
+        top3: row ? top3Of(row) : [],
+        selection_source: direct ? 'model' : (row ? auditSource(row) : 'human'),
+        model_path_id: direct ? sel.path_id : (row?.recommendation?.path_id ?? null),
+        model_reason: direct ? `前 ${aiPromptCount.value} 个候选直接拼接` : (row?.recommendation?.reason || ''),
+      }).catch(() => null)
+    }))
     // 把选择交给报告页；由报告页在填写区底部显示流式正文
     generationStore.setPending(selections)
     await router.replace({ path: '/' })
@@ -396,7 +384,7 @@ function back(): void {
         <h1>故障路径确认</h1>
         <p class="sub">
           为每个不符合项选择最接近的故障演化路径；没有合适路径可选「无合适候选」，按规则表处置。
-          页面打开先做规则匹配；规则无法判断的项，点「AI 推荐」再调用大模型。
+          可展开「AI 推荐」查看候选再决定，或选「直接全权 AI」把前 N 个候选直接拼入提示词。
         </p>
       </div>
       <div class="progress">
@@ -430,23 +418,25 @@ function back(): void {
         <button class="btn tiny" type="button" @click="loadRow(row)">重试</button>
       </div>
       <div v-else>
-        <div v-if="row.recommendation?.source === 'rule'" class="rule-line">
-          <span class="rule-badge">规则推荐</span>
-          <span v-if="row.recommendation.none">
-            建议「无合适候选」：{{ row.recommendation.reason || '未匹配到候选路径' }}
-          </span>
-          <span v-else>
-            #{{ row.recommendation.rank }}　{{ row.recommendation.reason || '候选路径' }}
-          </span>
+        <div class="row-actions">
           <button
-            v-if="row.choice !== recommendedChoice(row)"
-            class="btn tiny"
+            class="btn tiny ai-trigger"
             type="button"
-            @click="applyRecommendation(row)"
-          >采用</button>
+            :disabled="batchLoading || row.recommending"
+            @click="toggleAi(row)"
+          >{{ row.recommending ? 'AI 推荐中…' : (row.aiOpen ? '收起 AI 推荐' : 'AI 推荐') }}</button>
+          <button
+            class="btn tiny direct-ai"
+            :class="{ on: row.choice === 'direct_ai' }"
+            type="button"
+            @click="toggleDirectAi(row)"
+          >直接全权 AI</button>
+          <span v-if="row.choice === 'direct_ai'" class="direct-hint">
+            将前 {{ aiPromptCount }} 个候选直接拼入提示词
+          </span>
         </div>
 
-        <div v-if="row.recommending || row.recommendation?.source === 'model'" class="ai-line">
+        <div v-if="row.aiOpen && (row.recommending || row.recommendation)" class="ai-line">
           <span v-if="row.recommending" class="muted">AI 正在推荐…</span>
           <template v-else-if="row.recommendation">
             <span class="ai-badge">AI 推荐</span>
@@ -465,27 +455,19 @@ function back(): void {
           </template>
         </div>
 
-        <button
-          v-if="!row.recommending && row.recommendation?.source !== 'model' && visibleCandidates(row).length"
-          class="btn tiny ai-trigger"
-          type="button"
-          :disabled="batchLoading"
-          @click="requestRecommendation(row)"
-        >{{ batchLoading ? '批量推荐中…' : 'AI 推荐' }}</button>
-
         <div class="candidates">
         <label
           v-for="c in visibleCandidates(row)"
           :key="c.path_id"
           class="candidate"
-          :class="{ on: row.choice === c.path_id, recommended: row.recommendation?.path_id === c.path_id }"
+          :class="{ on: row.choice === c.path_id, recommended: row.aiOpen && row.recommendation?.path_id === c.path_id }"
         >
           <input v-model="row.choice" type="radio" :value="c.path_id" @change="markChoice(row)" />
           <span class="body">
             <span class="path">
               #{{ c.rank }}　{{ chainOf(c) }}
-              <span v-if="row.recommendation?.path_id === c.path_id" class="ai-badge">
-                {{ row.recommendation.source === 'rule' ? '规则推荐' : 'AI 推荐' }}
+              <span v-if="row.aiOpen && row.recommendation?.path_id === c.path_id" class="ai-badge">
+                AI 推荐
                 <template v-if="row.recommendation.cached">·缓存</template>
               </span>
             </span>
@@ -613,27 +595,22 @@ h1 { margin: 0; font-size: 21px; }
 .candidate.on { border-color: #1b5e7a; background: #f5fbfc; }
 .candidate.recommended { border-color: #2c8a5a; }
 .candidate.recommended.on { border-color: #1b5e7a; }
-.rule-line {
+.row-actions {
   display: flex;
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
   margin: 6px 0 4px;
-  padding: 5px 9px;
-  border-radius: 7px;
-  background: #f2faf5;
-  color: #2c6b42;
-  font-size: 12px;
 }
-.rule-badge {
-  display: inline-block;
-  padding: 1px 7px;
-  border-radius: 999px;
-  background: #2c8a5a;
-  color: #fff;
-  font-size: 10.5px;
-  font-weight: 700;
-  white-space: nowrap;
+.row-actions .btn.tiny { margin-left: 0; }
+.direct-ai.on {
+  border-color: #2c8a5a;
+  background: #eaf7ef;
+  color: #226b43;
+}
+.direct-hint {
+  color: #2c8a5a;
+  font-size: 11px;
 }
 .ai-line {
   display: flex;
@@ -734,6 +711,8 @@ h1 { font-size: 18px; }
   min-height: 0;
   grid-template-columns: 1fr;
   gap: 5px;
+  overflow-y: auto;
+  padding-right: 2px;
 }
 .candidate { padding: 7px 9px; gap: 7px; min-width: 0; overflow: hidden; }
 .path { font-size: 11.5px; line-height: 1.35; }
