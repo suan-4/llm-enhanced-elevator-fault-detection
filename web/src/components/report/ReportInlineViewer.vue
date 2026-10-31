@@ -34,9 +34,10 @@ const loadError = ref('')
    在缩放完成前先藏起来，避免"完整宽度闪一下再缩回去"。 */
 const fitted = ref(false)
 const reportWrap = ref<HTMLElement | null>(null)
-const panelOpen = ref(!!props.generating)
+const panelOpen = ref(!!props.generating && window.innerWidth >= 701)
 watch(() => props.generating, (active) => {
-  if (active) panelOpen.value = true
+  // 横屏生成时自动打开侧栏，方便和不合格项对照；竖屏不自动占满屏幕。
+  if (active) panelOpen.value = window.innerWidth >= 701
 })
 watch(panelOpen, () => { void nextTick(fitPapers) })
 const typingText = ref('')
@@ -110,6 +111,19 @@ function startTyping(text: string): void {
 /* A4 宽度（210mm @96dpi），报告页按视口等比缩放 */
 const PAPER_WIDTH = 793.7
 let paperObserver: ResizeObserver | undefined
+
+function scrollReportBottom(): void {
+  const main = document.querySelector('.main') as HTMLElement | null
+  if (main) main.scrollTop = main.scrollHeight
+}
+
+watch([() => props.streamText, () => props.generating], () => {
+  if (!props.generating) return
+  void nextTick(() => {
+    fitPapers()
+    scrollReportBottom()
+  })
+})
 
 function fitPapers(): void {
   const host = reportWrap.value
@@ -261,6 +275,8 @@ onBeforeUnmount(() => {
         :g="g"
         :grade="grade"
         :analysis-text="analysisText"
+        :stream-text="props.generating ? (props.streamText || '') : ''"
+        :streaming="!!props.generating"
       />
     </div>
 
@@ -294,8 +310,9 @@ onBeforeUnmount(() => {
     <ReportEvaluationDrawer
       :open="panelOpen && !loading && !loadError"
       :analysis-text="analysisText"
-      :typing="props.generating ? true : typing"
-      :typing-text="props.generating ? (props.streamText || '') : typingText"
+      :typing="typing"
+      :typing-text="typingText"
+      :auto-scroll="false"
       @close="panelOpen = false"
     />
   </section>

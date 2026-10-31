@@ -20,6 +20,8 @@ defineProps<{
   g: number | null
   grade: Grade | null
   analysisText: string
+  streamText?: string
+  streaming?: boolean
 }>()
 </script>
 
@@ -51,11 +53,12 @@ defineProps<{
     </div>
   </div>
 
-  <div v-if="analysisText" class="paper-holder">
+  <div v-if="analysisText || streaming" class="paper-holder">
     <div class="paper analysis-paper">
       <h1>文本分析报告</h1>
-      <p class="analysis-note">以下内容由大模型基于本次评估事实与人工勾选的候选路径生成，未签核，供复核。</p>
-      <div class="analysis-body md" v-html="renderMarkdown(analysisText)" />
+      <p class="analysis-note">以下内容由大模型基于本次评估事实生成，未签核，供复核。</p>
+      <div v-if="streaming && !streamText" class="analysis-typing">正在生成…</div>
+      <div class="analysis-body md" v-html="renderMarkdown(streaming ? (streamText || '') : analysisText)" />
     </div>
   </div>
 </template>
@@ -69,6 +72,11 @@ defineProps<{
   color: var(--c-muted);
   font-size: 12px;
   margin: 6px 0 14px;
+}
+.analysis-typing {
+  color: #6b8b98;
+  font-size: 12px;
+  margin-bottom: 6px;
 }
 .analysis-body {
   line-height: 1.9;
