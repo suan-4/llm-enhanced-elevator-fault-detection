@@ -38,6 +38,7 @@ const error = ref('')
 const batchLoading = ref(false)
 const currentIndex = ref(0)
 const directTop3 = ref(false)
+let directPrefetching = false
 const recommendQueue: Row[] = []
 let recommendActive = 0
 const lastReportId = ref('')
@@ -127,6 +128,22 @@ async function loadRows(): Promise<void> {
   loading.value = false
   lastReportId.value = store.reportId
   lastVersion.value = store.version
+  if (directTop3.value) void prefetchDirectRecommendations()
+}
+
+/** 直入模式下后台把未选项目的 AI 推荐先算出来，点生成时不再多等一轮。 */
+async function prefetchDirectRecommendations(): Promise<void> {
+  if (directPrefetching) return
+  directPrefetching = true
+  try {
+    while (directTop3.value && remainingRows.value.length) {
+      const before = remainingRows.value.length
+      await recommendRemaining()
+      if (remainingRows.value.length >= before) break
+    }
+  } finally {
+    directPrefetching = false
+  }
 }
 
 async function loadDirectTop3(): Promise<void> {
