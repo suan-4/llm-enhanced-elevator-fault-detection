@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { itemProblem } from '@/domain/validation'
 import { useReportStore } from '@/stores/report'
 import type { JteItem } from '@/types/api'
@@ -13,6 +13,7 @@ const otherTexts = computed(() => {
   if (!state.value.otherTexts) state.value.otherTexts = []
   return state.value.otherTexts
 })
+const deleteIndex = ref<number | null>(null)
 
 const rowId = computed(() => 'row-' + props.item.no.replace('.', '-'))
 const reasonsId = computed(() => rowId.value + '-reasons')
@@ -67,6 +68,25 @@ function addOther(): void {
   state.value.other = true
   if (!state.value.otherTexts?.length) state.value.otherTexts = ['']
   state.value.otherTexts.push('')
+  deleteIndex.value = null
+}
+
+function askDeleteOther(index: number): void {
+  deleteIndex.value = index
+}
+
+function cancelDeleteOther(): void {
+  deleteIndex.value = null
+}
+
+function confirmDeleteOther(index: number): void {
+  const list = otherTexts.value
+  if (index < 0 || index >= list.length) return
+  list.splice(index, 1)
+  deleteIndex.value = null
+  if (!list.length) {
+    state.value.other = false
+  }
 }
 </script>
 
@@ -144,18 +164,40 @@ function addOther(): void {
             :disabled="otherLocked"
             @change="toggleOther"
           />
-          <span>其他（自行填写）</span>
+          <span class="other-title">
+            其他（自行填写）
+            <button
+              class="other-add"
+              type="button"
+              title="添加一条其他不符合项"
+              aria-label="添加一条其他不符合项"
+              @click.stop.prevent="addOther"
+            >＋</button>
+          </span>
         </label>
-        <button class="other-add" type="button" title="添加一条其他不符合项" aria-label="添加一条其他不符合项" @click="addOther">＋</button>
         <div v-if="state.other" class="other-box">
-          <textarea
-            v-for="(_text, index) in otherTexts"
-            :key="index"
-            v-model="otherTexts[index]"
-            class="textarea"
-            :disabled="otherLocked"
-            :placeholder="`第 ${index + 1} 条其他不符合项`"
-          />
+          <div v-for="(_text, index) in otherTexts" :key="index" class="other-item">
+            <div class="other-input-row">
+              <textarea
+                v-model="otherTexts[index]"
+                class="textarea"
+                :disabled="otherLocked"
+                :placeholder="`第 ${index + 1} 条其他不符合项`"
+              />
+              <button
+                class="other-delete"
+                type="button"
+                title="删除这条其他不符合项"
+                aria-label="删除这条其他不符合项"
+                @click="askDeleteOther(index)"
+              >×</button>
+            </div>
+            <div v-if="deleteIndex === index" class="other-delete-confirm">
+              <span>确认删除这条其他不符合项？</span>
+              <button class="other-confirm-delete" type="button" @click="confirmDeleteOther(index)">删除</button>
+              <button type="button" @click="cancelDeleteOther">取消</button>
+            </div>
+          </div>
         </div>
         <div v-if="problem" class="reasons-err">{{ problem }}</div>
       </div>
@@ -168,6 +210,57 @@ function addOther(): void {
   display: flex;
   align-items: center;
   gap: 6px;
+}
+.other-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.other-input-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+.other-input-row .textarea {
+  flex: 1 1 auto;
+}
+.other-delete {
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid #e3b4b0;
+  border-radius: 6px;
+  background: #fff5f4;
+  color: #b3261e;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+.other-delete:hover {
+  border-color: #b3261e;
+  background: #fdeceb;
+}
+.other-delete-confirm {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 3px 0 2px;
+  color: #b3261e;
+  font-size: 11.5px;
+}
+.other-delete-confirm button {
+  padding: 2px 8px;
+  border: 1px solid #c9d6dd;
+  border-radius: 6px;
+  background: #f7fafb;
+  font-size: 11.5px;
+  cursor: pointer;
+}
+.other-delete-confirm .other-confirm-delete {
+  border-color: #b3261e;
+  background: #b3261e;
+  color: #fff;
 }
 .other-add {
   margin-left: 4px;
