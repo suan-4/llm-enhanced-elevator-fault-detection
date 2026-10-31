@@ -201,7 +201,12 @@ function fitPapers(): void {
   let scale = Math.min(1, Math.max(available, 0) / PAPER_WIDTH)
   /* 横屏矮视口（板端 960×600）：宽度与高度同时约束，整页 A4 能一屏看全 */
   if (window.innerHeight <= 700) {
+    // host 在 .main 滚动容器里；滚动到分析页后 rect.top 会变成负数，
+    // 若直接用它算 maxHeight，会把“可用高度”算得无穷大，纸张会回到 scale(1)。
+    const main = document.querySelector('.main') as HTMLElement | null
     const hostTop = host.getBoundingClientRect().top
+      - (main?.getBoundingClientRect().top || 0)
+      + (main?.scrollTop || 0)
     const actionbar = document.querySelector('.actionbar')
     const bottom = actionbar
       ? Math.max(0, window.innerHeight - actionbar.getBoundingClientRect().top)
