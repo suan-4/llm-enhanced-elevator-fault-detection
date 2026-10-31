@@ -9,7 +9,6 @@ const store = useReportStore()
 const state = computed(() => store.stateOf(props.item.no))
 const problem = computed(() => itemProblem(state.value))
 const unfit = computed(() => state.value.result === '不符合')
-const oldReasons = computed(() => state.value.reasons.filter(text => !props.item.opts.includes(text)))
 
 const rowId = computed(() => 'row-' + props.item.no.replace('.', '-'))
 const reasonsId = computed(() => rowId.value + '-reasons')
@@ -104,24 +103,6 @@ function toggleOther(): void {
     <td :colspan="3">
       <div class="reasons">
         <div class="reasons-head">不符合情形（清单项与其他二选一）</div>
-        <template v-if="oldReasons.length">
-          <div class="reasons-err">以下为旧版选项，请取消并重新选择当前风险，或填入其他：</div>
-          <label
-            v-for="old in oldReasons"
-            :key="old"
-            class="chk"
-            :class="{ disabled: reasonsLocked }"
-            @click.prevent="pickReason(old)"
-          >
-            <input
-              type="checkbox"
-              checked
-              :disabled="reasonsLocked"
-              @change="toggleReason(old, false)"
-            />
-            <span>{{ old }}</span>
-          </label>
-        </template>
         <label
           v-for="(opt, i) in item.opts"
           :key="i"

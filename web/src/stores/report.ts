@@ -383,15 +383,17 @@ export const useReportStore = defineStore('report', () => {
            现在统一补成「符合」：现场默认全项符合，只改例外项；
            否则退出重进后会出现一部分条目未选、计数为「未填」。 */
         state.result = CODE_TO_RESULT[saved.result] ?? '符合'
-        state.reasons = saved.reasons ?? []
+        const currentOpts = new Set(item.opts || [])
+        const keepCurrent = (values: string[]) => values.filter((value) => currentOpts.has(value))
+        state.reasons = keepCurrent(saved.reasons ?? [])
         state.other = !!saved.other_text
         state.otherText = saved.other_text ?? ''
-        state.legacyCombined = !saved.editing && !!saved.other_text && !!saved.reasons?.length
+        state.legacyCombined = !saved.editing && !!saved.other_text && state.reasons.length > 0
         if (saved.editing) {
-          state.reasons = saved.editing.reasons.slice()
+          state.reasons = keepCurrent(saved.editing.reasons || [])
           state.other = saved.editing.other
           state.otherText = saved.editing.other_text
-          state.legacyCombined = !!saved.editing.legacy_combined
+          state.legacyCombined = !!saved.editing.legacy_combined && state.reasons.length > 0
         }
       }
       states[item.no] = state

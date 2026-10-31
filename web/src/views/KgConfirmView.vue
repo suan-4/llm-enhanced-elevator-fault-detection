@@ -6,7 +6,6 @@ import { useRouter } from 'vue-router'
 import { fetchKgCandidates, fetchKgRecommendation, fetchKgRecommendationBatch,
   selectKgPath, type KgCandidatesResponse, type KgRecommendation } from '@/api/kg'
 import { useReportStore } from '@/stores/report'
-import StreamingOverlay from '@/components/StreamingOverlay.vue'
 import type { KgSelection } from '@/api/reports'
 
 interface Row {
@@ -414,7 +413,6 @@ function back(): void {
       <p class="tip">AI 只做预选，最终由操作员确认；选中路径仅作为报告候选证据，标注「操作员选定、未签核」。</p>
     </footer>
   </div>
-  <StreamingOverlay v-if="generating" :text="streamText" />
 </template>
 
 <style scoped>
