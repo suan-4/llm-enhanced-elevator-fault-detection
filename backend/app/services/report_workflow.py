@@ -699,17 +699,6 @@ async def generate(report_id: int | str, *, use_llm: bool = False,
         "input_digest": _input_digest(report),
         "elapsed_ms": int((monotonic() - started) * 1000),
     }
-    # 已经有一份成功的模型分析报告时，本次模型失败不能用规则摘要覆盖它。
-    # 尤其是字数/结构校验失败，旧报告比“新的降级报告”更有价值。
-    previous_provenance = report.get("provenance") or {}
-    previous_analysis_success = (
-        report.get("status") in ("generated", "filed")
-        and previous_provenance.get("analysis_status") == "success"
-    )
-    if previous_analysis_success and not llm_used:
-        raise ValueError(
-            "本次文本分析未成功，已保留上一次成功生成的报告，没有覆盖。"
-        )
     with stage('db_commit'), db.get_conn() as conn:
         current = report_repo.lock_for_generation(conn, rid)
         if current is None:
